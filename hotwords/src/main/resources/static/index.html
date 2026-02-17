@@ -1,0 +1,932 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hotwords</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: #fff;
+            min-height: 100vh;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 0 0 20px rgba(255, 107, 107, 0.5);
+        }
+        .container {
+            text-align: center;
+            max-width: 500px;
+            width: 100%;
+        }
+        .room-info {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+        }
+        .room-info label {
+            font-size: 0.9rem;
+            color: #888;
+            display: block;
+            margin-bottom: 8px;
+        }
+        .room-input-row {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        .room-input {
+            font-size: 1.2rem;
+            padding: 8px 16px;
+            border: 2px solid rgba(138, 43, 226, 0.5);
+            border-radius: 20px;
+            background: rgba(138, 43, 226, 0.2);
+            color: #fff;
+            text-align: center;
+            width: 160px;
+            font-weight: bold;
+        }
+        .room-input:focus {
+            outline: none;
+            border-color: #8a2be2;
+            background: rgba(138, 43, 226, 0.3);
+        }
+        .join-btn {
+            font-size: 1rem;
+            padding: 8px 20px;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            background: linear-gradient(135deg, #8a2be2 0%, #6a1cb2 100%);
+            color: #fff;
+            transition: all 0.3s ease;
+        }
+        .join-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(138, 43, 226, 0.4);
+        }
+        .join-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .word-display {
+            font-size: 3rem;
+            font-weight: bold;
+            margin: 40px 0;
+            padding: 30px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            text-shadow: 0 0 30px rgba(78, 205, 196, 0.8);
+            color: #4ecdc4;
+            min-height: 140px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            transition: all 0.3s ease;
+        }
+        .word-display.redacted {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a5a 100%);
+            text-shadow: none;
+        }
+        .word-display.redacted .word-text {
+            opacity: 0;
+        }
+        .word-display .word-text {
+            transition: opacity 0.3s ease;
+        }
+        .word-display .redact-label {
+            position: absolute;
+            font-size: 1.5rem;
+            color: rgba(255, 255, 255, 0.9);
+            text-shadow: none;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        .word-display.redacted .redact-label {
+            opacity: 1;
+        }
+        .score-display {
+            text-align: center;
+            margin: 20px 0;
+        }
+        .score-number {
+            font-size: 4rem;
+            font-weight: bold;
+            color: #f9ca24;
+            text-shadow: 0 0 30px rgba(249, 202, 36, 0.6);
+            line-height: 1;
+        }
+        .score-label {
+            font-size: 1rem;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+        .timer-display {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #4ecdc4;
+            margin-bottom: 15px;
+            opacity: 0.5;
+        }
+        .timer-display.active {
+            opacity: 1;
+        }
+        .timer-display.warning {
+            color: #f9ca24;
+        }
+        .timer-display.danger {
+            color: #ff6b6b;
+            animation: pulse 0.5s ease-in-out infinite;
+        }
+        .status {
+            font-size: 1.2rem;
+            color: #888;
+            margin-bottom: 20px;
+            min-height: 30px;
+        }
+        .status.listening {
+            color: #4ecdc4;
+        }
+        .status.winner {
+            color: #ff6b6b;
+            font-weight: bold;
+            animation: pulse 0.5s ease-in-out 3;
+        }
+        .status.skipped {
+            color: #f9ca24;
+        }
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+        button {
+            font-size: 1.2rem;
+            padding: 15px 40px;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 10px;
+        }
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .listen-btn {
+            background: linear-gradient(135deg, #4ecdc4 0%, #44a08d 100%);
+            color: #fff;
+        }
+        .listen-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(78, 205, 196, 0.4);
+        }
+        .listen-btn.active {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a5a 100%);
+        }
+        .skip-btn {
+            background: linear-gradient(135deg, #f9ca24 0%, #f0932b 100%);
+            color: #1a1a2e;
+            font-weight: bold;
+        }
+        .skip-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(249, 202, 36, 0.4);
+        }
+        .button-row {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .transcript {
+            margin-top: 30px;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            font-size: 0.9rem;
+            color: #888;
+            min-height: 50px;
+        }
+        .transcript span {
+            color: #4ecdc4;
+        }
+        .similarity {
+            font-size: 0.8rem;
+            color: #666;
+            margin-top: 5px;
+        }
+        .similarity.close {
+            color: #f9ca24;
+        }
+        .player-input {
+            margin-bottom: 20px;
+        }
+        .player-input input {
+            font-size: 1rem;
+            padding: 10px 20px;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 25px;
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            text-align: center;
+            width: 200px;
+        }
+        .player-input input::placeholder {
+            color: rgba(255, 255, 255, 0.5);
+        }
+        .player-input input:focus {
+            outline: none;
+            border-color: #4ecdc4;
+        }
+        .error {
+            color: #ff6b6b;
+            margin-top: 20px;
+        }
+
+        /* Celebration overlay */
+        .celebration {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1000;
+            overflow: hidden;
+            opacity: 0;
+            background: rgba(26, 26, 46, 0.95);
+            transition: opacity 0.3s ease;
+        }
+        .celebration.active {
+            opacity: 1;
+        }
+        .celebration-content {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            z-index: 1001;
+            width: 90%;
+        }
+        .celebration-text {
+            font-size: 15vw;
+            font-weight: bold;
+            color: #4ecdc4;
+            text-shadow: 0 0 40px rgba(78, 205, 196, 1), 0 0 80px rgba(78, 205, 196, 0.8), 0 0 120px rgba(78, 205, 196, 0.6);
+            animation: celebratePulse 0.4s ease-in-out infinite alternate;
+            line-height: 1.1;
+            text-transform: uppercase;
+        }
+        .celebration-winner {
+            font-size: 1.5rem;
+            color: #ff6b6b;
+            margin-top: 30px;
+            text-shadow: 0 0 20px rgba(255, 107, 107, 0.8);
+        }
+        @keyframes celebratePulse {
+            0% { transform: scale(1); }
+            100% { transform: scale(1.05); }
+        }
+
+        /* Explosion particles */
+        .particle {
+            position: absolute;
+            width: 15px;
+            height: 15px;
+            border-radius: 50%;
+            animation: explode 2s ease-out forwards;
+        }
+        @keyframes explode {
+            0% {
+                transform: translate(-50%, -50%) scale(0);
+                opacity: 1;
+            }
+            100% {
+                transform: translate(var(--tx), var(--ty)) scale(1);
+                opacity: 0;
+            }
+        }
+
+        /* Confetti */
+        .confetti {
+            position: absolute;
+            width: 10px;
+            height: 20px;
+            animation: confettiFall 2s ease-out forwards;
+        }
+        @keyframes confettiFall {
+            0% {
+                transform: translateY(-100%) rotate(0deg);
+                opacity: 1;
+            }
+            100% {
+                transform: translateY(100vh) rotate(720deg);
+                opacity: 0;
+            }
+        }
+
+        /* Screen flash */
+        .celebration-flash {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle at center, rgba(255,107,107,0.6) 0%, transparent 70%);
+            animation: flash 0.5s ease-out forwards;
+        }
+        @keyframes flash {
+            0% { opacity: 1; transform: scale(0.5); }
+            100% { opacity: 0; transform: scale(2); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1><span id="wordCount">-</span> words</h1>
+
+        <div class="room-info">
+            <label>Room</label>
+            <div class="room-input-row">
+                <input type="text" class="room-input" id="roomInput" maxlength="20" spellcheck="false">
+                <button class="join-btn" id="randomBtn">Random</button>
+            </div>
+        </div>
+
+        <div class="player-input">
+            <input type="text" id="playerName" placeholder="Enter your name" maxlength="20">
+        </div>
+
+        <div class="word-display" id="wordContainer">
+            <span class="word-text" id="currentWord">Connecting...</span>
+            <span class="redact-label">MEMORIZE THE PHRASE!</span>
+        </div>
+
+        <div class="score-display" id="scoreDisplay">
+            <div class="score-number" id="scoreCount">0</div>
+            <div class="score-label">points</div>
+        </div>
+
+        <div class="timer-display" id="timerDisplay">
+            <span id="timerCount">40</span>s
+        </div>
+
+        <div class="status" id="status">Click the button to start listening</div>
+
+        <div class="button-row">
+            <button class="listen-btn" id="listenBtn" disabled>Start Listening</button>
+            <button class="skip-btn" id="skipBtn" disabled>Skip Word</button>
+        </div>
+
+        <div class="transcript">
+            Heard: <span id="transcript">-</span>
+            <div class="similarity" id="similarity"></div>
+        </div>
+
+        <div class="error" id="error"></div>
+    </div>
+
+    <!-- Celebration overlay -->
+    <div class="celebration" id="celebration">
+        <div class="celebration-content">
+            <div class="celebration-text" id="celebrationWord"></div>
+            <div class="celebration-winner" id="winnerName"></div>
+        </div>
+    </div>
+
+    <script>
+        const wordDisplay = document.getElementById('currentWord');
+        const wordContainer = document.getElementById('wordContainer');
+        const statusEl = document.getElementById('status');
+        const listenBtn = document.getElementById('listenBtn');
+        const skipBtn = document.getElementById('skipBtn');
+        const transcriptEl = document.getElementById('transcript');
+        const similarityEl = document.getElementById('similarity');
+        const playerNameInput = document.getElementById('playerName');
+        const roomInput = document.getElementById('roomInput');
+        const randomBtn = document.getElementById('randomBtn');
+        const errorEl = document.getElementById('error');
+        const celebrationEl = document.getElementById('celebration');
+        const winnerNameEl = document.getElementById('winnerName');
+        const celebrationWordEl = document.getElementById('celebrationWord');
+        const scoreCountEl = document.getElementById('scoreCount');
+        const wordCountEl = document.getElementById('wordCount');
+        const timerDisplayEl = document.getElementById('timerDisplay');
+        const timerCountEl = document.getElementById('timerCount');
+
+        let currentWord = '';
+        let ws = null;
+        let recognition = null;
+        let isListening = false;
+        let hasClaimedVictory = false;
+        let currentRoomId = '';
+        let isReconnecting = false;
+        let redactTimer = null;
+        let isCelebrating = false;
+        let pendingWord = null;
+        let gameTimer = null;
+        let timeRemaining = 40;
+        let localScore = 0;
+        let gameActive = false;
+        const REDACT_DELAY = 2500; // 2.5 seconds
+        const CELEBRATION_DELAY = 2000; // 2 seconds
+        const GAME_DURATION = 40; // 40 seconds
+
+        // Random room name words
+        const roomNames = [
+            'Tigers', 'Eagles', 'Dolphins', 'Panthers', 'Wolves',
+            'Phoenix', 'Thunder', 'Storm', 'Blaze', 'Frost',
+            'Cobras', 'Hawks', 'Lions', 'Bears', 'Sharks',
+            'Rockets', 'Comets', 'Titans', 'Vikings', 'Spartans',
+            'Ninjas', 'Pirates', 'Wizards', 'Dragons', 'Knights',
+            'Cosmos', 'Galaxy', 'Nebula', 'Aurora', 'Eclipse',
+            'Mystic', 'Legend', 'Phantom', 'Shadow', 'Crystal'
+        ];
+
+        // Generate a random room name
+        function getRandomRoomName() {
+            return roomNames[Math.floor(Math.random() * roomNames.length)];
+        }
+
+        // Get room from URL or generate random
+        function getInitialRoom() {
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get('room') || getRandomRoomName();
+        }
+
+        // Update URL without reloading
+        function updateUrl(roomId) {
+            const url = new URL(window.location);
+            url.searchParams.set('room', roomId);
+            window.history.replaceState({}, '', url);
+        }
+
+        // Celebration animation
+        function showCelebration(winnerName, word) {
+            isCelebrating = true;
+            celebrationWordEl.textContent = word;
+            winnerNameEl.textContent = winnerName + ' got it!';
+            celebrationEl.classList.add('active');
+
+            // Create flash effect
+            const flash = document.createElement('div');
+            flash.className = 'celebration-flash';
+            celebrationEl.appendChild(flash);
+
+            // Create explosion particles
+            const colors = ['#ff6b6b', '#4ecdc4', '#f9ca24', '#8a2be2', '#ff9ff3', '#54a0ff'];
+            const centerX = window.innerWidth / 2;
+            const centerY = window.innerHeight / 2;
+
+            for (let i = 0; i < 50; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                particle.style.left = centerX + 'px';
+                particle.style.top = centerY + 'px';
+                particle.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+
+                const angle = (Math.PI * 2 * i) / 50 + Math.random() * 0.5;
+                const distance = 100 + Math.random() * 300;
+                const tx = Math.cos(angle) * distance;
+                const ty = Math.sin(angle) * distance;
+                particle.style.setProperty('--tx', tx + 'px');
+                particle.style.setProperty('--ty', ty + 'px');
+
+                celebrationEl.appendChild(particle);
+            }
+
+            // Create confetti
+            for (let i = 0; i < 60; i++) {
+                const confetti = document.createElement('div');
+                confetti.className = 'confetti';
+                confetti.style.left = Math.random() * 100 + '%';
+                confetti.style.top = '-20px';
+                confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                confetti.style.animationDelay = Math.random() * 0.5 + 's';
+                confetti.style.animationDuration = (1.5 + Math.random()) + 's';
+                celebrationEl.appendChild(confetti);
+            }
+
+            // End celebration after delay
+            setTimeout(() => {
+                celebrationEl.classList.remove('active');
+                // Clean up particles
+                setTimeout(() => {
+                    celebrationEl.querySelectorAll('.particle, .confetti, .celebration-flash').forEach(el => el.remove());
+                }, 300);
+                isCelebrating = false;
+
+                // Show pending word if any
+                if (pendingWord) {
+                    showNewWord(pendingWord);
+                    pendingWord = null;
+                }
+            }, CELEBRATION_DELAY);
+        }
+
+        // Show new word with redaction timer
+        function showNewWord(word) {
+            currentWord = word;
+            hasClaimedVictory = false;
+            wordDisplay.textContent = currentWord;
+            statusEl.classList.remove('winner', 'skipped');
+            similarityEl.textContent = '';
+            similarityEl.classList.remove('close');
+
+            // Update word count in header
+            const wordCount = word.trim().split(/\s+/).length;
+            wordCountEl.textContent = wordCount;
+
+            // Show word, then redact after 2.5 seconds
+            wordContainer.classList.remove('redacted');
+            if (redactTimer) clearTimeout(redactTimer);
+            redactTimer = setTimeout(() => {
+                wordContainer.classList.add('redacted');
+            }, REDACT_DELAY);
+
+            if (isListening) {
+                statusEl.textContent = 'Listening... Say the phrase!';
+                statusEl.classList.add('listening');
+            }
+        }
+
+        // Start game timer
+        function startGameTimer() {
+            gameActive = true;
+            localScore = 0;
+            scoreCountEl.textContent = '0';
+            timeRemaining = GAME_DURATION;
+            timerCountEl.textContent = timeRemaining;
+            timerDisplayEl.classList.add('active');
+            timerDisplayEl.classList.remove('warning', 'danger');
+
+            if (gameTimer) clearInterval(gameTimer);
+            gameTimer = setInterval(() => {
+                timeRemaining--;
+                timerCountEl.textContent = timeRemaining;
+
+                // Color warnings
+                if (timeRemaining <= 5) {
+                    timerDisplayEl.classList.remove('warning');
+                    timerDisplayEl.classList.add('danger');
+                } else if (timeRemaining <= 10) {
+                    timerDisplayEl.classList.add('warning');
+                }
+
+                if (timeRemaining <= 0) {
+                    endGame();
+                }
+            }, 1000);
+        }
+
+        // End game
+        function endGame() {
+            gameActive = false;
+            if (gameTimer) {
+                clearInterval(gameTimer);
+                gameTimer = null;
+            }
+            timerDisplayEl.classList.remove('active', 'warning', 'danger');
+
+            // Stop listening
+            if (isListening && recognition) {
+                isListening = false;
+                recognition.stop();
+                listenBtn.textContent = 'Start Listening';
+                listenBtn.classList.remove('active');
+            }
+
+            statusEl.textContent = `Time's up! Final score: ${localScore}`;
+            statusEl.classList.remove('listening');
+        }
+
+        // Update local score
+        function incrementLocalScore() {
+            if (gameActive) {
+                localScore++;
+                scoreCountEl.textContent = localScore;
+            }
+        }
+
+        // Levenshtein distance for similarity checking
+        function levenshteinDistance(str1, str2) {
+            const m = str1.length;
+            const n = str2.length;
+            const dp = Array(m + 1).fill(null).map(() => Array(n + 1).fill(0));
+
+            for (let i = 0; i <= m; i++) dp[i][0] = i;
+            for (let j = 0; j <= n; j++) dp[0][j] = j;
+
+            for (let i = 1; i <= m; i++) {
+                for (let j = 1; j <= n; j++) {
+                    if (str1[i - 1] === str2[j - 1]) {
+                        dp[i][j] = dp[i - 1][j - 1];
+                    } else {
+                        dp[i][j] = 1 + Math.min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1]);
+                    }
+                }
+            }
+            return dp[m][n];
+        }
+
+        // Calculate similarity percentage
+        function similarity(str1, str2) {
+            const s1 = str1.toLowerCase().trim();
+            const s2 = str2.toLowerCase().trim();
+            if (s1 === s2) return 1;
+            const maxLen = Math.max(s1.length, s2.length);
+            if (maxLen === 0) return 1;
+            const distance = levenshteinDistance(s1, s2);
+            return (maxLen - distance) / maxLen;
+        }
+
+        // Check if transcript matches current phrase (with fuzzy matching)
+        function checkMatch(transcript) {
+            if (!currentWord || hasClaimedVictory) return { matched: false, similarity: 0 };
+
+            const targetLower = currentWord.toLowerCase().trim();
+            const heardLower = transcript.toLowerCase().trim();
+
+            // Exact match
+            if (heardLower.includes(targetLower)) {
+                return { matched: true, similarity: 1 };
+            }
+
+            // Check similarity of the full phrase against windows in transcript
+            const targetWords = targetLower.split(/\s+/);
+            const heardWords = heardLower.split(/\s+/);
+
+            let bestSimilarity = 0;
+
+            // Sliding window over heard words
+            for (let i = 0; i <= heardWords.length - targetWords.length; i++) {
+                const windowPhrase = heardWords.slice(i, i + targetWords.length).join(' ');
+                const sim = similarity(windowPhrase, targetLower);
+                bestSimilarity = Math.max(bestSimilarity, sim);
+            }
+
+            // Also check full transcript similarity
+            const fullSim = similarity(heardLower, targetLower);
+            bestSimilarity = Math.max(bestSimilarity, fullSim);
+
+            // Check each word individually and average (for partial matches)
+            if (targetWords.length > 1) {
+                for (let i = 0; i <= heardWords.length - targetWords.length; i++) {
+                    let wordMatchSum = 0;
+                    for (let j = 0; j < targetWords.length; j++) {
+                        const wordSim = similarity(heardWords[i + j] || '', targetWords[j]);
+                        wordMatchSum += wordSim;
+                    }
+                    const avgSim = wordMatchSum / targetWords.length;
+                    bestSimilarity = Math.max(bestSimilarity, avgSim);
+                }
+            }
+
+            // 85% similarity threshold for fuzzy match
+            const SIMILARITY_THRESHOLD = 0.85;
+            return {
+                matched: bestSimilarity >= SIMILARITY_THRESHOLD,
+                similarity: bestSimilarity
+            };
+        }
+
+        // Check for Speech Recognition support
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SpeechRecognition) {
+            errorEl.textContent = 'Speech Recognition is not supported in this browser. Please use Chrome or Edge.';
+            listenBtn.style.display = 'none';
+        }
+
+        // Connect to WebSocket
+        function connect(roomId) {
+            // Close existing connection if any
+            if (ws) {
+                isReconnecting = true;
+                ws.close();
+            }
+
+            currentRoomId = roomId;
+            updateUrl(roomId);
+            roomInput.value = roomId;
+
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            ws = new WebSocket(`${protocol}//${window.location.host}/game/${roomId}`);
+
+            ws.onopen = () => {
+                isReconnecting = false;
+                statusEl.textContent = 'Connected! Click to start listening.';
+                listenBtn.disabled = false;
+                skipBtn.disabled = false;
+            };
+
+            ws.onmessage = (event) => {
+                const msg = JSON.parse(event.data);
+
+                if (msg.type === 'NEW_WORD') {
+                    // If celebrating, queue the word for later
+                    if (isCelebrating) {
+                        pendingWord = msg.word;
+                    } else {
+                        showNewWord(msg.word);
+                    }
+                } else if (msg.type === 'ROUND_WON') {
+                    // Update local score if game is active
+                    incrementLocalScore();
+                    statusEl.textContent = `${msg.player} won the round!`;
+                    statusEl.classList.remove('listening', 'skipped');
+                    statusEl.classList.add('winner');
+                    // Clear redaction timer during celebration
+                    if (redactTimer) clearTimeout(redactTimer);
+                    showCelebration(msg.player, currentWord);
+                } else if (msg.type === 'WORD_SKIPPED') {
+                    const skipper = msg.player || 'Someone';
+                    statusEl.textContent = `${skipper} skipped the word`;
+                    statusEl.classList.remove('listening', 'winner');
+                    statusEl.classList.add('skipped');
+                } else if (msg.type === 'SCORE_UPDATE') {
+                    // Only update if game not active (initial load)
+                    if (!gameActive && msg.score !== undefined) {
+                        scoreCountEl.textContent = msg.score;
+                    }
+                }
+            };
+
+            ws.onclose = () => {
+                listenBtn.disabled = true;
+                skipBtn.disabled = true;
+                if (!isReconnecting) {
+                    statusEl.textContent = 'Disconnected. Reconnecting...';
+                    setTimeout(() => connect(currentRoomId), 2000);
+                }
+            };
+
+            ws.onerror = () => {
+                statusEl.textContent = 'Connection error';
+            };
+        }
+
+        // Join a new room
+        function joinRoom() {
+            const newRoom = roomInput.value.trim();
+            if (newRoom && newRoom !== currentRoomId) {
+                // End any active game
+                if (gameActive) {
+                    endGame();
+                }
+                wordDisplay.textContent = 'Joining...';
+                wordContainer.classList.remove('redacted');
+                scoreCountEl.textContent = '0';
+                wordCountEl.textContent = '-';
+                if (redactTimer) clearTimeout(redactTimer);
+                connect(newRoom);
+            }
+        }
+
+        // Initialize Speech Recognition
+        function initSpeechRecognition() {
+            if (!SpeechRecognition) return;
+
+            recognition = new SpeechRecognition();
+            recognition.continuous = true;
+            recognition.interimResults = true;
+            recognition.lang = 'en-US';
+
+            recognition.onresult = (event) => {
+                let transcript = '';
+                for (let i = event.resultIndex; i < event.results.length; i++) {
+                    transcript += event.results[i][0].transcript;
+                }
+                transcriptEl.textContent = transcript || '-';
+
+                // Check for match with similarity
+                const result = checkMatch(transcript);
+
+                if (result.similarity > 0 && result.similarity < 1) {
+                    const pct = Math.round(result.similarity * 100);
+                    similarityEl.textContent = `${pct}% match`;
+                    similarityEl.classList.toggle('close', result.similarity >= 0.7);
+                } else {
+                    similarityEl.textContent = '';
+                }
+
+                if (result.matched && !hasClaimedVictory) {
+                    hasClaimedVictory = true;
+                    claimVictory();
+                }
+            };
+
+            recognition.onerror = (event) => {
+                if (event.error === 'not-allowed') {
+                    errorEl.textContent = 'Microphone access denied. Please allow microphone access and refresh.';
+                } else if (event.error !== 'aborted') {
+                    console.log('Speech recognition error:', event.error);
+                }
+            };
+
+            recognition.onend = () => {
+                // Restart if still supposed to be listening
+                if (isListening) {
+                    recognition.start();
+                }
+            };
+        }
+
+        // Claim victory
+        function claimVictory() {
+            const playerName = playerNameInput.value.trim() || 'Anonymous';
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({
+                    type: 'CLAIM_VICTORY',
+                    player: playerName
+                }));
+            }
+        }
+
+        // Skip word
+        function skipWord() {
+            const playerName = playerNameInput.value.trim() || 'Anonymous';
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({
+                    type: 'SKIP_WORD',
+                    player: playerName
+                }));
+            }
+        }
+
+        // Toggle listening
+        listenBtn.addEventListener('click', () => {
+            if (!recognition) {
+                initSpeechRecognition();
+            }
+
+            if (isListening) {
+                isListening = false;
+                recognition.stop();
+                listenBtn.textContent = 'Start Listening';
+                listenBtn.classList.remove('active');
+                statusEl.textContent = 'Stopped listening';
+                statusEl.classList.remove('listening');
+                // End game if manually stopped
+                if (gameActive) {
+                    endGame();
+                }
+            } else {
+                isListening = true;
+                recognition.start();
+                listenBtn.textContent = 'Stop Listening';
+                listenBtn.classList.add('active');
+                statusEl.textContent = 'Listening... Say the phrase!';
+                statusEl.classList.add('listening');
+                // Start the game timer
+                startGameTimer();
+            }
+        });
+
+        // Skip button
+        skipBtn.addEventListener('click', skipWord);
+
+        // Random room button
+        randomBtn.addEventListener('click', () => {
+            let newRoom = getRandomRoomName();
+            // Make sure we get a different room
+            while (newRoom === currentRoomId) {
+                newRoom = getRandomRoomName();
+            }
+            roomInput.value = newRoom;
+            joinRoom();
+        });
+
+        // Auto-join on blur (when done editing)
+        roomInput.addEventListener('blur', joinRoom);
+
+        // Enter key on room input
+        roomInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                roomInput.blur(); // This triggers blur which calls joinRoom
+            }
+        });
+
+        // Initialize with room
+        const initialRoom = getInitialRoom();
+        roomInput.value = initialRoom;
+        connect(initialRoom);
+    </script>
+</body>
+</html>
