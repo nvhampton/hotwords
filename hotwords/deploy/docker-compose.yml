@@ -1,0 +1,25 @@
+version: "3.8"
+
+services:
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - hotwords
+
+  hotwords:
+    image: hotwords:latest
+    restart: unless-stopped
+    expose:
+      - "8080"
+
+volumes:
+  caddy_data:
+  caddy_config:

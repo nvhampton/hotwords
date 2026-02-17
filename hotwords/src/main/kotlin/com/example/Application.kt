@@ -32,6 +32,7 @@ fun Application.module() {
     // Shared game state
     val rooms = ConcurrentHashMap<String, MutableSet<DefaultWebSocketServerSession>>()
     val roomScores = ConcurrentHashMap<String, Int>()
+    val roomWords = ConcurrentHashMap<String, String>()  // Per-room active word
     val gameWords = listOf(
         // Actions & Activities
         "Running late", "Couch potato", "Road trip", "Window shopping", "People watching",
@@ -53,7 +54,6 @@ fun Application.module() {
         "Break a leg", "Hit the road", "Call it a day", "Piece of work", "Long shot",
         "Big picture", "Last straw", "Wild card", "Green thumb", "Cold feet"
     )
-    var activeWord = gameWords.random()
 
     routing {
         staticResources("/", "static") {
@@ -66,10 +66,11 @@ fun Application.module() {
             room.add(this)
 
             try {
-                // Initial state for the player
+                // Initialize room word if needed, or get existing
+                val currentWord = roomWords.computeIfAbsent(roomId) { gameWords.random() }
                 val currentScore = roomScores.getOrDefault(roomId, 0)
                 sendSerialized(GameMessage(type = "SCORE_UPDATE", score = currentScore))
-                sendSerialized(GameMessage(type = "NEW_WORD", word = activeWord))
+                sendSerialized(GameMessage(type = "NEW_WORD", word = currentWord))
 
                 for (frame in incoming) {
                     if (frame is Frame.Text) {
@@ -78,10 +79,11 @@ fun Application.module() {
 
                         when (received.type) {
                             "CLAIM_VICTORY" -> {
-                                activeWord = gameWords.random()
+                                val newWord = gameWords.random()
+                                roomWords[roomId] = newWord
                                 val newScore = roomScores.merge(roomId, 1, Int::plus) ?: 1
                                 val winnerMsg = GameMessage(type = "ROUND_WON", player = received.player ?: "A Player", score = newScore)
-                                val newWordMsg = GameMessage(type = "NEW_WORD", word = activeWord)
+                                val newWordMsg = GameMessage(type = "NEW_WORD", word = newWord)
 
                                 room.forEach { session ->
                                     session.sendSerialized(winnerMsg)
@@ -89,9 +91,10 @@ fun Application.module() {
                                 }
                             }
                             "SKIP_WORD" -> {
-                                activeWord = gameWords.random()
+                                val newWord = gameWords.random()
+                                roomWords[roomId] = newWord
                                 val skipMsg = GameMessage(type = "WORD_SKIPPED", player = received.player)
-                                val newWordMsg = GameMessage(type = "NEW_WORD", word = activeWord)
+                                val newWordMsg = GameMessage(type = "NEW_WORD", word = newWord)
 
                                 room.forEach { session ->
                                     session.sendSerialized(skipMsg)
