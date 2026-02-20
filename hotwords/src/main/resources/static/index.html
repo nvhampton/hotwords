@@ -25,6 +25,33 @@
             margin-bottom: 10px;
             text-shadow: 0 0 20px rgba(255, 107, 107, 0.5);
         }
+        .word-progress {
+            font-size: 1.8rem;
+            font-weight: bold;
+            margin-bottom: 15px;
+            font-family: monospace;
+            letter-spacing: 2px;
+            min-height: 40px;
+        }
+        .word-progress .word-hidden {
+            color: #666;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 2px 6px;
+            border-radius: 4px;
+            margin: 0 3px;
+            display: inline-block;
+        }
+        .word-progress .word-revealed {
+            color: #4ecdc4;
+            text-shadow: 0 0 10px rgba(78, 205, 196, 0.8);
+            margin: 0 3px;
+            display: inline-block;
+            animation: wordReveal 0.3s ease-out;
+        }
+        @keyframes wordReveal {
+            0% { transform: scale(1.3); color: #f9ca24; }
+            100% { transform: scale(1); color: #4ecdc4; }
+        }
         .container {
             text-align: center;
             max-width: 500px;
@@ -188,16 +215,15 @@
             opacity: 0.5;
             cursor: not-allowed;
         }
-        .listen-btn {
+        .gotit-btn {
             background: linear-gradient(135deg, #4ecdc4 0%, #44a08d 100%);
             color: #fff;
+            font-size: 1.3rem;
+            padding: 18px 50px;
         }
-        .listen-btn:hover:not(:disabled) {
+        .gotit-btn:hover:not(:disabled) {
             transform: translateY(-2px);
             box-shadow: 0 10px 30px rgba(78, 205, 196, 0.4);
-        }
-        .listen-btn.active {
-            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a5a 100%);
         }
         .skip-btn {
             background: linear-gradient(135deg, #f9ca24 0%, #f0932b 100%);
@@ -214,6 +240,25 @@
             flex-wrap: wrap;
             gap: 10px;
         }
+        .listen-row {
+            margin-top: 15px;
+        }
+        .listen-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #888;
+            font-size: 0.9rem;
+            padding: 8px 20px;
+        }
+        .listen-btn:hover:not(:disabled) {
+            background: rgba(255, 255, 255, 0.15);
+            color: #fff;
+        }
+        .listen-btn.active {
+            background: rgba(255, 107, 107, 0.2);
+            border-color: rgba(255, 107, 107, 0.4);
+            color: #ff6b6b;
+        }
         .transcript {
             margin-top: 30px;
             padding: 15px;
@@ -225,6 +270,16 @@
         }
         .transcript span {
             color: #4ecdc4;
+        }
+        .audio-disclaimer {
+            display: none;
+            font-size: 0.7rem;
+            color: rgba(255, 255, 255, 0.4);
+            margin-top: 8px;
+            font-style: italic;
+        }
+        .transcript.listening .audio-disclaimer {
+            display: block;
         }
         .similarity {
             font-size: 0.8rem;
@@ -357,37 +412,10 @@
             100% { opacity: 0; transform: scale(2); }
         }
 
-        /* Pass This Device Mode Styles */
-        .mode-toggle {
-            margin-bottom: 20px;
-            padding: 15px;
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 15px;
-        }
-        .mode-toggle label {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-            cursor: pointer;
-            font-size: 1rem;
-            color: #ccc;
-        }
-        .mode-toggle input[type="checkbox"] {
-            width: 20px;
-            height: 20px;
-            accent-color: #8a2be2;
-        }
+        /* Player Setup */
         .player-setup {
-            display: none;
-            margin-bottom: 20px;
-            padding: 15px;
-            background: rgba(138, 43, 226, 0.1);
-            border-radius: 15px;
-            border: 2px solid rgba(138, 43, 226, 0.3);
-        }
-        .player-setup.active {
-            display: block;
+            margin-top: 12px;
+            padding: 0;
         }
         .player-setup h3 {
             margin: 0 0 15px 0;
@@ -464,91 +492,95 @@
             cursor: not-allowed;
         }
 
-        /* Pass Device Interstitial */
-        .pass-interstitial {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-            z-index: 2000;
-            display: none;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
+        /* Lobby Screen */
+        .lobby {
             text-align: center;
-            padding: 20px;
+            max-width: 500px;
+            width: 100%;
         }
-        .pass-interstitial.active {
-            display: flex;
-        }
-        .pass-interstitial h2 {
-            font-size: 1.5rem;
-            color: #888;
-            margin-bottom: 20px;
-        }
-        .pass-interstitial .next-player-name {
+        .lobby h1 {
             font-size: 3rem;
-            font-weight: bold;
-            color: #4ecdc4;
-            text-shadow: 0 0 30px rgba(78, 205, 196, 0.8);
             margin-bottom: 30px;
+            color: #ff6b6b;
         }
-        .pass-interstitial .ready-btn {
-            font-size: 1.5rem;
-            padding: 20px 60px;
-            background: linear-gradient(135deg, #4ecdc4 0%, #44a08d 100%);
-            color: #fff;
-            border: none;
-            border-radius: 50px;
-            cursor: pointer;
-        }
-        .pass-interstitial .ready-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 30px rgba(78, 205, 196, 0.4);
-        }
-
-        /* Local Scoreboard */
-        .local-scoreboard {
-            display: none;
-            margin: 20px 0;
-            padding: 15px;
+        .lobby-room {
+            margin-bottom: 30px;
+            padding: 20px;
             background: rgba(255, 255, 255, 0.05);
             border-radius: 15px;
         }
-        .local-scoreboard.active {
-            display: block;
-        }
-        .local-scoreboard h3 {
-            margin: 0 0 10px 0;
-            font-size: 0.9rem;
+        .lobby-room label {
+            font-size: 1rem;
             color: #888;
-            text-transform: uppercase;
-            letter-spacing: 1px;
+            display: block;
+            margin-bottom: 12px;
         }
-        .scoreboard-entries {
+        .mode-buttons {
             display: flex;
             flex-direction: column;
-            gap: 5px;
+            gap: 15px;
+            margin-top: 20px;
         }
-        .scoreboard-entry {
+        .mode-section {
             display: flex;
-            justify-content: space-between;
-            padding: 8px 12px;
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 10px;
+            flex-direction: column;
+            gap: 0;
         }
-        .scoreboard-entry.current {
-            background: rgba(78, 205, 196, 0.2);
-            border: 1px solid rgba(78, 205, 196, 0.4);
+        .mode-section.local-section {
+            background: rgba(138, 43, 226, 0.1);
+            border: 2px solid rgba(138, 43, 226, 0.3);
+            border-radius: 25px;
+            padding: 15px;
         }
-        .scoreboard-entry .player-name {
+        .mode-btn {
+            font-size: 1.3rem;
+            padding: 20px 40px;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: bold;
+        }
+        .mode-btn.local {
+            background: linear-gradient(135deg, #8a2be2 0%, #6a1cb2 100%);
             color: #fff;
         }
-        .scoreboard-entry .player-score {
-            color: #f9ca24;
-            font-weight: bold;
+        .mode-btn.online {
+            background: linear-gradient(135deg, #4ecdc4 0%, #44a08d 100%);
+            color: #fff;
+        }
+        .mode-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+        .back-btn {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            font-size: 1rem;
+            padding: 10px 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 25px;
+            color: #fff;
+            cursor: pointer;
+            z-index: 100;
+            display: none;
+        }
+        .back-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+        .back-btn.active {
+            display: block;
+        }
+        .game-screen {
+            display: none;
+        }
+        .game-screen.active {
+            display: block;
+        }
+        .lobby.hidden {
+            display: none;
         }
 
         /* Current Player Indicator */
@@ -586,33 +618,30 @@
             color: #4ecdc4;
         }
 
-        /* Word hidden by orientation */
+        /* Word hidden by orientation/press */
         .word-display.orientation-hidden {
             background: linear-gradient(135deg, #2d2d44 0%, #1a1a2e 100%);
+            cursor: pointer;
         }
         .word-display.orientation-hidden .word-text {
             opacity: 0;
         }
-        .word-display .orientation-label {
-            position: absolute;
-            font-size: 1.2rem;
-            color: rgba(255, 255, 255, 0.7);
-            text-shadow: none;
-            opacity: 0;
-            transition: opacity 0.3s ease;
-            text-align: center;
-            line-height: 1.4;
-        }
-        .word-display.orientation-hidden .orientation-label {
+        .word-display.orientation-hidden .redact-label {
             opacity: 1;
         }
+        .word-display.orientation-hidden:active {
+            background: rgba(255, 255, 255, 0.1);
+        }
 
-        /* Hide online-only elements in pass mode */
-        .pass-mode-active .room-info,
-        .pass-mode-active .player-input,
-        .pass-mode-active .transcript,
-        .pass-mode-active #scoreDisplay {
+        /* Hide online-only elements in local mode */
+        .local-mode .player-input {
             display: none;
+        }
+        .local-mode .transcript {
+            display: none;
+        }
+        .local-mode .orientation-indicator {
+            display: none !important;
         }
 
         /* Close Match Anticipation Overlay */
@@ -675,59 +704,66 @@
     </style>
 </head>
 <body>
-    <div class="container" id="mainContainer">
-        <h1><span id="wordCount">-</span> words</h1>
+    <!-- Back Button -->
+    <button class="back-btn" id="backBtn">← Back</button>
 
-        <!-- Mode Toggle -->
-        <div class="mode-toggle">
-            <label>
-                <input type="checkbox" id="passModeTog">
-                Pass This Device Mode
-            </label>
-        </div>
+    <!-- Lobby Screen -->
+    <div class="lobby" id="lobbyScreen">
+        <h1>🔥 Hotwords</h1>
 
-        <!-- Player Setup (Pass Mode) -->
-        <div class="player-setup" id="playerSetup">
-            <h3>Add Players</h3>
-            <div class="player-list" id="playerList">
-                <div class="player-entry">
-                    <input type="text" placeholder="Player 1" maxlength="20">
-                    <button class="remove-player" onclick="removePlayer(this)">&times;</button>
-                </div>
-                <div class="player-entry">
-                    <input type="text" placeholder="Player 2" maxlength="20">
-                    <button class="remove-player" onclick="removePlayer(this)">&times;</button>
-                </div>
-            </div>
-            <button class="add-player-btn" id="addPlayerBtn">+ Add Player</button>
-            <button class="start-pass-game-btn" id="startPassGameBtn">Start Game</button>
-        </div>
-
-        <!-- Online Mode: Room Selection -->
-        <div class="room-info">
-            <label>Room</label>
+        <div class="lobby-room">
+            <label>Room Name</label>
             <div class="room-input-row">
                 <input type="text" class="room-input" id="roomInput" maxlength="20" spellcheck="false">
                 <button class="join-btn" id="randomBtn">Random</button>
             </div>
         </div>
 
+        <div class="mode-buttons">
+            <!-- Local Mode Section -->
+            <div class="mode-section local-section">
+                <button class="mode-btn local" id="startLocalBtn">🎯 Local Mode</button>
+                <div class="player-setup" id="playerSetup">
+                    <div class="player-list" id="playerList">
+                        <div class="player-entry">
+                            <input type="text" placeholder="Player 1" maxlength="20">
+                            <button class="remove-player" onclick="removePlayer(this)">&times;</button>
+                        </div>
+                        <div class="player-entry">
+                            <input type="text" placeholder="Player 2" maxlength="20">
+                            <button class="remove-player" onclick="removePlayer(this)">&times;</button>
+                        </div>
+                    </div>
+                    <button class="add-player-btn" id="addPlayerBtn">+ Add Player</button>
+                </div>
+            </div>
+
+            <!-- Online Mode Section -->
+            <button class="mode-btn online" id="startOnlineBtn">🌐 Online Mode</button>
+        </div>
+
+        <div class="version">v1.6.0</div>
+    </div>
+
+    <!-- Game Screen -->
+    <div class="container game-screen" id="gameScreen">
+        <div class="word-progress" id="wordProgress"></div>
+
         <div class="player-input">
             <input type="text" id="playerName" placeholder="Enter your name" maxlength="20">
         </div>
 
-        <!-- Current Player Indicator (Pass Mode) -->
+        <!-- Current Player Indicator (Local Mode) -->
         <div class="current-player-indicator" id="currentPlayerIndicator"></div>
 
-        <!-- Orientation Indicator (Pass Mode) -->
+        <!-- Orientation Indicator (Local Mode) -->
         <div class="orientation-indicator" id="orientationIndicator">
             Hold device flat to see word
         </div>
 
         <div class="word-display" id="wordContainer">
             <span class="word-text" id="currentWord">Connecting...</span>
-            <span class="redact-label">MEMORIZE THE PHRASE!</span>
-            <span class="orientation-label">Hold device flat<br>(screen facing up)<br>to reveal word</span>
+            <span class="redact-label" id="redactLabel">MEMORIZE THE PHRASE!</span>
         </div>
 
         <div class="score-display" id="scoreDisplay">
@@ -736,37 +772,26 @@
         </div>
 
         <div class="timer-display" id="timerDisplay">
-            <span id="timerCount">40</span>s
+            <span id="timerCount">60</span>s
         </div>
 
         <div class="status" id="status">Click the button to start listening</div>
 
         <div class="button-row">
-            <button class="listen-btn" id="listenBtn" disabled>Start Listening</button>
-            <button class="skip-btn" id="skipBtn" disabled>Skip Word</button>
+            <button class="gotit-btn" id="gotItBtn" disabled>Got It!</button>
+            <button class="skip-btn" id="skipBtn" disabled>Skip</button>
+        </div>
+        <div class="listen-row">
+            <button class="listen-btn" id="listenBtn" disabled>🎤 Start Listening</button>
         </div>
 
-        <div class="transcript">
+        <div class="transcript" id="transcriptBox">
             Heard: <span id="transcript">-</span>
             <div class="similarity" id="similarity"></div>
-        </div>
-
-        <!-- Local Scoreboard (Pass Mode) -->
-        <div class="local-scoreboard" id="localScoreboard">
-            <h3>Scoreboard</h3>
-            <div class="scoreboard-entries" id="scoreboardEntries"></div>
+            <div class="audio-disclaimer">All audio processing is performed locally and nothing is saved.</div>
         </div>
 
         <div class="error" id="error"></div>
-
-        <div class="version">v1.1.0</div>
-    </div>
-
-    <!-- Pass Device Interstitial -->
-    <div class="pass-interstitial" id="passInterstitial">
-        <h2>Pass the device to</h2>
-        <div class="next-player-name" id="nextPlayerName">Player</div>
-        <button class="ready-btn" id="readyBtn">I'm Ready!</button>
     </div>
 
     <!-- Close Match Anticipation Overlay -->
@@ -784,11 +809,20 @@
     </div>
 
     <script>
+        // Screen elements
+        const lobbyScreen = document.getElementById('lobbyScreen');
+        const gameScreen = document.getElementById('gameScreen');
+        const backBtn = document.getElementById('backBtn');
+        const startLocalBtn = document.getElementById('startLocalBtn');
+        const startOnlineBtn = document.getElementById('startOnlineBtn');
+
+        // Game elements
         const wordDisplay = document.getElementById('currentWord');
         const wordContainer = document.getElementById('wordContainer');
         const statusEl = document.getElementById('status');
         const listenBtn = document.getElementById('listenBtn');
         const skipBtn = document.getElementById('skipBtn');
+        const gotItBtn = document.getElementById('gotItBtn');
         const transcriptEl = document.getElementById('transcript');
         const similarityEl = document.getElementById('similarity');
         const playerNameInput = document.getElementById('playerName');
@@ -801,10 +835,20 @@
         const closeMatchOverlay = document.getElementById('closeMatchOverlay');
         const closeMatchPct = document.getElementById('closeMatchPct');
         const scoreCountEl = document.getElementById('scoreCount');
-        const wordCountEl = document.getElementById('wordCount');
+        const wordProgressEl = document.getElementById('wordProgress');
+        const redactLabelEl = document.getElementById('redactLabel');
         const timerDisplayEl = document.getElementById('timerDisplay');
         const timerCountEl = document.getElementById('timerCount');
+        const transcriptBox = document.getElementById('transcriptBox');
 
+        // Player setup elements
+        const playerSetup = document.getElementById('playerSetup');
+        const playerList = document.getElementById('playerList');
+        const addPlayerBtn = document.getElementById('addPlayerBtn');
+        const currentPlayerIndicator = document.getElementById('currentPlayerIndicator');
+        const orientationIndicator = document.getElementById('orientationIndicator');
+
+        // State
         let currentWord = '';
         let ws = null;
         let recognition = null;
@@ -816,51 +860,173 @@
         let isCelebrating = false;
         let pendingWord = null;
         let gameTimer = null;
-        let timeRemaining = 40;
+        let timeRemaining = 60;
         let localScore = 0;
         let gameActive = false;
-        const REDACT_DELAY = 2500; // 2.5 seconds
-        const CELEBRATION_DELAY = 2000; // 2 seconds
-        const GAME_DURATION = 40; // 40 seconds
-
-        // Pass Mode elements
-        const passModeTog = document.getElementById('passModeTog');
-        const playerSetup = document.getElementById('playerSetup');
-        const playerList = document.getElementById('playerList');
-        const addPlayerBtn = document.getElementById('addPlayerBtn');
-        const startPassGameBtn = document.getElementById('startPassGameBtn');
-        const passInterstitial = document.getElementById('passInterstitial');
-        const nextPlayerNameEl = document.getElementById('nextPlayerName');
-        const readyBtn = document.getElementById('readyBtn');
-        const localScoreboard = document.getElementById('localScoreboard');
-        const scoreboardEntries = document.getElementById('scoreboardEntries');
-        const currentPlayerIndicator = document.getElementById('currentPlayerIndicator');
-        const orientationIndicator = document.getElementById('orientationIndicator');
-        const mainContainer = document.getElementById('mainContainer');
-
-        // Pass Mode state
-        let passMode = false;
-        let passModePlayers = [];
-        let passPlayerScores = {};
+        let isLocalMode = false;
+        let localModePlayers = [];
         let currentPlayerIndex = 0;
-        let passModeActive = false; // game in progress
         let orientationEnabled = false;
         let deviceIsFlat = false;
 
+        // Word-by-word reveal tracking (local mode)
+        let currentWords = [];  // Array of words in the phrase
+        let revealedWords = []; // Boolean array tracking which words are revealed
+
+        const REDACT_DELAY = 2500; // 2.5 seconds
+
+        // Render word progress display (local mode)
+        function renderWordProgress() {
+            if (!isLocalMode || currentWords.length === 0) {
+                wordProgressEl.innerHTML = '';
+                return;
+            }
+
+            let html = '';
+            for (let i = 0; i < currentWords.length; i++) {
+                const word = currentWords[i];
+                if (revealedWords[i]) {
+                    html += `<span class="word-revealed">${word}</span> `;
+                } else {
+                    // Create #### pattern matching word length
+                    const hidden = '#'.repeat(word.length);
+                    html += `<span class="word-hidden">${hidden}</span> `;
+                }
+            }
+            wordProgressEl.innerHTML = html.trim();
+        }
+
+        // Check if a specific word exists in the transcript
+        function checkWordInTranscript(targetWord, transcript) {
+            const target = targetWord.toLowerCase().trim();
+            const words = transcript.toLowerCase().split(/\s+/);
+
+            // Exact match
+            if (words.includes(target)) return true;
+
+            // Fuzzy match for each word
+            for (const heardWord of words) {
+                const sim = similarity(heardWord, target);
+                if (sim >= 0.85) return true;
+            }
+            return false;
+        }
+
+        // Update revealed words based on transcript
+        function updateRevealedWords(transcript) {
+            if (!isLocalMode || currentWords.length === 0) return;
+
+            let anyNewReveals = false;
+            for (let i = 0; i < currentWords.length; i++) {
+                if (!revealedWords[i] && checkWordInTranscript(currentWords[i], transcript)) {
+                    revealedWords[i] = true;
+                    anyNewReveals = true;
+                }
+            }
+
+            if (anyNewReveals) {
+                renderWordProgress();
+
+                // Check if all words revealed
+                if (revealedWords.every(r => r)) {
+                    // All words revealed - trigger victory!
+                    localModeClaimVictory();
+                }
+            }
+        }
+        const CELEBRATION_DELAY = 2000; // 2 seconds
+        const GAME_DURATION = 60; // 60 seconds
+
         // Local word list (same as server)
         const localGameWords = [
+            // Activities & Lifestyle
             "Running late", "Couch potato", "Road trip", "Window shopping", "People watching",
             "Channel surfing", "Binge watching", "Party pooper", "Night owl", "Early bird",
+            "Sunday driver", "Backseat driver", "Joy ride", "Happy hour", "Beauty sleep",
+            "Power nap", "All nighter", "Gym rat", "Beach bum", "Mall rat",
+            "Bookworm", "Movie buff", "Foodie heaven", "Coffee addict", "Retail therapy",
+
+            // Food & Drink Idioms
             "Piece of cake", "Spill the beans", "Hot potato", "Cool beans", "Bad apple",
-            "Bread winner", "Smart cookie", "Tough cookie", "Big cheese",
+            "Bread winner", "Smart cookie", "Tough cookie", "Big cheese", "Top banana",
+            "Sour grapes", "Apple pie", "Easy as pie", "Cream of the crop", "Best thing since sliced bread",
+            "Butter fingers", "Egg head", "Couch potato", "Small potatoes", "Hot dog",
+            "In a pickle", "Full plate", "Food coma", "Comfort food", "Brain freeze",
+
+            // Animal Expressions
             "Cat nap", "Dog days", "Fish out of water", "Wild goose chase", "Dark horse",
             "Eager beaver", "Busy bee", "Social butterfly", "Party animal", "Loan shark",
+            "Copy cat", "Fat cat", "Scaredy cat", "Cool cat", "Cat got your tongue",
+            "Puppy love", "Top dog", "Dog tired", "Let sleeping dogs lie", "Underdog",
+            "Monkey business", "Monkey see monkey do", "Horse around", "Hold your horses", "One trick pony",
+            "Bull in a china shop", "Cash cow", "Holy cow", "Pig out", "Guinea pig",
+            "Chicken out", "Sitting duck", "Lame duck", "Lucky duck", "Cold turkey",
+            "Night owl", "Wise owl", "Early bird", "Free bird", "Bird brain",
+
+            // Weather & Nature
             "Under the weather", "Rain check", "Storm brewing", "Cloud nine", "Lightning fast",
+            "Sunny disposition", "Right as rain", "Come rain or shine", "Steal thunder", "Brainstorm",
+            "Perfect storm", "Calm before the storm", "Weather the storm", "Head in the clouds", "On cloud nine",
+            "Ray of sunshine", "Walking on sunshine", "Chasing rainbows", "Silver lining", "Golden hour",
+
+            // Sports & Games
             "Curveball", "Home run", "Slam dunk", "Touchdown", "Hole in one",
+            "Drop the ball", "On the ball", "Play ball", "Ball park", "Foul play",
+            "Game on", "Game over", "Game face", "Fair game", "Blame game",
+            "Level up", "Boss level", "High score", "Side quest", "Easter egg",
+            "Full court press", "Hail Mary", "Moving the goalposts", "Par for the course", "Behind the eight ball",
+
+            // Pop Culture & Modern
             "Viral video", "Going viral", "Mic drop", "Plot twist", "Cliffhanger",
             "Binge worthy", "Game changer", "Power move", "Big brain", "Main character",
+            "Hot take", "Humble brag", "Low key", "High key", "No cap",
+            "Side hustle", "Glow up", "Level up", "Vibe check", "Mood",
+            "Cancel culture", "Doom scrolling", "Touch grass", "Living rent free", "Caught in 4K",
+            "Send it", "Slay", "Period", "Iconic", "Legendary",
+            "Reality check", "Plot armor", "Character arc", "Origin story", "Redemption arc",
+
+            // Common Expressions
             "Break a leg", "Hit the road", "Call it a day", "Piece of work", "Long shot",
-            "Big picture", "Last straw", "Wild card", "Green thumb", "Cold feet"
+            "Big picture", "Last straw", "Wild card", "Green thumb", "Cold feet",
+            "Gut feeling", "Second guess", "No brainer", "Think tank", "Train of thought",
+            "Food for thought", "Penny for your thoughts", "Two cents", "Bottom line", "Fine print",
+            "Red flag", "Green light", "Gray area", "Black and white", "Golden rule",
+            "Silver bullet", "Magic touch", "Midas touch", "Sixth sense", "Sweet spot",
+            "Comfort zone", "Safe bet", "Sure thing", "Done deal", "No dice",
+            "Mixed bag", "Grab bag", "In the bag", "Bag of tricks", "Old bag",
+
+            // Work & Business
+            "Team player", "Go getter", "Self starter", "Heavy hitter", "Big shot",
+            "Corner office", "Glass ceiling", "Rat race", "Fast track", "Inside track",
+            "Paper trail", "Paper pusher", "Number cruncher", "Bean counter", "Pencil pusher",
+            "Think outside the box", "Back to the drawing board", "Get the ball rolling", "Touch base", "Circle back",
+            "Deep dive", "Low hanging fruit", "Move the needle", "Boil the ocean", "Drink the Kool Aid",
+
+            // Time Expressions
+            "Around the clock", "Against the clock", "Beat the clock", "Kill time", "Crunch time",
+            "Prime time", "Big time", "About time", "High time", "Time flies",
+            "In the nick of time", "Ahead of time", "Behind the times", "Once in a blue moon", "At the drop of a hat",
+            "Day in day out", "Day and night", "Call it a night", "Burning the midnight oil", "Rise and shine",
+
+            // Emotions & States
+            "Over the moon", "On top of the world", "Walking on air", "Head over heels", "Butterflies in stomach",
+            "Heart of gold", "Cold hearted", "Broken heart", "Change of heart", "Heavy heart",
+            "Thick skinned", "Thin skinned", "Get under skin", "Jump out of skin", "Skin deep",
+            "Keep cool", "Play it cool", "Cool headed", "Hot headed", "Level headed",
+            "Losing it", "Keep it together", "Fall apart", "Get a grip", "Hang in there",
+
+            // Actions & Movement
+            "Hit the ground running", "Jump the gun", "Pull the trigger", "Bite the bullet", "Dodge a bullet",
+            "Cross the line", "Draw the line", "Walk the line", "Read between the lines", "Drop a line",
+            "Push the envelope", "Push your luck", "Push comes to shove", "Pull strings", "Pull punches",
+            "Throw in the towel", "Throw shade", "Throw a curve", "Throw caution to the wind", "Throw for a loop",
+            "Kick the bucket", "Kick back", "Kick it up a notch", "Kick start", "Kick the habit",
+
+            // Relationships
+            "Tied the knot", "Pop the question", "Match made in heaven", "Two peas in a pod", "Better half",
+            "Partner in crime", "Thick as thieves", "Birds of a feather", "Like two peas", "Joined at hip",
+            "Heart to heart", "Eye to eye", "Face to face", "Hand in hand", "Neck and neck",
+            "Old flame", "Spark fly", "Love at first sight", "Blind date", "Double date"
         ];
 
         // Random room name words
@@ -965,9 +1131,11 @@
             similarityEl.classList.remove('close');
             closeMatchOverlay.classList.remove('active');
 
-            // Update word count in header
-            const wordCount = word.trim().split(/\s+/).length;
-            wordCountEl.textContent = wordCount;
+            // Clear word progress and reset label (local mode only)
+            currentWords = [];
+            revealedWords = [];
+            renderWordProgress();
+            redactLabelEl.textContent = 'MEMORIZE THE PHRASE!';
 
             // Show word, then redact after 2.5 seconds
             wordContainer.classList.remove('redacted');
@@ -1026,10 +1194,22 @@
                 recognition.stop();
                 listenBtn.textContent = 'Start Listening';
                 listenBtn.classList.remove('active');
+                transcriptBox.classList.remove('listening');
             }
 
             statusEl.textContent = `Time's up! Final score: ${localScore}`;
             statusEl.classList.remove('listening');
+
+            // Reset local mode state
+            if (isLocalMode) {
+                currentPlayerIndicator.classList.remove('active');
+                orientationIndicator.classList.remove('active');
+                wordContainer.classList.remove('orientation-hidden');
+                wordDisplay.textContent = 'Game Over!';
+                listenBtn.disabled = true;
+                skipBtn.disabled = true;
+                gotItBtn.disabled = true;
+            }
         }
 
         // Update local score
@@ -1149,6 +1329,7 @@
                 statusEl.textContent = 'Connected! Click to start listening.';
                 listenBtn.disabled = false;
                 skipBtn.disabled = false;
+                gotItBtn.disabled = false;
             };
 
             ws.onmessage = (event) => {
@@ -1186,6 +1367,7 @@
             ws.onclose = () => {
                 listenBtn.disabled = true;
                 skipBtn.disabled = true;
+                gotItBtn.disabled = true;
                 if (!isReconnecting) {
                     statusEl.textContent = 'Disconnected. Reconnecting...';
                     setTimeout(() => connect(currentRoomId), 2000);
@@ -1208,7 +1390,9 @@
                 wordDisplay.textContent = 'Joining...';
                 wordContainer.classList.remove('redacted');
                 scoreCountEl.textContent = '0';
-                wordCountEl.textContent = '-';
+                currentWords = [];
+                revealedWords = [];
+                renderWordProgress();
                 if (redactTimer) clearTimeout(redactTimer);
                 connect(newRoom);
             }
@@ -1230,7 +1414,14 @@
                 }
                 transcriptEl.textContent = transcript || '-';
 
-                // Check for match with similarity
+                // In local mode, check for individual word reveals
+                if (isLocalMode && gameActive && !hasClaimedVictory) {
+                    updateRevealedWords(transcript);
+                    // If all words were revealed, victory was already claimed
+                    if (hasClaimedVictory) return;
+                }
+
+                // Check for match with similarity (full phrase)
                 const result = checkMatch(transcript);
 
                 if (result.similarity > 0 && result.similarity < 1) {
@@ -1238,8 +1429,8 @@
                     similarityEl.textContent = `${pct}% match`;
                     similarityEl.classList.toggle('close', result.similarity >= 0.7);
 
-                    // Show "CLOSE!" anticipation overlay when >80% but not yet matched
-                    if (result.similarity >= 0.80 && !result.matched && !hasClaimedVictory) {
+                    // Show "CLOSE!" anticipation overlay when >80% but not yet matched (online mode only)
+                    if (!isLocalMode && result.similarity >= 0.80 && !result.matched && !hasClaimedVictory) {
                         closeMatchPct.textContent = `${pct}%`;
                         closeMatchOverlay.classList.add('active');
                     } else {
@@ -1251,9 +1442,13 @@
                 }
 
                 if (result.matched && !hasClaimedVictory) {
-                    hasClaimedVictory = true;
                     closeMatchOverlay.classList.remove('active');
-                    claimVictory();
+                    if (isLocalMode) {
+                        localModeClaimVictory();
+                    } else {
+                        hasClaimedVictory = true;
+                        claimVictory();
+                    }
                 }
             };
 
@@ -1308,8 +1503,10 @@
                 listenBtn.classList.remove('active');
                 statusEl.textContent = 'Stopped listening';
                 statusEl.classList.remove('listening');
-                // End game if manually stopped
-                if (gameActive) {
+                transcriptBox.classList.remove('listening');
+                closeMatchOverlay.classList.remove('active');
+                // End game if manually stopped (online mode only)
+                if (gameActive && !isLocalMode) {
                     endGame();
                 }
             } else {
@@ -1319,13 +1516,28 @@
                 listenBtn.classList.add('active');
                 statusEl.textContent = 'Listening... Say the phrase!';
                 statusEl.classList.add('listening');
-                // Start the game timer
-                startGameTimer();
+                transcriptBox.classList.add('listening');
+                // Start the game timer (online mode only)
+                if (!isLocalMode && !gameActive) {
+                    startGameTimer();
+                }
             }
         });
 
         // Skip button
         skipBtn.addEventListener('click', skipWord);
+
+        // Got It button - manual claim victory
+        gotItBtn.addEventListener('click', () => {
+            if (isLocalMode && gameActive) {
+                localModeClaimVictory();
+            } else if (!isLocalMode && gameActive) {
+                if (!hasClaimedVictory) {
+                    hasClaimedVictory = true;
+                    claimVictory();
+                }
+            }
+        });
 
         // Random room button
         randomBtn.addEventListener('click', () => {
@@ -1348,39 +1560,122 @@
             }
         });
 
-        // Initialize with room
+        // Initialize room input with random name
         const initialRoom = getInitialRoom();
         roomInput.value = initialRoom;
-        connect(initialRoom);
+        currentRoomId = initialRoom;
 
-        // ========== PASS THIS DEVICE MODE ==========
+        // ========== LOBBY & NAVIGATION ==========
 
-        // Toggle Pass Mode
-        passModeTog.addEventListener('change', () => {
-            passMode = passModeTog.checked;
-            playerSetup.classList.toggle('active', passMode);
-            mainContainer.classList.toggle('pass-mode-active', passMode);
+        // Show game screen, hide lobby
+        function showGameScreen() {
+            lobbyScreen.classList.add('hidden');
+            gameScreen.classList.add('active');
+            backBtn.classList.add('active');
+        }
 
-            if (passMode) {
-                // Disconnect from WebSocket
-                if (ws) {
-                    isReconnecting = true;
-                    ws.close();
-                    ws = null;
-                }
-                wordDisplay.textContent = 'Set up players to start';
-                listenBtn.disabled = true;
-                skipBtn.disabled = true;
-            } else {
-                // Reconnect to WebSocket
-                passModeActive = false;
-                localScoreboard.classList.remove('active');
-                currentPlayerIndicator.classList.remove('active');
-                orientationIndicator.classList.remove('active');
-                wordContainer.classList.remove('orientation-hidden');
-                disableOrientationDetection();
-                connect(currentRoomId || getInitialRoom());
+        // Show lobby, hide game screen
+        function showLobby() {
+            // Stop any active game
+            if (gameActive) {
+                endGame();
             }
+            // Disconnect WebSocket
+            if (ws) {
+                isReconnecting = true;
+                ws.close();
+                ws = null;
+            }
+            // Stop listening
+            if (isListening && recognition) {
+                isListening = false;
+                recognition.stop();
+            }
+            // Reset state
+            isLocalMode = false;
+            currentWords = [];
+            revealedWords = [];
+            renderWordProgress();
+            gameScreen.classList.remove('active', 'local-mode');
+            lobbyScreen.classList.remove('hidden');
+            backBtn.classList.remove('active');
+            currentPlayerIndicator.classList.remove('active');
+            orientationIndicator.classList.remove('active');
+            wordContainer.classList.remove('orientation-hidden');
+            disableOrientationDetection();
+        }
+
+        // Back button
+        backBtn.addEventListener('click', showLobby);
+
+        // Start Local Mode
+        startLocalBtn.addEventListener('click', () => {
+            // Get players from setup
+            const inputs = playerList.querySelectorAll('input');
+            localModePlayers = Array.from(inputs)
+                .map((i, idx) => i.value.trim() || `Player ${idx + 1}`)
+                .filter(name => name);
+
+            if (localModePlayers.length < 2) {
+                alert('Please add at least 2 players');
+                return;
+            }
+
+            // Save players
+            savePlayersToStorage(localModePlayers);
+
+            // Set up local mode
+            isLocalMode = true;
+            currentPlayerIndex = 0;
+            localScore = 0;
+            currentRoomId = roomInput.value.trim() || getRandomRoomName();
+
+            // Show game screen
+            showGameScreen();
+            gameScreen.classList.add('local-mode');
+
+            // Initialize UI
+            currentPlayerIndicator.classList.add('active');
+            currentPlayerIndicator.textContent = `${localModePlayers[0]}'s turn`;
+            scoreCountEl.textContent = '0';
+            wordDisplay.textContent = 'Get Ready!';
+
+            // Enable orientation/tap detection
+            enableOrientationDetection();
+
+            // Start the timer
+            startGameTimer();
+
+            // Start listening automatically
+            if (!recognition) {
+                initSpeechRecognition();
+            }
+            isListening = true;
+            recognition.start();
+            listenBtn.textContent = 'Stop Listening';
+            listenBtn.classList.add('active');
+            listenBtn.disabled = false;
+            skipBtn.disabled = false;
+            gotItBtn.disabled = false;
+            statusEl.textContent = 'Listening... Say the phrase!';
+            statusEl.classList.add('listening');
+            transcriptBox.classList.add('listening');
+
+            // Pick the first word
+            const word = localGameWords[Math.floor(Math.random() * localGameWords.length)];
+            showNewWordLocalMode(word);
+        });
+
+        // Start Online Mode
+        startOnlineBtn.addEventListener('click', () => {
+            isLocalMode = false;
+            currentRoomId = roomInput.value.trim() || getRandomRoomName();
+
+            // Show game screen
+            showGameScreen();
+
+            // Connect to WebSocket
+            connect(currentRoomId);
         });
 
         // Add player
@@ -1393,57 +1688,15 @@
                 <button class="remove-player" onclick="removePlayer(this)">&times;</button>
             `;
             playerList.appendChild(entry);
-            updateStartButton();
         });
 
         // Remove player
         function removePlayer(btn) {
             if (playerList.children.length > 2) {
                 btn.parentElement.remove();
-                updateStartButton();
             }
         }
         window.removePlayer = removePlayer; // Make globally accessible
-
-        // Update start button state
-        function updateStartButton() {
-            const inputs = playerList.querySelectorAll('input');
-            const filledCount = Array.from(inputs).filter(i => i.value.trim()).length;
-            startPassGameBtn.disabled = filledCount < 2;
-        }
-
-        // Listen for input changes
-        playerList.addEventListener('input', updateStartButton);
-
-        // Start Pass Mode game
-        startPassGameBtn.addEventListener('click', () => {
-            const inputs = playerList.querySelectorAll('input');
-            passModePlayers = Array.from(inputs)
-                .map((i, idx) => i.value.trim() || `Player ${idx + 1}`)
-                .filter(name => name);
-
-            if (passModePlayers.length < 2) return;
-
-            // Save players to localStorage
-            savePlayersToStorage(passModePlayers);
-
-            // Initialize scores
-            passPlayerScores = {};
-            passModePlayers.forEach(p => passPlayerScores[p] = 0);
-
-            // Start game
-            passModeActive = true;
-            currentPlayerIndex = 0;
-            playerSetup.classList.remove('active');
-            localScoreboard.classList.add('active');
-            currentPlayerIndicator.classList.add('active');
-
-            // Enable orientation detection
-            enableOrientationDetection();
-
-            // Show pass interstitial for first player
-            showPassInterstitial();
-        });
 
         // LocalStorage functions for remembering players
         function savePlayersToStorage(players) {
@@ -1469,10 +1722,7 @@
         function restorePlayersUI() {
             const savedPlayers = loadPlayersFromStorage();
             if (savedPlayers && savedPlayers.length >= 2) {
-                // Clear existing player entries
                 playerList.innerHTML = '';
-
-                // Create entries for saved players
                 savedPlayers.forEach((name, idx) => {
                     const entry = document.createElement('div');
                     entry.className = 'player-entry';
@@ -1482,49 +1732,26 @@
                     `;
                     playerList.appendChild(entry);
                 });
-
-                updateStartButton();
             }
         }
 
-        // Restore players on page load
-        restorePlayersUI();
 
-        // Show pass interstitial
-        function showPassInterstitial() {
-            const nextPlayer = passModePlayers[currentPlayerIndex];
-            nextPlayerNameEl.textContent = nextPlayer;
-            passInterstitial.classList.add('active');
-            updateScoreboard();
-        }
-
-        // Ready button - start the turn
-        readyBtn.addEventListener('click', () => {
-            passInterstitial.classList.remove('active');
-            currentPlayerIndicator.textContent = `${passModePlayers[currentPlayerIndex]}'s turn`;
-
-            // Pick a random word
-            const word = localGameWords[Math.floor(Math.random() * localGameWords.length)];
-            showNewWordPassMode(word);
-        });
-
-        // Show new word in pass mode
-        function showNewWordPassMode(word) {
+        // Show new word in local mode (hidden until revealed)
+        function showNewWordLocalMode(word) {
             currentWord = word;
             hasClaimedVictory = false;
             wordDisplay.textContent = currentWord;
 
-            // Update word count
-            const wordCount = word.trim().split(/\s+/).length;
-            wordCountEl.textContent = wordCount;
+            // Initialize word-by-word tracking
+            currentWords = word.trim().split(/\s+/);
+            revealedWords = new Array(currentWords.length).fill(false);
+            renderWordProgress();
 
-            // In pass mode with orientation or tap-to-reveal
+            // Reset to hidden state for new word
             if (orientationEnabled || tapToRevealEnabled) {
-                // Reset to hidden state for new word
                 deviceIsFlat = false;
                 updateWordVisibilityByOrientation();
             } else {
-                // Fallback: use normal redaction timer
                 wordContainer.classList.remove('redacted', 'orientation-hidden');
                 if (redactTimer) clearTimeout(redactTimer);
                 redactTimer = setTimeout(() => {
@@ -1532,86 +1759,78 @@
                 }, REDACT_DELAY);
             }
 
-            statusEl.textContent = 'Memorize the phrase, then pass!';
+            // Update label for local mode
+            redactLabelEl.textContent = 'PRESS & HOLD TO REVEAL';
+
+            statusEl.textContent = 'Listening... Say the phrase!';
             statusEl.classList.remove('winner', 'skipped');
+            statusEl.classList.add('listening');
         }
 
-        // Update scoreboard
-        function updateScoreboard() {
-            scoreboardEntries.innerHTML = passModePlayers.map((player, idx) => `
-                <div class="scoreboard-entry ${idx === currentPlayerIndex ? 'current' : ''}">
-                    <span class="player-name">${player}</span>
-                    <span class="player-score">${passPlayerScores[player]}</span>
-                </div>
-            `).join('');
-        }
-
-        // Pass Mode: Got it button (claim victory locally)
-        function passModeClaimVictory() {
-            if (!passModeActive || hasClaimedVictory) return;
+        // Local Mode: Claim victory
+        function localModeClaimVictory() {
+            if (!isLocalMode || !gameActive || hasClaimedVictory) return;
             hasClaimedVictory = true;
 
-            const player = passModePlayers[currentPlayerIndex];
-            passPlayerScores[player]++;
+            const player = localModePlayers[currentPlayerIndex];
+            localScore++;
+            scoreCountEl.textContent = localScore;
+
+            closeMatchOverlay.classList.remove('active');
 
             // Show celebration
             showCelebration(player, currentWord);
 
             // After celebration, move to next player
             setTimeout(() => {
-                nextPassModePlayer();
+                nextLocalModePlayer();
             }, CELEBRATION_DELAY + 500);
         }
 
-        // Pass Mode: Skip word
-        function passModeSkipWord() {
-            if (!passModeActive) return;
+        // Local Mode: Skip word
+        function localModeSkipWord() {
+            if (!isLocalMode || !gameActive) return;
 
-            const player = passModePlayers[currentPlayerIndex];
+            const player = localModePlayers[currentPlayerIndex];
             statusEl.textContent = `${player} skipped`;
             statusEl.classList.add('skipped');
 
+            closeMatchOverlay.classList.remove('active');
+
             // Move to next player
-            nextPassModePlayer();
+            nextLocalModePlayer();
         }
 
-        // Move to next player in pass mode
-        function nextPassModePlayer() {
-            currentPlayerIndex = (currentPlayerIndex + 1) % passModePlayers.length;
-            showPassInterstitial();
+        // Move to next player in local mode
+        function nextLocalModePlayer() {
+            currentPlayerIndex = (currentPlayerIndex + 1) % localModePlayers.length;
+
+            // Keep listening active - just reset transcript
+            transcriptEl.textContent = '-';
+            similarityEl.textContent = '';
+            similarityEl.classList.remove('close');
+
+            // Update player indicator
+            currentPlayerIndicator.textContent = `${localModePlayers[currentPlayerIndex]}'s turn`;
+
+            // Pick a new word
+            const word = localGameWords[Math.floor(Math.random() * localGameWords.length)];
+            showNewWordLocalMode(word);
         }
 
-        // Override skip button for pass mode
-        const originalSkipHandler = skipBtn.onclick;
+        // Override skip button for local mode
         skipBtn.addEventListener('click', (e) => {
-            if (passModeActive) {
+            if (isLocalMode && gameActive) {
                 e.stopPropagation();
-                passModeSkipWord();
+                localModeSkipWord();
             }
         }, true);
 
-        // Add "Got It!" button functionality for pass mode
-        listenBtn.addEventListener('click', (e) => {
-            if (passModeActive) {
-                e.stopPropagation();
-                e.preventDefault();
-                passModeClaimVictory();
-                return false;
-            }
-        }, true);
-
-        // Update button text in pass mode
+        // Update button text
         function updateButtonsForMode() {
-            if (passModeActive) {
-                listenBtn.textContent = 'Got It!';
-                listenBtn.disabled = false;
-                listenBtn.classList.remove('active');
-                skipBtn.textContent = 'Skip';
-                skipBtn.disabled = false;
-            } else if (!passMode) {
-                listenBtn.textContent = isListening ? 'Stop Listening' : 'Start Listening';
-                skipBtn.textContent = 'Skip Word';
-            }
+            listenBtn.textContent = isListening ? 'Stop Listening' : 'Start Listening';
+            listenBtn.classList.toggle('active', isListening);
+            skipBtn.textContent = isLocalMode ? 'Skip' : 'Skip Word';
         }
 
         // ========== DEVICE ORIENTATION ==========
@@ -1666,7 +1885,8 @@
 
         function startOrientationListening() {
             orientationEnabled = true;
-            orientationIndicator.classList.add('active');
+            // Hide indicator for cleaner UI - orientation just works
+            orientationIndicator.classList.remove('active');
             orientationDataReceived = false;
 
             orientationHandler = (event) => {
@@ -1717,7 +1937,7 @@
             updateWordVisibilityByOrientation();
         }
 
-        // Tap-to-reveal fallback for laptops/desktops
+        // Press-to-reveal for all devices
         let tapToRevealEnabled = false;
 
         function enableTapToReveal() {
@@ -1725,37 +1945,33 @@
             tapToRevealEnabled = true;
             deviceIsFlat = false;
 
-            // Update UI for tap mode
-            orientationIndicator.textContent = 'Tap word area to reveal/hide';
-            orientationIndicator.classList.add('active');
+            // Hide orientation indicator for cleaner UI
+            orientationIndicator.classList.remove('active');
             wordContainer.classList.add('orientation-hidden');
-
-            // Add click handler to word container
-            wordContainer.addEventListener('click', toggleWordVisibility);
             wordContainer.style.cursor = 'pointer';
+
+            // Press and hold to reveal - mouse events
+            wordContainer.addEventListener('mousedown', startReveal);
+            wordContainer.addEventListener('mouseup', stopReveal);
+            wordContainer.addEventListener('mouseleave', stopReveal);
+
+            // Touch events for mobile
+            wordContainer.addEventListener('touchstart', startReveal, { passive: true });
+            wordContainer.addEventListener('touchend', stopReveal, { passive: true });
+            wordContainer.addEventListener('touchcancel', stopReveal, { passive: true });
         }
 
-        function toggleWordVisibility() {
-            if (!passModeActive) return;
-
-            deviceIsFlat = !deviceIsFlat;
-            if (deviceIsFlat) {
-                wordContainer.classList.remove('orientation-hidden');
-                orientationIndicator.textContent = 'Tap to hide word';
-                orientationIndicator.classList.add('flat');
-            } else {
-                wordContainer.classList.add('orientation-hidden');
-                orientationIndicator.textContent = 'Tap to reveal word';
-                orientationIndicator.classList.remove('flat');
-            }
+        function startReveal(e) {
+            if (!isLocalMode || !gameActive) return;
+            deviceIsFlat = true;
+            wordContainer.classList.remove('orientation-hidden');
         }
 
-        // Make orientation indicator clickable as fallback
-        orientationIndicator.addEventListener('click', () => {
-            if (passModeActive) {
-                toggleWordVisibility();
-            }
-        });
+        function stopReveal(e) {
+            if (!isLocalMode || !gameActive) return;
+            deviceIsFlat = false;
+            wordContainer.classList.add('orientation-hidden');
+        }
 
         function updateWordVisibilityByOrientation() {
             if (!orientationEnabled && !tapToRevealEnabled) return;
@@ -1763,21 +1979,9 @@
             if (deviceIsFlat) {
                 wordContainer.classList.remove('orientation-hidden');
                 wordContainer.classList.remove('redacted');
-                if (tapToRevealEnabled) {
-                    orientationIndicator.textContent = 'Tap to hide word';
-                } else {
-                    orientationIndicator.textContent = 'Word visible - memorize it!';
-                }
-                orientationIndicator.classList.add('flat');
             } else {
                 wordContainer.classList.add('orientation-hidden');
                 wordContainer.classList.remove('redacted');
-                if (tapToRevealEnabled) {
-                    orientationIndicator.textContent = 'Tap word area to reveal';
-                } else {
-                    orientationIndicator.textContent = 'Hold device flat to see word';
-                }
-                orientationIndicator.classList.remove('flat');
             }
 
             updateButtonsForMode();
@@ -1795,14 +1999,20 @@
                 clearTimeout(orientationCheckTimeout);
                 orientationCheckTimeout = null;
             }
-            wordContainer.removeEventListener('click', toggleWordVisibility);
+            // Remove press-to-reveal listeners
+            wordContainer.removeEventListener('mousedown', startReveal);
+            wordContainer.removeEventListener('mouseup', stopReveal);
+            wordContainer.removeEventListener('mouseleave', stopReveal);
+            wordContainer.removeEventListener('touchstart', startReveal);
+            wordContainer.removeEventListener('touchend', stopReveal);
+            wordContainer.removeEventListener('touchcancel', stopReveal);
             wordContainer.style.cursor = '';
             wordContainer.classList.remove('orientation-hidden');
             orientationIndicator.classList.remove('active', 'flat');
         }
 
-        // Initial button state update
-        updateStartButton();
+        // Restore saved players on page load
+        restorePlayersUI();
     </script>
 </body>
 </html>
