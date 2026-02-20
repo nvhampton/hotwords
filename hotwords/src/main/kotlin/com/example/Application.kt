@@ -8,6 +8,7 @@ import io.ktor.server.plugins.contentnegotiation.*
 import io.ktor.server.routing.*
 import io.ktor.server.websocket.*
 import io.ktor.websocket.*
+import kotlinx.coroutines.*
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import java.util.*
@@ -19,7 +20,32 @@ data class GameMessage(
     val type: String,
     val word: String? = null,
     val player: String? = null,
-    val score: Int? = null
+    val playerId: String? = null,
+    val score: Int? = null,
+    val players: List<PlayerInfo>? = null,
+    val hotPlayerIndex: Int? = null,
+    val revealed: List<Boolean>? = null,
+    val wordIndex: Int? = null
+)
+
+@Serializable
+data class PlayerInfo(
+    val id: String,
+    val name: String
+)
+
+data class Player(
+    val id: String,
+    val name: String,
+    var lastHeartbeat: Long = System.currentTimeMillis(),
+    val session: DefaultWebSocketServerSession
+)
+
+data class RoomState(
+    val players: MutableList<Player> = mutableListOf(),
+    var currentHotPlayerIndex: Int = 0,
+    var currentWord: String = "",
+    var revealedWords: MutableList<Boolean> = mutableListOf()
 )
 
 fun main(args: Array<String>): Unit = io.ktor.server.netty.EngineMain.main(args)
@@ -33,6 +59,55 @@ fun Application.module() {
     val rooms = ConcurrentHashMap<String, MutableSet<DefaultWebSocketServerSession>>()
     val roomScores = ConcurrentHashMap<String, Int>()
     val roomWords = ConcurrentHashMap<String, String>()  // Per-room active word
+    val roomStates = ConcurrentHashMap<String, RoomState>()  // Per-room player state
+    val sessionToPlayerId = ConcurrentHashMap<DefaultWebSocketServerSession, String>()  // Session to player ID mapping
+
+    // TTL cleanup coroutine - removes inactive players every 5 seconds
+    val cleanupJob = CoroutineScope(Dispatchers.Default).launch {
+        while (isActive) {
+            delay(5000)
+            val now = System.currentTimeMillis()
+            val ttlMs = 15000L  // 15 seconds TTL
+
+            roomStates.forEach { (roomId, state) ->
+                val playersToRemove = state.players.filter { now - it.lastHeartbeat > ttlMs }
+                if (playersToRemove.isNotEmpty()) {
+                    playersToRemove.forEach { player ->
+                        state.players.remove(player)
+                        sessionToPlayerId.remove(player.session)
+                    }
+
+                    // Adjust hot player index if needed
+                    if (state.players.isNotEmpty()) {
+                        state.currentHotPlayerIndex = state.currentHotPlayerIndex % state.players.size
+                    } else {
+                        state.currentHotPlayerIndex = 0
+                    }
+
+                    // Broadcast updated player list
+                    val playerInfoList = state.players.map { PlayerInfo(it.id, it.name) }
+                    val playerListMsg = GameMessage(
+                        type = "PLAYER_LIST",
+                        players = playerInfoList,
+                        hotPlayerIndex = state.currentHotPlayerIndex
+                    )
+                    rooms[roomId]?.forEach { session ->
+                        try {
+                            CoroutineScope(Dispatchers.IO).launch {
+                                session.sendSerialized(playerListMsg)
+                            }
+                        } catch (e: Exception) {
+                            // Ignore send errors
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    environment.monitor.subscribe(ApplicationStopped) {
+        cleanupJob.cancel()
+    }
     val gameWords = listOf(
         // Activities & Lifestyle
         "Running late", "Couch potato", "Road trip", "Window shopping", "People watching",
@@ -121,6 +196,7 @@ fun Application.module() {
         webSocket("/game/{roomId}") {
             val roomId = call.parameters["roomId"] ?: "lobby"
             val room = rooms.computeIfAbsent(roomId) { Collections.synchronizedSet(LinkedHashSet()) }
+            val state = roomStates.computeIfAbsent(roomId) { RoomState() }
             room.add(this)
 
             try {
@@ -128,7 +204,14 @@ fun Application.module() {
                 val currentWord = roomWords.computeIfAbsent(roomId) { gameWords.random() }
                 val currentScore = roomScores.getOrDefault(roomId, 0)
                 sendSerialized(GameMessage(type = "SCORE_UPDATE", score = currentScore))
-                sendSerialized(GameMessage(type = "NEW_WORD", word = currentWord))
+
+                // Initialize revealed words for the current phrase
+                if (state.revealedWords.isEmpty() || state.currentWord != currentWord) {
+                    state.currentWord = currentWord
+                    state.revealedWords = currentWord.split(" ").map { false }.toMutableList()
+                }
+
+                // Don't send word yet - wait for SET_NAME to determine role
 
                 for (frame in incoming) {
                     if (frame is Frame.Text) {
@@ -136,26 +219,244 @@ fun Application.module() {
                         val received = Json.decodeFromString<GameMessage>(text)
 
                         when (received.type) {
-                            "CLAIM_VICTORY" -> {
+                            "SET_NAME" -> {
+                                val playerId = received.playerId ?: UUID.randomUUID().toString()
+                                val playerName = received.player ?: "Anonymous"
+
+                                // Check if this player already exists (reconnect)
+                                val existingPlayer = state.players.find { it.id == playerId }
+                                if (existingPlayer != null) {
+                                    // Update session and heartbeat
+                                    state.players.remove(existingPlayer)
+                                    sessionToPlayerId.remove(existingPlayer.session)
+                                }
+
+                                // Add/update player
+                                val player = Player(playerId, playerName, System.currentTimeMillis(), this)
+                                state.players.add(player)
+                                sessionToPlayerId[this] = playerId
+
+                                // Broadcast player list to all
+                                val playerInfoList = state.players.map { PlayerInfo(it.id, it.name) }
+                                val playerListMsg = GameMessage(
+                                    type = "PLAYER_LIST",
+                                    players = playerInfoList,
+                                    hotPlayerIndex = state.currentHotPlayerIndex
+                                )
+                                room.forEach { session ->
+                                    session.sendSerialized(playerListMsg)
+                                }
+
+                                // Send current word/progress to this player
+                                sendSerialized(GameMessage(
+                                    type = "NEW_WORD",
+                                    word = state.currentWord,
+                                    revealed = state.revealedWords
+                                ))
+                            }
+
+                            "HEARTBEAT" -> {
+                                val playerId = sessionToPlayerId[this]
+                                if (playerId != null) {
+                                    state.players.find { it.id == playerId }?.lastHeartbeat = System.currentTimeMillis()
+                                }
+                            }
+
+                            "WORD_MATCH" -> {
+                                // A guesser matched a word
+                                val wordIndex = received.wordIndex
+                                if (wordIndex != null && wordIndex >= 0 && wordIndex < state.revealedWords.size) {
+                                    state.revealedWords[wordIndex] = true
+
+                                    // Broadcast progress to all
+                                    val progressMsg = GameMessage(
+                                        type = "WORD_PROGRESS",
+                                        revealed = state.revealedWords.toList()
+                                    )
+                                    room.forEach { session ->
+                                        session.sendSerialized(progressMsg)
+                                    }
+
+                                    // Check if all words revealed - auto claim victory
+                                    if (state.revealedWords.all { it }) {
+                                        // Rotate to next describer
+                                        if (state.players.isNotEmpty()) {
+                                            state.currentHotPlayerIndex = (state.currentHotPlayerIndex + 1) % state.players.size
+                                        }
+
+                                        val newWord = gameWords.random()
+                                        roomWords[roomId] = newWord
+                                        state.currentWord = newWord
+                                        state.revealedWords = newWord.split(" ").map { false }.toMutableList()
+
+                                        val newScore = roomScores.merge(roomId, 1, Int::plus) ?: 1
+                                        val winnerMsg = GameMessage(
+                                            type = "ROUND_WON",
+                                            player = received.player ?: "Someone",
+                                            score = newScore
+                                        )
+
+                                        // Send updated player list with new hot player
+                                        val playerInfoList = state.players.map { PlayerInfo(it.id, it.name) }
+                                        val playerListMsg = GameMessage(
+                                            type = "PLAYER_LIST",
+                                            players = playerInfoList,
+                                            hotPlayerIndex = state.currentHotPlayerIndex
+                                        )
+
+                                        val newWordMsg = GameMessage(
+                                            type = "NEW_WORD",
+                                            word = newWord,
+                                            revealed = state.revealedWords.toList()
+                                        )
+
+                                        room.forEach { session ->
+                                            session.sendSerialized(winnerMsg)
+                                            session.sendSerialized(playerListMsg)
+                                            session.sendSerialized(newWordMsg)
+                                        }
+                                    }
+                                }
+                            }
+
+                            "DESCRIBER_SLIP" -> {
+                                // Describer accidentally said a forbidden word - reveal it as penalty
+                                val wordIndex = received.wordIndex
+                                if (wordIndex != null && wordIndex >= 0 && wordIndex < state.revealedWords.size) {
+                                    if (!state.revealedWords[wordIndex]) {
+                                        state.revealedWords[wordIndex] = true
+
+                                        // Broadcast the slip to all players
+                                        val slipMsg = GameMessage(
+                                            type = "DESCRIBER_SLIPPED",
+                                            player = received.player,
+                                            word = state.currentWord.split(" ").getOrNull(wordIndex),
+                                            wordIndex = wordIndex
+                                        )
+                                        room.forEach { session ->
+                                            session.sendSerialized(slipMsg)
+                                        }
+
+                                        // Broadcast updated progress
+                                        val progressMsg = GameMessage(
+                                            type = "WORD_PROGRESS",
+                                            revealed = state.revealedWords.toList()
+                                        )
+                                        room.forEach { session ->
+                                            session.sendSerialized(progressMsg)
+                                        }
+                                    }
+                                }
+                            }
+
+                            "DESCRIBER_FAIL" -> {
+                                // Describer said the whole phrase - fail and skip!
+                                // Rotate to next describer
+                                if (state.players.isNotEmpty()) {
+                                    state.currentHotPlayerIndex = (state.currentHotPlayerIndex + 1) % state.players.size
+                                }
+
                                 val newWord = gameWords.random()
                                 roomWords[roomId] = newWord
-                                val newScore = roomScores.merge(roomId, 1, Int::plus) ?: 1
-                                val winnerMsg = GameMessage(type = "ROUND_WON", player = received.player ?: "A Player", score = newScore)
-                                val newWordMsg = GameMessage(type = "NEW_WORD", word = newWord)
+                                state.currentWord = newWord
+                                state.revealedWords = newWord.split(" ").map { false }.toMutableList()
+
+                                // Broadcast the fail
+                                val failMsg = GameMessage(
+                                    type = "DESCRIBER_FAILED",
+                                    player = received.player
+                                )
+
+                                // Send updated player list with new hot player
+                                val playerInfoList = state.players.map { PlayerInfo(it.id, it.name) }
+                                val playerListMsg = GameMessage(
+                                    type = "PLAYER_LIST",
+                                    players = playerInfoList,
+                                    hotPlayerIndex = state.currentHotPlayerIndex
+                                )
+
+                                val newWordMsg = GameMessage(
+                                    type = "NEW_WORD",
+                                    word = newWord,
+                                    revealed = state.revealedWords.toList()
+                                )
 
                                 room.forEach { session ->
-                                    session.sendSerialized(winnerMsg)
+                                    session.sendSerialized(failMsg)
+                                    session.sendSerialized(playerListMsg)
                                     session.sendSerialized(newWordMsg)
                                 }
                             }
-                            "SKIP_WORD" -> {
+
+                            "CLAIM_VICTORY" -> {
+                                // Rotate to next describer
+                                if (state.players.isNotEmpty()) {
+                                    state.currentHotPlayerIndex = (state.currentHotPlayerIndex + 1) % state.players.size
+                                }
+
                                 val newWord = gameWords.random()
                                 roomWords[roomId] = newWord
+                                state.currentWord = newWord
+                                state.revealedWords = newWord.split(" ").map { false }.toMutableList()
+
+                                val newScore = roomScores.merge(roomId, 1, Int::plus) ?: 1
+                                val winnerMsg = GameMessage(
+                                    type = "ROUND_WON",
+                                    player = received.player ?: "A Player",
+                                    score = newScore
+                                )
+
+                                // Send updated player list with new hot player
+                                val playerInfoList = state.players.map { PlayerInfo(it.id, it.name) }
+                                val playerListMsg = GameMessage(
+                                    type = "PLAYER_LIST",
+                                    players = playerInfoList,
+                                    hotPlayerIndex = state.currentHotPlayerIndex
+                                )
+
+                                val newWordMsg = GameMessage(
+                                    type = "NEW_WORD",
+                                    word = newWord,
+                                    revealed = state.revealedWords.toList()
+                                )
+
+                                room.forEach { session ->
+                                    session.sendSerialized(winnerMsg)
+                                    session.sendSerialized(playerListMsg)
+                                    session.sendSerialized(newWordMsg)
+                                }
+                            }
+
+                            "SKIP_WORD" -> {
+                                // Hot potato: skip rotates describer too!
+                                if (state.players.isNotEmpty()) {
+                                    state.currentHotPlayerIndex = (state.currentHotPlayerIndex + 1) % state.players.size
+                                }
+
+                                val newWord = gameWords.random()
+                                roomWords[roomId] = newWord
+                                state.currentWord = newWord
+                                state.revealedWords = newWord.split(" ").map { false }.toMutableList()
+
                                 val skipMsg = GameMessage(type = "WORD_SKIPPED", player = received.player)
-                                val newWordMsg = GameMessage(type = "NEW_WORD", word = newWord)
+
+                                // Send updated player list with new hot player
+                                val playerInfoList = state.players.map { PlayerInfo(it.id, it.name) }
+                                val playerListMsg = GameMessage(
+                                    type = "PLAYER_LIST",
+                                    players = playerInfoList,
+                                    hotPlayerIndex = state.currentHotPlayerIndex
+                                )
+
+                                val newWordMsg = GameMessage(
+                                    type = "NEW_WORD",
+                                    word = newWord,
+                                    revealed = state.revealedWords.toList()
+                                )
 
                                 room.forEach { session ->
                                     session.sendSerialized(skipMsg)
+                                    session.sendSerialized(playerListMsg)
                                     session.sendSerialized(newWordMsg)
                                 }
                             }
@@ -166,6 +467,34 @@ fun Application.module() {
                 println("Socket error: ${e.localizedMessage}")
             } finally {
                 room.remove(this)
+                // Remove player from state
+                val playerId = sessionToPlayerId.remove(this)
+                if (playerId != null) {
+                    state.players.removeIf { it.id == playerId }
+                    // Adjust hot player index if needed
+                    if (state.players.isNotEmpty()) {
+                        state.currentHotPlayerIndex = state.currentHotPlayerIndex % state.players.size
+                    } else {
+                        state.currentHotPlayerIndex = 0
+                    }
+
+                    // Broadcast updated player list
+                    val playerInfoList = state.players.map { PlayerInfo(it.id, it.name) }
+                    val playerListMsg = GameMessage(
+                        type = "PLAYER_LIST",
+                        players = playerInfoList,
+                        hotPlayerIndex = state.currentHotPlayerIndex
+                    )
+                    room.forEach { session ->
+                        try {
+                            CoroutineScope(Dispatchers.IO).launch {
+                                session.sendSerialized(playerListMsg)
+                            }
+                        } catch (e: Exception) {
+                            // Ignore send errors
+                        }
+                    }
+                }
             }
         }
     }

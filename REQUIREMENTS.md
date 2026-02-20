@@ -1,232 +1,212 @@
 # Hotwords - Requirements & Design Document
 
-**Version:** 1.1.0
-**Last Updated:** 2026-02-20
+**Version:** 2.0.0
 
 ## Overview
 
-Hotwords is a multiplayer word/phrase guessing game. Players see a phrase briefly, then must recall and speak it (or confirm they got it). The game supports two modes: Online (WebSocket-based multiplayer) and Pass This Device (local multiplayer on a single device).
+Hotwords is a multiplayer word/phrase guessing game. Players see a phrase briefly, then must recall and speak it. The game supports two modes:
+- **Local Mode**: Hot potato style - pass one device between players
+- **Online Mode**: Distributed hot potato with Taboo-style mechanics
 
 ---
 
 ## Game Modes
 
-### Mode 1: Online Mode (Default)
+### Local Mode (Hot Potato)
 
-Players connect to a shared "room" via WebSocket. All players in a room see the same phrase and compete to speak it first.
-
-**Flow:**
-1. User lands on page → auto-connects to a random room
-2. User can change room name or click "Random" for a new room
-3. User enters their display name
-4. User clicks "Start Listening" → speech recognition begins, 40-second timer starts
-5. Phrase displays for 2.5 seconds, then is redacted (hidden)
-6. User speaks the phrase → fuzzy matching checks similarity
-7. At 85%+ match → victory claimed, server broadcasts to all players
-8. Celebration animation plays, new phrase appears
-9. Timer expires → game ends, score shown
-
-**Server Responsibilities:**
-- Maintain room membership (sessions per room)
-- Store current phrase per room
-- Store cumulative score per room
-- Broadcast events: `NEW_WORD`, `ROUND_WON`, `WORD_SKIPPED`, `SCORE_UPDATE`
-
-**Client Messages:**
-- `CLAIM_VICTORY` - Player matched the phrase
-- `SKIP_WORD` - Player wants to skip current phrase
-
-### Mode 2: Pass This Device Mode
-
-A single device is shared among multiple players sitting together. No server connection needed.
+A single device is shared among 2+ players. The game runs on a continuous timer - whoever is holding when time runs out loses.
 
 **Flow:**
-1. User toggles "Pass This Device Mode" checkbox
-2. WebSocket disconnects, player setup UI appears
-3. User adds 2+ player names (persisted to localStorage)
-4. User clicks "Start Game"
-5. Interstitial shows: "Pass the device to [Player Name]"
-6. Player clicks "I'm Ready!"
-7. Phrase appears (controlled by orientation/tap - see below)
-8. Player memorizes phrase, then:
-   - Clicks "Got It!" → score increments, celebration plays
-   - Clicks "Skip" → no score change
-9. Next player interstitial appears
-10. Cycle continues indefinitely (no win condition currently)
+1. Select "Local Mode" in lobby, add 2+ player names
+2. Click "Start" to begin 60-second countdown
+3. First player sees phrase (press & hold to reveal)
+4. Player says the phrase or clicks "Got It!"
+5. On success: celebration shows score + next player, then rotates
+6. "Skip" gets new phrase but stays with same player (hot potato!)
+7. Timer expires → game over, current player loses
 
-**Word Visibility Control:**
-- **Mobile (with accelerometer):** Phrase visible only when device is flat (screen facing up). Tilting upright hides it.
-- **Desktop (no accelerometer):** Tap the word area or orientation indicator to toggle visibility.
+**Word Progress:**
+- Phrase displays as `Player: #### ### #####`
+- Individual words reveal as they're detected in speech
+- All words revealed = automatic victory
 
----
+**Controls:**
+- Press & hold word area (or Space) to reveal phrase
+- "Got It!" button (or Enter) to claim victory
+- "Skip" button (or Tab) for new phrase
 
-## State Management
+### Online Mode (Distributed Hot Potato)
 
-### Global State Variables
+Players connect to shared rooms via WebSocket. One player is the "hot" describer while others are guessers.
 
-| Variable | Type | Description |
-|----------|------|-------------|
-| `currentWord` | string | The active phrase to guess |
-| `ws` | WebSocket | Connection to server (null in Pass Mode) |
-| `recognition` | SpeechRecognition | Browser speech API instance |
-| `isListening` | boolean | Whether speech recognition is active |
-| `hasClaimedVictory` | boolean | Prevents double-claiming same phrase |
-| `currentRoomId` | string | Active room identifier |
-| `gameActive` | boolean | Whether timer is running (Online Mode) |
-| `localScore` | number | Points earned this session |
-| `timeRemaining` | number | Seconds left in round |
-| `isCelebrating` | boolean | Whether celebration overlay is showing |
+**Roles:**
+| Role | Sees | Does | Speech Recognition |
+|------|------|------|-------------------|
+| Hot (Describer) | Full phrase | Gives verbal clues | Monitors for slips |
+| Guesser | `####` + reveals | Speaks guesses | Matches words |
 
-### Pass Mode State
+**Flow:**
+1. Select "Online Mode" in lobby, enter name and room
+2. Click "Start" to connect to room
+3. First player to join becomes the describer
+4. **Describer**: Sees full phrase, gives verbal clues (like Taboo - can't say the words!)
+5. **Guessers**: See `####` pattern, speak guesses into microphone
+6. Words reveal as guessers match them
+7. Full phrase matched → victory, describer rotates
+8. Skip → describer rotates (hot potato!)
 
-| Variable | Type | Description |
-|----------|------|-------------|
-| `passMode` | boolean | Pass Mode toggle state |
-| `passModeActive` | boolean | Game in progress (after Start Game) |
-| `passModePlayers` | string[] | List of player names |
-| `passPlayerScores` | object | Map of player name → score |
-| `currentPlayerIndex` | number | Index of current player |
-| `orientationEnabled` | boolean | Using device orientation API |
-| `tapToRevealEnabled` | boolean | Using tap fallback |
-| `deviceIsFlat` | boolean | Current orientation state |
+**Taboo-Style Penalties:**
+- Describer's speech is monitored
+- If describer says a forbidden word → that word is revealed (helps guessers!)
+- If describer says the entire phrase → automatic fail, turn rotates
 
-### Server State (Kotlin)
-
-| Variable | Type | Description |
-|----------|------|-------------|
-| `rooms` | ConcurrentHashMap<String, Set<Session>> | Room → connected sessions |
-| `roomScores` | ConcurrentHashMap<String, Int> | Room → cumulative score |
-| `roomWords` | ConcurrentHashMap<String, String> | Room → current phrase |
-| `gameWords` | List<String> | 60 available phrases |
+**Player Management:**
+- Players tracked with 15-second heartbeat TTL
+- Player list shows all connected players with role badges
+- 🔥 badge = current describer
+- → indicator = next describer
 
 ---
 
-## User Interface Components
+## UI Components
 
-### Main Screen Elements
+### Lobby Screen
+- Title: "🔥 Hotwords 💬"
+- Two mode buttons that expand on selection:
+  - Local Mode → Player name inputs
+  - Online Mode → Name + room name input
+- Selected mode button changes to "▶ Start"
 
-| Element | Online Mode | Pass Mode |
-|---------|-------------|-----------|
-| Mode Toggle | Visible | Visible |
-| Room Input | Visible | Hidden |
-| Player Name Input | Visible | Hidden |
-| Player Setup | Hidden | Visible (before game) |
-| Current Player Indicator | Hidden | Visible (during game) |
-| Orientation Indicator | Hidden | Visible (during game) |
-| Word Display | Visible | Visible |
-| Score Display | Visible | Hidden |
-| Timer | Visible | Hidden |
-| Transcript | Visible | Hidden |
-| Local Scoreboard | Hidden | Visible (during game) |
-| Listen/Got It Button | "Start Listening" | "Got It!" |
-| Skip Button | "Skip Word" | "Skip" |
+### Game Screen (Local Mode)
+- Word progress: `Player: #### ### #####`
+- Word display area (press & hold to reveal)
+- Timer countdown (red when < 8s)
+- Score display
+- Buttons: "Got It! [Enter]", "Skip [Tab]"
+- Back button to return to lobby
 
-### Overlays
+### Game Screen (Online Mode)
+- **Player panel**: List of players with role badges
+- **Role indicator**: "🔥 DESCRIBE IT!" or "🎤 GUESS THE PHRASE"
+- **Word display**: Full phrase (describer) or `####` pattern (guessers)
+- **Word progress**: Shows revealed words for guessers
+- Timer and score
+- Buttons vary by role:
+  - Describer: Listen (monitors), Skip
+  - Guesser: Listen, Got It!
+- Transcript with speech feedback
 
-1. **Celebration Overlay** - Full-screen, shows winning phrase and player name, confetti/particles
-2. **Pass Interstitial** - Full-screen, shows next player name, "I'm Ready" button
-3. **Close Match Overlay** - Shows "CLOSE!" when 80-84% match (Online Mode only)
+### Celebrations
+- **Local**: Shows score count with 🔥 + "Next: [Player]"
+- **Online**: Shows phrase + "[Player] got it!"
+- Confetti and particle effects
 
----
-
-## Phrase Matching Logic
-
-### Algorithm
-1. Normalize both target phrase and spoken transcript (lowercase, trim)
-2. Check for exact substring match first
-3. Use sliding window over transcript words to find best phrase match
-4. Calculate Levenshtein distance-based similarity percentage
-5. If any window achieves ≥85% similarity → match
-
-### Similarity Thresholds
-- **< 70%** - No indicator
-- **70-79%** - Yellow "close" indicator in transcript area
-- **80-84%** - Full-screen "CLOSE!" overlay (Online Mode)
-- **≥ 85%** - Victory claimed
+### Penalty Animations
+- **Slip**: Brief red flash when describer says a forbidden word
+- **Fail**: Shake + red background when describer says entire phrase
 
 ---
 
-## Technical Architecture
+## Technical Details
 
-### Frontend (Single-Page HTML)
-- ~1800 lines of HTML/CSS/JS in one file
-- No build system or framework
-- Uses Web Speech API for voice recognition
-- Uses DeviceOrientation API for tilt detection
-- LocalStorage for player name persistence
+### Speech Recognition
+- Uses Web Speech API (Chrome/Edge)
+- Continuous recognition during gameplay
+- Fuzzy matching with Levenshtein distance
+- 85% similarity threshold for matches
+- Individual word detection for progressive reveals
 
-### Backend (Kotlin/Ktor)
-- WebSocket server on port 8080
-- In-memory state (no persistence)
-- JSON message protocol via kotlinx.serialization
-- Static file serving for index.html
+### Player Tracking (Online Mode)
+- Players identified by persistent localStorage ID
+- Heartbeat sent every 10 seconds
+- Server removes players after 15 seconds of no heartbeat
+- Hot player index adjusts when players leave
 
-### Deployment
-- Docker multi-stage build (Gradle → JRE)
-- Caddy reverse proxy for HTTPS
-- EC2 instance with ARM architecture
+### State Management
+- Player names persisted to localStorage
+- Player ID persisted to localStorage
+- Room state maintained on server per room
+- Skip rotates describer (distributed hot potato)
+
+### Keyboard Shortcuts (Local Mode)
+| Key | Action |
+|-----|--------|
+| Space (hold) | Reveal phrase |
+| Enter | Got It! |
+| Tab | Skip |
 
 ---
 
 ## Message Protocol
 
 ### Client → Server
-
-```json
-{ "type": "CLAIM_VICTORY", "player": "PlayerName" }
-{ "type": "SKIP_WORD", "player": "PlayerName" }
-```
+| Type | Fields | Purpose |
+|------|--------|---------|
+| `SET_NAME` | player, playerId | Join room with identity |
+| `HEARTBEAT` | - | Keep connection alive |
+| `WORD_MATCH` | wordIndex, player | Guesser matched a word |
+| `CLAIM_VICTORY` | player | Full phrase matched |
+| `SKIP_WORD` | player | Skip and rotate turn |
+| `DESCRIBER_SLIP` | wordIndex, player | Said a forbidden word |
+| `DESCRIBER_FAIL` | player | Said entire phrase |
 
 ### Server → Client
+| Type | Fields | Purpose |
+|------|--------|---------|
+| `PLAYER_LIST` | players[], hotPlayerIndex | Room roster update |
+| `NEW_WORD` | word, revealed[] | New phrase to play |
+| `WORD_PROGRESS` | revealed[] | Updated reveal state |
+| `ROUND_WON` | player, score | Victory notification |
+| `WORD_SKIPPED` | player | Skip notification |
+| `DESCRIBER_SLIPPED` | player, word, wordIndex | Penalty notification |
+| `DESCRIBER_FAILED` | player | Full fail notification |
+| `SCORE_UPDATE` | score | Room score (on join) |
 
-```json
-{ "type": "NEW_WORD", "word": "Phrase here" }
-{ "type": "ROUND_WON", "player": "WinnerName", "score": 5 }
-{ "type": "WORD_SKIPPED", "player": "SkipperName" }
-{ "type": "SCORE_UPDATE", "score": 5 }
+---
+
+## Tech Stack
+
+### Frontend
+- Single HTML file (~2500 lines)
+- Vanilla JavaScript (no framework)
+- CSS animations for celebrations/penalties
+- Web Speech API
+- DeviceOrientation API
+
+### Backend
+- Kotlin 1.9.22 / JVM 21
+- Ktor 2.3.7 with Netty
+- WebSocket for real-time multiplayer
+- kotlinx.serialization for JSON
+- Coroutine-based TTL cleanup
+- In-memory state (no persistence)
+
+### Deployment
+- Docker multi-stage build
+- Caddy reverse proxy for HTTPS
+- AWS EC2 (ARM architecture)
+
+---
+
+## File Structure
+
 ```
-
----
-
-## Known Issues & Technical Debt
-
-### Architecture
-1. **Monolithic HTML file** - 1800+ lines mixing CSS, HTML, JS. Hard to maintain.
-2. **Duplicated word list** - Same 60 phrases exist in both client and server.
-3. **No state machine** - Game state transitions are scattered across event handlers.
-4. **Mixed concerns** - Online mode and Pass Mode logic intertwined.
-
-### Functionality
-5. **No game end in Pass Mode** - Game runs forever until page refresh.
-6. **No room cleanup** - Empty rooms persist in server memory.
-7. **No reconnection handling** - Player loses context on disconnect.
-8. **Score is room-scoped** - No individual player scores in Online Mode.
-9. **Timer only in Online Mode** - Pass Mode has no time pressure.
-
-### UX
-10. **Orientation detection unreliable** - Falls back to tap, but messaging unclear.
-11. **No audio feedback** - All feedback is visual only.
-12. **No accessibility** - No ARIA labels, keyboard navigation limited.
-13. **Version caching issues** - Users see stale versions without hard refresh.
-
----
-
-## Potential Improvements
-
-### Short-term
-- Add cache-busting to static assets
-- Add "End Game" button to Pass Mode
-- Add audio cues for victory/close match
-- Split JS into modules
-
-### Medium-term
-- Implement proper state machine for game flow
-- Add individual player scores in Online Mode
-- Add configurable game settings (timer, threshold)
-- Add phrase categories/difficulty levels
-
-### Long-term
-- Refactor to SPA framework (React/Vue/Svelte)
-- Add user accounts and persistent scores
-- Add custom phrase lists
-- Add spectator mode
+hotwords/
+├── REQUIREMENTS.md          # This file
+├── CLAUDE.md               # AI assistant instructions
+├── hotwords/
+│   ├── build.gradle.kts    # Gradle build config
+│   ├── Dockerfile          # Multi-stage Docker build
+│   ├── src/main/
+│   │   ├── kotlin/com/example/
+│   │   │   └── Application.kt    # Ktor server + WebSocket
+│   │   └── resources/
+│   │       ├── application.conf  # Ktor config
+│   │       └── static/
+│   │           └── index.html    # Full frontend
+│   └── deploy/
+│       ├── docker-compose.yml
+│       ├── Caddyfile
+│       ├── setup.sh
+│       └── deploy.sh
+```
