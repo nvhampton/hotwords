@@ -282,6 +282,34 @@ fun Application.module() {
                                 }
                             }
 
+                            "NEW_ROUND" -> {
+                                // Start a new round - reset timer and score, get new word
+                                state.gameStartTime = System.currentTimeMillis()
+                                roomScores[roomId] = 0
+
+                                // Get a new word
+                                val newWord = gameWords.random()
+                                roomWords[roomId] = newWord
+                                state.currentWord = newWord
+                                state.revealedWords = newWord.split(" ").map { false }.toMutableList()
+
+                                // Broadcast new round to all players
+                                val newRoundMsg = GameMessage(
+                                    type = "NEW_ROUND",
+                                    timeRemaining = 60
+                                )
+                                val newWordMsg = GameMessage(
+                                    type = "NEW_WORD",
+                                    word = newWord,
+                                    revealed = state.revealedWords.toList()
+                                )
+
+                                room.forEach { session ->
+                                    session.sendSerialized(newRoundMsg)
+                                    session.sendSerialized(newWordMsg)
+                                }
+                            }
+
                             "HEARTBEAT" -> {
                                 val playerId = sessionToPlayerId[this]
                                 if (playerId != null) {

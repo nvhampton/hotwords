@@ -269,6 +269,20 @@
             transform: translateY(-2px);
             box-shadow: 0 10px 30px rgba(249, 202, 36, 0.4);
         }
+        .play-again-btn {
+            background: linear-gradient(135deg, #8a2be2 0%, #6a1cb2 100%);
+            color: #fff;
+            font-weight: bold;
+            padding: 12px 30px;
+            font-size: 1.1rem;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+        }
+        .play-again-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(138, 43, 226, 0.4);
+        }
         .button-row {
             display: flex;
             justify-content: center;
@@ -939,6 +953,7 @@
         <div class="button-row">
             <button class="gotit-btn" id="gotItBtn" disabled>Got It! <span class="key-hint">[Enter]</span></button>
             <button class="skip-btn" id="skipBtn" disabled>Skip <span class="key-hint">[Tab]</span></button>
+            <button class="play-again-btn" id="playAgainBtn" style="display: none;">Play Again</button>
         </div>
         <div class="listen-row">
             <button class="listen-btn" id="listenBtn" disabled>🎤 Start Listening</button>
@@ -1063,6 +1078,7 @@
         const listenBtn = document.getElementById('listenBtn');
         const skipBtn = document.getElementById('skipBtn');
         const gotItBtn = document.getElementById('gotItBtn');
+        const playAgainBtn = document.getElementById('playAgainBtn');
         const transcriptEl = document.getElementById('transcript');
         const similarityEl = document.getElementById('similarity');
         const playerNameInput = document.getElementById('playerName');
@@ -1609,6 +1625,14 @@
                 listenBtn.disabled = true;
                 skipBtn.disabled = true;
                 gotItBtn.disabled = true;
+            } else {
+                // Online mode: show Play Again button
+                wordDisplay.textContent = 'Game Over!';
+                wordProgressEl.innerHTML = '';
+                listenBtn.style.display = 'none';
+                skipBtn.style.display = 'none';
+                gotItBtn.style.display = 'none';
+                playAgainBtn.style.display = '';
             }
         }
 
@@ -1793,13 +1817,18 @@
         function updateOnlineModeButtons() {
             if (isLocalMode) return;
 
+            // Update button text for online mode
+            skipBtn.textContent = 'Skip Phrase';
+
             if (isHotPlayer) {
-                // Hot player: listen (for monitoring) + skip, no got it
+                // Hot player: listen (monitoring) + skip + "They Got It!"
                 listenBtn.style.display = '';
-                gotItBtn.style.display = 'none';
+                gotItBtn.style.display = '';
                 skipBtn.style.display = '';
                 listenBtn.disabled = false;
                 skipBtn.disabled = false;
+                gotItBtn.disabled = false;
+                gotItBtn.textContent = 'They Got It!';
             } else {
                 // Guesser: listen button, got it button, no skip
                 listenBtn.style.display = '';
@@ -1807,6 +1836,7 @@
                 skipBtn.style.display = 'none';
                 listenBtn.disabled = false;
                 gotItBtn.disabled = false;
+                gotItBtn.textContent = 'Got It!';
             }
         }
 
@@ -1970,6 +2000,20 @@
                     if (!gameActive) {
                         startGameTimer();
                     }
+                } else if (msg.type === 'NEW_ROUND') {
+                    // New round started - reset and start fresh
+                    localScore = 0;
+                    scoreCountEl.textContent = '0';
+                    hasClaimedVictory = false;
+
+                    // Hide play again, show normal buttons
+                    playAgainBtn.style.display = 'none';
+                    updateOnlineModeButtons();
+
+                    // Start fresh game timer
+                    startGameTimer();
+
+                    // The NEW_WORD message will follow with the new phrase
                 } else if (msg.type === 'SCORE_UPDATE') {
                     // Only update if game not active (initial load)
                     if (!gameActive && msg.score !== undefined) {
@@ -2188,6 +2232,13 @@
                     hasClaimedVictory = true;
                     claimVictory();
                 }
+            }
+        });
+
+        // Play Again button - start new round in online mode
+        playAgainBtn.addEventListener('click', () => {
+            if (!isLocalMode && ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ type: 'NEW_ROUND' }));
             }
         });
 
@@ -2561,9 +2612,11 @@
         function updateButtonsForMode() {
             listenBtn.textContent = isListening ? 'Stop Listening' : 'Start Listening';
             listenBtn.classList.toggle('active', isListening);
-            skipBtn.innerHTML = isLocalMode
-                ? 'Skip <span class="key-hint">[Tab]</span>'
-                : 'Skip Word';
+            if (isLocalMode) {
+                skipBtn.innerHTML = 'Skip <span class="key-hint">[Tab]</span>';
+                gotItBtn.innerHTML = 'Got It! <span class="key-hint">[Enter]</span>';
+            }
+            // Online mode button text is handled by updateOnlineModeButtons()
         }
 
         // ========== DEVICE ORIENTATION ==========
@@ -2799,6 +2852,38 @@
         if (savedOnlineName) {
             onlineNameInput.value = savedOnlineName;
         }
+
+        // Deep link support: ?room=RoomName&name=PlayerName
+        function handleDeepLink() {
+            const params = new URLSearchParams(window.location.search);
+            const roomParam = params.get('room');
+            const nameParam = params.get('name');
+
+            if (roomParam) {
+                // Fill in room name
+                roomInput.value = roomParam;
+
+                // Fill in player name if provided
+                if (nameParam) {
+                    onlineNameInput.value = nameParam;
+                    playerNameInput.value = nameParam;
+                }
+
+                // Auto-select online mode and start
+                selectedMode = 'online';
+                onlineSection.classList.add('selected');
+                localSection.classList.remove('selected');
+                onlineModeBtn.textContent = '▶ Start';
+
+                // Small delay to let UI update, then auto-start
+                setTimeout(() => {
+                    startOnlineGame();
+                }, 100);
+            }
+        }
+
+        // Check for deep link on page load
+        handleDeepLink();
     </script>
 </body>
 </html>
