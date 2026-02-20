@@ -6,7 +6,7 @@ This file provides guidance to Claude Code when working with this repository.
 
 Hotwords is a word/phrase guessing game with two modes:
 - **Local Mode**: Hot potato style - pass one device, say phrases before timer runs out
-- **Online Mode**: Distributed hot potato with Taboo-style mechanics - one describer, multiple guessers
+- **Online Mode**: Distributed hot potato - one describer gives clues, others guess
 
 ## Build Commands
 
@@ -43,7 +43,7 @@ docker build -t hotwords .  # Build Docker image
 
 ### Online Mode (Distributed Hot Potato)
 - **Roles**: One "hot" player (describer) + guessers
-- **Describer**: Sees full phrase, gives verbal clues (Taboo-style)
+- **Describer**: Sees full phrase, gives verbal clues (can't say the words!)
 - **Guessers**: See `####` pattern, words reveal as they guess correctly
 - **Turn rotation**: Victory or skip rotates describer
 - **Speech monitoring**: Describer is penalized for saying forbidden words

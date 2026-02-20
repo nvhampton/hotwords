@@ -6,7 +6,7 @@
 
 Hotwords is a multiplayer word/phrase guessing game. Players see a phrase briefly, then must recall and speak it. The game supports two modes:
 - **Local Mode**: Hot potato style - pass one device between players
-- **Online Mode**: Distributed hot potato with Taboo-style mechanics
+- **Online Mode**: Distributed hot potato - one describer gives clues, others guess
 
 ---
 
@@ -49,13 +49,13 @@ Players connect to shared rooms via WebSocket. One player is the "hot" describer
 1. Select "Online Mode" in lobby, enter name and room
 2. Click "Start" to connect to room
 3. First player to join becomes the describer
-4. **Describer**: Sees full phrase, gives verbal clues (like Taboo - can't say the words!)
+4. **Describer**: Sees full phrase, gives verbal clues (can't say the words!)
 5. **Guessers**: See `####` pattern, speak guesses into microphone
 6. Words reveal as guessers match them
 7. Full phrase matched → victory, describer rotates
 8. Skip → describer rotates (hot potato!)
 
-**Taboo-Style Penalties:**
+**Slip Penalties:**
 - Describer's speech is monitored
 - If describer says a forbidden word → that word is revealed (helps guessers!)
 - If describer says the entire phrase → automatic fail, turn rotates

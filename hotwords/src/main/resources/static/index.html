@@ -1231,7 +1231,7 @@
         // Track which words the describer has already slipped on (to avoid duplicate messages)
         let describerSlippedWords = [];
 
-        // Check if describer said forbidden words (Taboo-style monitoring)
+        // Check if describer said forbidden words
         function checkDescriberSpeech(transcript) {
             if (isLocalMode || !isHotPlayer || currentWords.length === 0) return;
 
@@ -2033,7 +2033,7 @@
                     }
                 }
 
-                // In online mode as hot player, check for forbidden words (Taboo-style)
+                // In online mode as hot player, check for forbidden words
                 if (!isLocalMode && isHotPlayer && gameActive) {
                     checkDescriberSpeech(transcript);
                 }
