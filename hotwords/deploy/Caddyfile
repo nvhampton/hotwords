@@ -1,4 +1,3 @@
-# Replace YOUR_DOMAIN with your actual domain (e.g., hotwords.site)
-YOUR_DOMAIN {
+hotwords.xyz {
     reverse_proxy hotwords:8080
 }

@@ -461,6 +461,172 @@
             100% { opacity: 0; transform: scale(2); }
         }
 
+        /* Leaderboard Overlay */
+        .leaderboard-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(26, 26, 46, 0.97);
+            z-index: 1100;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .leaderboard-overlay.active {
+            display: flex;
+        }
+        .leaderboard-container {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 20px;
+            padding: 30px;
+            max-width: 440px;
+            width: 100%;
+            max-height: 80vh;
+            display: flex;
+            flex-direction: column;
+        }
+        .leaderboard-title {
+            font-size: 2rem;
+            font-weight: bold;
+            text-align: center;
+            color: #f9ca24;
+            text-shadow: 0 0 20px rgba(249, 202, 36, 0.5);
+            margin-bottom: 4px;
+        }
+        .leaderboard-subtitle {
+            text-align: center;
+            color: #888;
+            font-size: 0.9rem;
+            margin-bottom: 20px;
+        }
+        .leaderboard-list {
+            overflow-y: auto;
+            flex: 1;
+            min-height: 0;
+        }
+        .leaderboard-percentile {
+            text-align: center;
+            padding: 10px 16px;
+            margin-bottom: 16px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, rgba(249, 202, 36, 0.15), rgba(249, 202, 36, 0.05));
+            border: 1px solid rgba(249, 202, 36, 0.3);
+            color: #f9ca24;
+            font-size: 1rem;
+            font-weight: 600;
+        }
+        .leaderboard-entry {
+            display: flex;
+            align-items: center;
+            padding: 10px 14px;
+            border-radius: 10px;
+            margin-bottom: 6px;
+            background: rgba(255, 255, 255, 0.03);
+            transition: background 0.2s;
+        }
+        .leaderboard-entry.is-you {
+            background: rgba(78, 205, 196, 0.15);
+            border: 1px solid rgba(78, 205, 196, 0.3);
+        }
+        .leaderboard-rank {
+            font-size: 1.3rem;
+            font-weight: bold;
+            width: 40px;
+            text-align: center;
+            flex-shrink: 0;
+        }
+        .leaderboard-rank.gold { color: #f9ca24; }
+        .leaderboard-rank.silver { color: #c0c0c0; }
+        .leaderboard-rank.bronze { color: #cd7f32; }
+        .leaderboard-details {
+            flex: 1;
+            margin-left: 10px;
+            overflow: hidden;
+            min-width: 0;
+        }
+        .leaderboard-players {
+            font-size: 1rem;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .leaderboard-meta {
+            display: flex;
+            gap: 8px;
+            margin-top: 2px;
+            font-size: 0.75rem;
+            color: #666;
+        }
+        .leaderboard-hash {
+            font-family: monospace;
+            color: #888;
+        }
+        .leaderboard-time {
+            color: #666;
+        }
+        .leaderboard-score {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #4ecdc4;
+            margin-left: 10px;
+            flex-shrink: 0;
+        }
+        .leaderboard-empty {
+            text-align: center;
+            color: #666;
+            padding: 30px;
+            font-size: 1.1rem;
+        }
+        .leaderboard-divider {
+            border: none;
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+            margin: 12px 0;
+        }
+        .leaderboard-grouped {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 6px 14px;
+            border-radius: 8px;
+            margin-bottom: 4px;
+            background: rgba(255, 255, 255, 0.02);
+        }
+        .leaderboard-grouped-score {
+            font-weight: 600;
+            color: #aaa;
+        }
+        .leaderboard-grouped-count {
+            font-size: 0.85rem;
+            color: #666;
+        }
+        .leaderboard-total {
+            text-align: center;
+            color: #555;
+            font-size: 0.85rem;
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .leaderboard-close {
+            margin-top: 16px;
+            padding: 12px 30px;
+            font-size: 1.1rem;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a5a 100%);
+            color: #fff;
+            transition: all 0.3s ease;
+            align-self: center;
+        }
+        .leaderboard-close:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(255, 107, 107, 0.4);
+        }
+
         /* Player Setup */
         .player-list {
             display: flex;
@@ -882,7 +1048,7 @@
         <div class="mode-buttons">
             <!-- Local Mode Section -->
             <div class="mode-section" id="localSection">
-                <button class="mode-btn local" id="localModeBtn">🎯 Local Mode</button>
+                <button class="mode-btn local" id="localModeBtn">📱 Play on this device</button>
                 <div class="mode-expand" id="localExpand">
                     <div class="player-list" id="playerList">
                         <div class="player-entry">
@@ -900,7 +1066,7 @@
 
             <!-- Online Mode Section -->
             <div class="mode-section" id="onlineSection">
-                <button class="mode-btn online" id="onlineModeBtn">🌐 Online Mode</button>
+                <button class="mode-btn online" id="onlineModeBtn">🌐 Join a room</button>
                 <div class="mode-expand" id="onlineExpand">
                     <label>Your Name</label>
                     <input type="text" class="name-input" id="onlineNameInput" placeholder="Enter your name" maxlength="20">
@@ -979,6 +1145,16 @@
         <div class="celebration-content">
             <div class="celebration-text" id="celebrationWord"></div>
             <div class="celebration-winner" id="winnerName"></div>
+        </div>
+    </div>
+
+    <!-- Leaderboard overlay -->
+    <div class="leaderboard-overlay" id="leaderboardOverlay">
+        <div class="leaderboard-container">
+            <div class="leaderboard-title">Leaderboard</div>
+            <div class="leaderboard-subtitle" id="leaderboardSubtitle">Top scores (last 24h)</div>
+            <div class="leaderboard-list" id="leaderboardList"></div>
+            <button class="leaderboard-close" id="leaderboardClose">Close</button>
         </div>
     </div>
 
@@ -1284,7 +1460,7 @@
             }
         }
 
-        const CELEBRATION_DELAY = 2000; // 2 seconds
+        const CELEBRATION_DELAY = 1200; // 1.2s
         const GAME_DURATION = 60; // 60 seconds
 
         // Local word list (same as server)
@@ -1617,23 +1793,34 @@
             statusEl.textContent = `Time's up! Final score: ${localScore}`;
             statusEl.classList.remove('listening');
 
-            // Reset local mode state
+            // Show Game Over + Play Again for both modes
+            wordDisplay.textContent = 'Game Over!';
+            wordProgressEl.innerHTML = '';
             if (isLocalMode) {
                 wordContainer.classList.remove('orientation-hidden');
-                wordDisplay.textContent = 'Game Over!';
-                wordProgressEl.innerHTML = '';
                 listenBtn.disabled = true;
                 skipBtn.disabled = true;
                 gotItBtn.disabled = true;
             } else {
-                // Online mode: show Play Again button
-                wordDisplay.textContent = 'Game Over!';
-                wordProgressEl.innerHTML = '';
                 listenBtn.style.display = 'none';
                 skipBtn.style.display = 'none';
                 gotItBtn.style.display = 'none';
-                playAgainBtn.style.display = '';
             }
+            playAgainBtn.style.display = '';
+
+            // Submit round and show leaderboard after a short delay
+            setTimeout(async () => {
+                let submissionResult = null;
+                if (isLocalMode) {
+                    submissionResult = await submitRound('local', null, localModePlayers, localScore);
+                } else {
+                    const players = onlinePlayers.map(p => p.name);
+                    submissionResult = await submitRound('online', currentRoomId, players, localScore);
+                }
+                const mode = isLocalMode ? 'local' : 'online';
+                const roomId = isLocalMode ? null : currentRoomId;
+                showLeaderboardView(mode, roomId, submissionResult);
+            }, CELEBRATION_DELAY);
         }
 
         // Update local score
@@ -1643,6 +1830,135 @@
                 scoreCountEl.textContent = localScore;
             }
         }
+
+        // ========== LEADERBOARD ==========
+
+        const leaderboardOverlay = document.getElementById('leaderboardOverlay');
+        const leaderboardList = document.getElementById('leaderboardList');
+        const leaderboardSubtitle = document.getElementById('leaderboardSubtitle');
+        const leaderboardClose = document.getElementById('leaderboardClose');
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        async function submitRound(mode, roomId, players, score) {
+            try {
+                const res = await fetch('/api/scores', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ score, players, mode, roomId: roomId || null })
+                });
+                return await res.json();
+            } catch (e) {
+                console.error('Failed to submit round:', e);
+                return null;
+            }
+        }
+
+        async function showLeaderboardView(mode, roomId, submissionResult) {
+            try {
+                const params = new URLSearchParams({ mode });
+                if (mode === 'online' && roomId) params.set('room', roomId);
+
+                const res = await fetch('/api/leaderboard?' + params.toString());
+                const data = await res.json();
+
+                renderLeaderboard(data, submissionResult);
+
+                if (mode === 'online' && roomId) {
+                    leaderboardSubtitle.textContent = `Room: ${escapeHtml(roomId)} (last 24h)`;
+                } else {
+                    leaderboardSubtitle.textContent = 'Top rounds (last 24h)';
+                }
+
+                leaderboardOverlay.classList.add('active');
+            } catch (e) {
+                console.error('Failed to load leaderboard:', e);
+            }
+        }
+
+        function formatTimeAgo(timestamp) {
+            const seconds = Math.floor((Date.now() - timestamp) / 1000);
+            if (seconds < 60) return 'just now';
+            const minutes = Math.floor(seconds / 60);
+            if (minutes < 60) return `${minutes}m ago`;
+            const hours = Math.floor(minutes / 60);
+            return `${hours}h ago`;
+        }
+
+        function renderLeaderboard(data, submissionResult) {
+            const { topRounds, grouped, totalRounds } = data;
+
+            if (totalRounds === 0) {
+                leaderboardList.innerHTML = '<div class="leaderboard-empty">No rounds yet. Be the first!</div>';
+                return;
+            }
+
+            let html = '';
+
+            // Percentile banner
+            if (submissionResult && submissionResult.percentile != null) {
+                const pct = submissionResult.percentile;
+                const rank = 100 - pct + 1;
+                if (pct >= 100) {
+                    html += '<div class="leaderboard-percentile">Your score is the best today!</div>';
+                } else {
+                    html += `<div class="leaderboard-percentile">Top ${rank}% of rounds today</div>`;
+                }
+            }
+
+            // Individual top rounds
+            const currentRoundId = submissionResult ? submissionResult.roundId : null;
+            topRounds.forEach((round, i) => {
+                const rank = i + 1;
+                let rankClass = '';
+                let rankDisplay = rank;
+                if (rank === 1) { rankClass = 'gold'; rankDisplay = '\u{1F947}'; }
+                else if (rank === 2) { rankClass = 'silver'; rankDisplay = '\u{1F948}'; }
+                else if (rank === 3) { rankClass = 'bronze'; rankDisplay = '\u{1F949}'; }
+
+                const isYou = currentRoundId && round.id === currentRoundId;
+                const playerNames = round.players.map(p => escapeHtml(p)).join(', ');
+                const timeAgo = formatTimeAgo(round.timestamp);
+
+                html += `<div class="leaderboard-entry${isYou ? ' is-you' : ''}">
+                    <div class="leaderboard-rank ${rankClass}">${rankDisplay}</div>
+                    <div class="leaderboard-details">
+                        <div class="leaderboard-players">${playerNames}${isYou ? ' (you)' : ''}</div>
+                        <div class="leaderboard-meta">
+                            <span class="leaderboard-hash">#${round.sessionHash}</span>
+                            <span class="leaderboard-time">${timeAgo}</span>
+                        </div>
+                    </div>
+                    <div class="leaderboard-score">${round.score}</div>
+                </div>`;
+            });
+
+            // Grouped section
+            if (grouped && grouped.length > 0) {
+                html += '<hr class="leaderboard-divider">';
+                grouped.forEach(g => {
+                    html += `<div class="leaderboard-grouped">
+                        <span class="leaderboard-grouped-score">Score ${g.score}</span>
+                        <span class="leaderboard-grouped-count">${g.roundCount} round${g.roundCount !== 1 ? 's' : ''}</span>
+                    </div>`;
+                });
+            }
+
+            // Footer
+            html += `<div class="leaderboard-total">${totalRounds} total round${totalRounds !== 1 ? 's' : ''} today</div>`;
+
+            leaderboardList.innerHTML = html;
+        }
+
+        function dismissLeaderboard() {
+            leaderboardOverlay.classList.remove('active');
+        }
+
+        leaderboardClose.addEventListener('click', dismissLeaderboard);
 
         // Levenshtein distance for similarity checking
         function levenshteinDistance(str1, str2) {
@@ -2002,6 +2318,7 @@
                     }
                 } else if (msg.type === 'NEW_ROUND') {
                     // New round started - reset and start fresh
+                    dismissLeaderboard();
                     localScore = 0;
                     scoreCountEl.textContent = '0';
                     hasClaimedVictory = false;
@@ -2235,9 +2552,27 @@
             }
         });
 
-        // Play Again button - start new round in online mode
+        // Play Again button
         playAgainBtn.addEventListener('click', () => {
-            if (!isLocalMode && ws && ws.readyState === WebSocket.OPEN) {
+            dismissLeaderboard();
+            playAgainBtn.style.display = 'none';
+            if (isLocalMode) {
+                // Restart local game with same players
+                currentPlayerIndex = 0;
+                localScore = 0;
+                playerSkips = {};
+                scoreCountEl.textContent = '0';
+                wordDisplay.textContent = 'Get Ready!';
+                listenBtn.disabled = false;
+                skipBtn.disabled = false;
+                gotItBtn.disabled = false;
+                enableOrientationDetection();
+                startGameTimer();
+                if (!recognition) {
+                    initSpeechRecognition();
+                }
+                showNewWordLocalMode();
+            } else if (ws && ws.readyState === WebSocket.OPEN) {
                 ws.send(JSON.stringify({ type: 'NEW_ROUND' }));
             }
         });
@@ -2279,6 +2614,7 @@
 
         // Show lobby, hide game screen
         function showLobby() {
+            dismissLeaderboard();
             // Stop any active game
             if (gameActive) {
                 endGame();
@@ -2321,8 +2657,8 @@
             selectedMode = null;
             localSection.classList.remove('selected');
             onlineSection.classList.remove('selected');
-            localModeBtn.textContent = '🎯 Local Mode';
-            onlineModeBtn.textContent = '🌐 Online Mode';
+            localModeBtn.textContent = '📱 Play on this device';
+            onlineModeBtn.textContent = '🌐 Join a room';
         }
 
         // Back button
@@ -2344,12 +2680,12 @@
                     localSection.classList.add('selected');
                     onlineSection.classList.remove('selected');
                     localModeBtn.textContent = '▶ Start';
-                    onlineModeBtn.textContent = '🌐 Online Mode';
+                    onlineModeBtn.textContent = '🌐 Join a room';
                 } else {
                     onlineSection.classList.add('selected');
                     localSection.classList.remove('selected');
                     onlineModeBtn.textContent = '▶ Start';
-                    localModeBtn.textContent = '🎯 Local Mode';
+                    localModeBtn.textContent = '📱 Play on this device';
                 }
             }
         }
@@ -2804,8 +3140,8 @@
                     selectedMode = null;
                     localSection.classList.remove('selected');
                     onlineSection.classList.remove('selected');
-                    localModeBtn.textContent = '🎯 Local Mode';
-                    onlineModeBtn.textContent = '🌐 Online Mode';
+                    localModeBtn.textContent = '📱 Play on this device';
+                    onlineModeBtn.textContent = '🌐 Join a room';
                 }
                 return;
             }

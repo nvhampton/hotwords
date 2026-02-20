@@ -1,16 +1,20 @@
 package com.example
 
+import io.ktor.http.*
 import io.ktor.serialization.kotlinx.*
 import io.ktor.serialization.kotlinx.json.*
 import io.ktor.server.application.*
 import io.ktor.server.http.content.*
 import io.ktor.server.plugins.contentnegotiation.*
+import io.ktor.server.request.*
+import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import io.ktor.server.websocket.*
 import io.ktor.websocket.*
 import kotlinx.coroutines.*
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import java.security.MessageDigest
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 
@@ -51,12 +55,65 @@ data class RoomState(
     var gameStartTime: Long? = null  // When the game timer started (null = not started)
 )
 
+@Serializable
+data class RoundEntry(
+    val id: String,
+    val score: Int,
+    val players: List<String>,
+    val mode: String,
+    val roomId: String? = null,
+    val sessionHash: String,
+    val timestamp: Long
+)
+
+@Serializable
+data class RoundSubmission(
+    val score: Int,
+    val players: List<String>,
+    val mode: String,
+    val roomId: String? = null
+)
+
+@Serializable
+data class RoundSubmissionResponse(
+    val status: String,
+    val roundId: String? = null,
+    val percentile: Int? = null,
+    val error: String? = null
+)
+
+@Serializable
+data class GroupedScore(
+    val score: Int,
+    val roundCount: Int
+)
+
+@Serializable
+data class LeaderboardResponse(
+    val topRounds: List<RoundEntry>,
+    val grouped: List<GroupedScore>,
+    val totalRounds: Int
+)
+
+fun generateSessionHash(remoteHost: String): String {
+    val salt = "hotwords-session-salt"
+    val digest = MessageDigest.getInstance("SHA-256")
+    val hash = digest.digest("$salt:$remoteHost".toByteArray())
+    return hash.take(3).joinToString("") { "%02x".format(it) }
+}
+
 fun main(args: Array<String>): Unit = io.ktor.server.netty.EngineMain.main(args)
 
 fun Application.module() {
     install(WebSockets) {
         contentConverter = KotlinxWebsocketSerializationConverter(Json)
     }
+    install(ContentNegotiation) {
+        json()
+    }
+
+    // Round-based leaderboard storage (key: UUID -> round entry)
+    val roundEntries = ConcurrentHashMap<String, RoundEntry>()
 
     // Shared game state
     val rooms = ConcurrentHashMap<String, MutableSet<DefaultWebSocketServerSession>>()
@@ -71,6 +128,10 @@ fun Application.module() {
             delay(5000)
             val now = System.currentTimeMillis()
             val ttlMs = 15000L  // 15 seconds TTL
+
+            // Clean up round entries older than 24 hours
+            val ttl24h = 24 * 60 * 60 * 1000L
+            roundEntries.entries.removeIf { now - it.value.timestamp > ttl24h }
 
             roomStates.forEach { (roomId, state) ->
                 val playersToRemove = state.players.filter { now - it.lastHeartbeat > ttlMs }
@@ -194,6 +255,92 @@ fun Application.module() {
     routing {
         staticResources("/", "static") {
             default("index.html")
+        }
+
+        post("/api/scores") {
+            try {
+                val submission = call.receive<RoundSubmission>()
+                val sessionHash = generateSessionHash(call.request.local.remoteHost)
+                val now = System.currentTimeMillis()
+                val roundId = UUID.randomUUID().toString()
+
+                val entry = RoundEntry(
+                    id = roundId,
+                    score = submission.score,
+                    players = submission.players,
+                    mode = submission.mode,
+                    roomId = submission.roomId,
+                    sessionHash = sessionHash,
+                    timestamp = now
+                )
+                roundEntries[roundId] = entry
+
+                // Compute percentile among rounds in last 24h (same mode/room)
+                val ttl24h = 24 * 60 * 60 * 1000L
+                val comparable = roundEntries.values.filter { r ->
+                    r.mode == submission.mode &&
+                    (now - r.timestamp) <= ttl24h &&
+                    (if (submission.mode == "online") r.roomId == submission.roomId else true)
+                }
+                val total = comparable.size
+                val atOrBelow = comparable.count { it.score <= submission.score }
+                val percentile = if (total > 0) (atOrBelow * 100) / total else 100
+
+                call.respond(RoundSubmissionResponse(
+                    status = "ok",
+                    roundId = roundId,
+                    percentile = percentile
+                ))
+            } catch (e: Exception) {
+                call.respond(HttpStatusCode.BadRequest, RoundSubmissionResponse(
+                    status = "error",
+                    error = e.message
+                ))
+            }
+        }
+
+        get("/api/leaderboard") {
+            val mode = call.request.queryParameters["mode"] ?: "local"
+            val room = call.request.queryParameters["room"]
+            val now = System.currentTimeMillis()
+            val ttl24h = 24 * 60 * 60 * 1000L
+
+            val filtered = roundEntries.values
+                .filter { it.mode == mode }
+                .filter { (now - it.timestamp) <= ttl24h }
+                .filter { if (mode == "online" && room != null) it.roomId == room else true }
+                .sortedWith(compareByDescending<RoundEntry> { it.score }.thenBy { it.timestamp })
+
+            val totalRounds = filtered.size
+
+            if (totalRounds <= 10) {
+                // Show all individually, no grouping needed
+                call.respond(LeaderboardResponse(
+                    topRounds = filtered,
+                    grouped = emptyList(),
+                    totalRounds = totalRounds
+                ))
+            } else {
+                // Top 10 individually, but extend for ties at the boundary
+                val cutoffScore = filtered.getOrNull(9)?.score ?: 0
+                val topRounds = filtered.takeWhile { it.score > cutoffScore } +
+                    filtered.filter { it.score == cutoffScore }
+                val cappedTop = topRounds.take(15)
+                val topIds = cappedTop.map { it.id }.toSet()
+
+                // Group remaining scores
+                val remaining = filtered.filter { it.id !in topIds }
+                val grouped = remaining
+                    .groupBy { it.score }
+                    .map { (score, rounds) -> GroupedScore(score, rounds.size) }
+                    .sortedByDescending { it.score }
+
+                call.respond(LeaderboardResponse(
+                    topRounds = cappedTop,
+                    grouped = grouped,
+                    totalRounds = totalRounds
+                ))
+            }
         }
 
         webSocket("/game/{roomId}") {
