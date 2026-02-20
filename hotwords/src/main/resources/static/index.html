@@ -1937,9 +1937,39 @@
                     showCelebration(msg.player, currentWord);
                 } else if (msg.type === 'WORD_SKIPPED') {
                     const skipper = msg.player || 'Someone';
-                    statusEl.textContent = `${skipper} skipped - turn rotated!`;
+                    statusEl.textContent = `${skipper} skipped! New phrase...`;
                     statusEl.classList.remove('listening', 'winner');
                     statusEl.classList.add('skipped');
+                } else if (msg.type === 'TIMER_SYNC') {
+                    // Sync timer for players joining mid-game
+                    if (msg.timeRemaining !== undefined && msg.timeRemaining > 0) {
+                        timeRemaining = msg.timeRemaining;
+                        timerCountEl.textContent = timeRemaining;
+                        if (!gameActive) {
+                            gameActive = true;
+                            timerDisplayEl.classList.add('active');
+                            // Start the local countdown
+                            if (gameTimer) clearInterval(gameTimer);
+                            gameTimer = setInterval(() => {
+                                timeRemaining--;
+                                timerCountEl.textContent = timeRemaining;
+                                if (timeRemaining <= 8 && timeRemaining > 0) {
+                                    document.body.classList.add('countdown-danger');
+                                    timerDisplayEl.classList.add('danger');
+                                } else if (timeRemaining <= 15) {
+                                    timerDisplayEl.classList.add('warning');
+                                }
+                                if (timeRemaining <= 0) {
+                                    endGame();
+                                }
+                            }, 1000);
+                        }
+                    }
+                } else if (msg.type === 'GAME_STARTED') {
+                    // Game started by another player
+                    if (!gameActive) {
+                        startGameTimer();
+                    }
                 } else if (msg.type === 'SCORE_UPDATE') {
                     // Only update if game not active (initial load)
                     if (!gameActive && msg.score !== undefined) {
@@ -2138,6 +2168,10 @@
                 // Start the game timer (online mode only)
                 if (!isLocalMode && !gameActive) {
                     startGameTimer();
+                    // Tell server the game started (for timer sync)
+                    if (ws && ws.readyState === WebSocket.OPEN) {
+                        ws.send(JSON.stringify({ type: 'START_GAME' }));
+                    }
                 }
             }
         });

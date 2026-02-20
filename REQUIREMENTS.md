@@ -52,8 +52,8 @@ Players connect to shared rooms via WebSocket. One player is the "hot" describer
 4. **Describer**: Sees full phrase, gives verbal clues (can't say the words!)
 5. **Guessers**: See `####` pattern, speak guesses into microphone
 6. Words reveal as guessers match them
-7. Full phrase matched → victory, describer rotates
-8. Skip → describer rotates (hot potato!)
+7. Full phrase matched → victory, describer rotates to next player
+8. Skip → same describer, new phrase (they take the penalty!)
 
 **Slip Penalties:**
 - Describer's speech is monitored

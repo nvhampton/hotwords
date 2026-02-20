@@ -25,7 +25,9 @@ data class GameMessage(
     val players: List<PlayerInfo>? = null,
     val hotPlayerIndex: Int? = null,
     val revealed: List<Boolean>? = null,
-    val wordIndex: Int? = null
+    val wordIndex: Int? = null,
+    val timeRemaining: Int? = null,
+    val gameStartTime: Long? = null
 )
 
 @Serializable
@@ -45,7 +47,8 @@ data class RoomState(
     val players: MutableList<Player> = mutableListOf(),
     var currentHotPlayerIndex: Int = 0,
     var currentWord: String = "",
-    var revealedWords: MutableList<Boolean> = mutableListOf()
+    var revealedWords: MutableList<Boolean> = mutableListOf(),
+    var gameStartTime: Long? = null  // When the game timer started (null = not started)
 )
 
 fun main(args: Array<String>): Unit = io.ktor.server.netty.EngineMain.main(args)
@@ -253,6 +256,30 @@ fun Application.module() {
                                     word = state.currentWord,
                                     revealed = state.revealedWords
                                 ))
+
+                                // If game is in progress, send timer sync
+                                if (state.gameStartTime != null) {
+                                    val elapsed = (System.currentTimeMillis() - state.gameStartTime!!) / 1000
+                                    val remaining = maxOf(0, 60 - elapsed.toInt())
+                                    sendSerialized(GameMessage(
+                                        type = "TIMER_SYNC",
+                                        timeRemaining = remaining
+                                    ))
+                                }
+                            }
+
+                            "START_GAME" -> {
+                                // Start the game timer for this room
+                                if (state.gameStartTime == null) {
+                                    state.gameStartTime = System.currentTimeMillis()
+                                    // Broadcast to all players
+                                    room.forEach { session ->
+                                        session.sendSerialized(GameMessage(
+                                            type = "GAME_STARTED",
+                                            timeRemaining = 60
+                                        ))
+                                    }
+                                }
                             }
 
                             "HEARTBEAT" -> {
@@ -428,25 +455,14 @@ fun Application.module() {
                             }
 
                             "SKIP_WORD" -> {
-                                // Hot potato: skip rotates describer too!
-                                if (state.players.isNotEmpty()) {
-                                    state.currentHotPlayerIndex = (state.currentHotPlayerIndex + 1) % state.players.size
-                                }
-
+                                // Skip = same describer, new phrase (they take the penalty!)
+                                // Does NOT rotate - like local mode hot potato
                                 val newWord = gameWords.random()
                                 roomWords[roomId] = newWord
                                 state.currentWord = newWord
                                 state.revealedWords = newWord.split(" ").map { false }.toMutableList()
 
                                 val skipMsg = GameMessage(type = "WORD_SKIPPED", player = received.player)
-
-                                // Send updated player list with new hot player
-                                val playerInfoList = state.players.map { PlayerInfo(it.id, it.name) }
-                                val playerListMsg = GameMessage(
-                                    type = "PLAYER_LIST",
-                                    players = playerInfoList,
-                                    hotPlayerIndex = state.currentHotPlayerIndex
-                                )
 
                                 val newWordMsg = GameMessage(
                                     type = "NEW_WORD",
@@ -456,7 +472,6 @@ fun Application.module() {
 
                                 room.forEach { session ->
                                     session.sendSerialized(skipMsg)
-                                    session.sendSerialized(playerListMsg)
                                     session.sendSerialized(newWordMsg)
                                 }
                             }
