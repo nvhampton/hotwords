@@ -655,6 +655,23 @@
             0% { transform: scale(1); }
             100% { transform: scale(1.05); }
         }
+
+        /* Version number */
+        .version {
+            position: fixed;
+            bottom: 10px;
+            right: 10px;
+            font-size: 0.7rem;
+            color: rgba(255, 255, 255, 0.2);
+        }
+
+        /* Make orientation indicator clickable */
+        .orientation-indicator {
+            cursor: pointer;
+        }
+        .orientation-indicator:hover {
+            background: rgba(249, 202, 36, 0.3);
+        }
     </style>
 </head>
 <body>
@@ -741,6 +758,8 @@
         </div>
 
         <div class="error" id="error"></div>
+
+        <div class="version">v1.1.0</div>
     </div>
 
     <!-- Pass Device Interstitial -->
@@ -1405,6 +1424,9 @@
 
             if (passModePlayers.length < 2) return;
 
+            // Save players to localStorage
+            savePlayersToStorage(passModePlayers);
+
             // Initialize scores
             passPlayerScores = {};
             passModePlayers.forEach(p => passPlayerScores[p] = 0);
@@ -1422,6 +1444,51 @@
             // Show pass interstitial for first player
             showPassInterstitial();
         });
+
+        // LocalStorage functions for remembering players
+        function savePlayersToStorage(players) {
+            try {
+                localStorage.setItem('hotwords_players', JSON.stringify(players));
+            } catch (e) {
+                console.log('Could not save players to localStorage');
+            }
+        }
+
+        function loadPlayersFromStorage() {
+            try {
+                const saved = localStorage.getItem('hotwords_players');
+                if (saved) {
+                    return JSON.parse(saved);
+                }
+            } catch (e) {
+                console.log('Could not load players from localStorage');
+            }
+            return null;
+        }
+
+        function restorePlayersUI() {
+            const savedPlayers = loadPlayersFromStorage();
+            if (savedPlayers && savedPlayers.length >= 2) {
+                // Clear existing player entries
+                playerList.innerHTML = '';
+
+                // Create entries for saved players
+                savedPlayers.forEach((name, idx) => {
+                    const entry = document.createElement('div');
+                    entry.className = 'player-entry';
+                    entry.innerHTML = `
+                        <input type="text" placeholder="Player ${idx + 1}" maxlength="20" value="${name}">
+                        <button class="remove-player" onclick="removePlayer(this)">&times;</button>
+                    `;
+                    playerList.appendChild(entry);
+                });
+
+                updateStartButton();
+            }
+        }
+
+        // Restore players on page load
+        restorePlayersUI();
 
         // Show pass interstitial
         function showPassInterstitial() {
@@ -1552,11 +1619,24 @@
         let orientationHandler = null;
 
         function enableOrientationDetection() {
+            // Check if this is likely a mobile/tablet device
+            const isTouchDevice = ('ontouchstart' in window) ||
+                                  (navigator.maxTouchPoints > 0) ||
+                                  (navigator.msMaxTouchPoints > 0);
+
+            const isMobileUA = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
+            // If not a touch/mobile device, skip orientation and use tap-to-reveal directly
+            if (!isTouchDevice && !isMobileUA) {
+                console.log('Desktop detected - using tap-to-reveal');
+                enableTapToReveal();
+                return;
+            }
+
             // Check if DeviceOrientationEvent is available
             if (!window.DeviceOrientationEvent) {
                 console.log('DeviceOrientation not supported');
-                orientationIndicator.textContent = 'Orientation not supported';
-                orientationIndicator.classList.add('active');
+                enableTapToReveal();
                 return;
             }
 
@@ -1568,12 +1648,12 @@
                             startOrientationListening();
                         } else {
                             console.log('Orientation permission denied');
-                            orientationIndicator.textContent = 'Orientation permission denied';
-                            orientationIndicator.classList.add('active');
+                            enableTapToReveal();
                         }
                     })
                     .catch(err => {
                         console.log('Orientation permission error:', err);
+                        enableTapToReveal();
                     });
             } else {
                 // Non-iOS or older iOS
@@ -1656,7 +1736,7 @@
         }
 
         function toggleWordVisibility() {
-            if (!tapToRevealEnabled || !passModeActive) return;
+            if (!passModeActive) return;
 
             deviceIsFlat = !deviceIsFlat;
             if (deviceIsFlat) {
@@ -1665,10 +1745,17 @@
                 orientationIndicator.classList.add('flat');
             } else {
                 wordContainer.classList.add('orientation-hidden');
-                orientationIndicator.textContent = 'Tap word area to reveal';
+                orientationIndicator.textContent = 'Tap to reveal word';
                 orientationIndicator.classList.remove('flat');
             }
         }
+
+        // Make orientation indicator clickable as fallback
+        orientationIndicator.addEventListener('click', () => {
+            if (passModeActive) {
+                toggleWordVisibility();
+            }
+        });
 
         function updateWordVisibilityByOrientation() {
             if (!orientationEnabled && !tapToRevealEnabled) return;
