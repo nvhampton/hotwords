@@ -356,12 +356,337 @@
             0% { opacity: 1; transform: scale(0.5); }
             100% { opacity: 0; transform: scale(2); }
         }
+
+        /* Pass This Device Mode Styles */
+        .mode-toggle {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+        }
+        .mode-toggle label {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            cursor: pointer;
+            font-size: 1rem;
+            color: #ccc;
+        }
+        .mode-toggle input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            accent-color: #8a2be2;
+        }
+        .player-setup {
+            display: none;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: rgba(138, 43, 226, 0.1);
+            border-radius: 15px;
+            border: 2px solid rgba(138, 43, 226, 0.3);
+        }
+        .player-setup.active {
+            display: block;
+        }
+        .player-setup h3 {
+            margin: 0 0 15px 0;
+            color: #8a2be2;
+            font-size: 1rem;
+        }
+        .player-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-bottom: 15px;
+        }
+        .player-entry {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+        .player-entry input {
+            flex: 1;
+            font-size: 0.9rem;
+            padding: 8px 12px;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+        }
+        .player-entry input:focus {
+            outline: none;
+            border-color: #8a2be2;
+        }
+        .player-entry .remove-player {
+            width: 30px;
+            height: 30px;
+            padding: 0;
+            border-radius: 50%;
+            font-size: 1.2rem;
+            background: rgba(255, 107, 107, 0.2);
+            color: #ff6b6b;
+            border: none;
+            cursor: pointer;
+        }
+        .player-entry .remove-player:hover {
+            background: rgba(255, 107, 107, 0.4);
+        }
+        .add-player-btn {
+            font-size: 0.9rem;
+            padding: 8px 16px;
+            border: 2px dashed rgba(138, 43, 226, 0.5);
+            border-radius: 20px;
+            background: transparent;
+            color: #8a2be2;
+            cursor: pointer;
+            width: 100%;
+        }
+        .add-player-btn:hover {
+            background: rgba(138, 43, 226, 0.1);
+        }
+        .start-pass-game-btn {
+            margin-top: 10px;
+            font-size: 1rem;
+            padding: 10px 20px;
+            background: linear-gradient(135deg, #8a2be2 0%, #6a1cb2 100%);
+            color: #fff;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            width: 100%;
+        }
+        .start-pass-game-btn:hover {
+            box-shadow: 0 5px 20px rgba(138, 43, 226, 0.4);
+        }
+        .start-pass-game-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* Pass Device Interstitial */
+        .pass-interstitial {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            z-index: 2000;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 20px;
+        }
+        .pass-interstitial.active {
+            display: flex;
+        }
+        .pass-interstitial h2 {
+            font-size: 1.5rem;
+            color: #888;
+            margin-bottom: 20px;
+        }
+        .pass-interstitial .next-player-name {
+            font-size: 3rem;
+            font-weight: bold;
+            color: #4ecdc4;
+            text-shadow: 0 0 30px rgba(78, 205, 196, 0.8);
+            margin-bottom: 30px;
+        }
+        .pass-interstitial .ready-btn {
+            font-size: 1.5rem;
+            padding: 20px 60px;
+            background: linear-gradient(135deg, #4ecdc4 0%, #44a08d 100%);
+            color: #fff;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+        }
+        .pass-interstitial .ready-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(78, 205, 196, 0.4);
+        }
+
+        /* Local Scoreboard */
+        .local-scoreboard {
+            display: none;
+            margin: 20px 0;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+        }
+        .local-scoreboard.active {
+            display: block;
+        }
+        .local-scoreboard h3 {
+            margin: 0 0 10px 0;
+            font-size: 0.9rem;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .scoreboard-entries {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        .scoreboard-entry {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 12px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+        }
+        .scoreboard-entry.current {
+            background: rgba(78, 205, 196, 0.2);
+            border: 1px solid rgba(78, 205, 196, 0.4);
+        }
+        .scoreboard-entry .player-name {
+            color: #fff;
+        }
+        .scoreboard-entry .player-score {
+            color: #f9ca24;
+            font-weight: bold;
+        }
+
+        /* Current Player Indicator */
+        .current-player-indicator {
+            display: none;
+            margin-bottom: 15px;
+            padding: 10px 20px;
+            background: rgba(78, 205, 196, 0.2);
+            border: 2px solid rgba(78, 205, 196, 0.4);
+            border-radius: 25px;
+            color: #4ecdc4;
+            font-weight: bold;
+        }
+        .current-player-indicator.active {
+            display: inline-block;
+        }
+
+        /* Orientation Indicator */
+        .orientation-indicator {
+            display: none;
+            margin-bottom: 15px;
+            padding: 10px 20px;
+            background: rgba(249, 202, 36, 0.2);
+            border: 2px solid rgba(249, 202, 36, 0.4);
+            border-radius: 25px;
+            color: #f9ca24;
+            font-size: 0.9rem;
+        }
+        .orientation-indicator.active {
+            display: block;
+        }
+        .orientation-indicator.flat {
+            background: rgba(78, 205, 196, 0.2);
+            border-color: rgba(78, 205, 196, 0.4);
+            color: #4ecdc4;
+        }
+
+        /* Word hidden by orientation */
+        .word-display.orientation-hidden {
+            background: linear-gradient(135deg, #2d2d44 0%, #1a1a2e 100%);
+        }
+        .word-display.orientation-hidden .word-text {
+            opacity: 0;
+        }
+        .word-display .orientation-label {
+            position: absolute;
+            font-size: 1.2rem;
+            color: rgba(255, 255, 255, 0.7);
+            text-shadow: none;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            text-align: center;
+            line-height: 1.4;
+        }
+        .word-display.orientation-hidden .orientation-label {
+            opacity: 1;
+        }
+
+        /* Hide online-only elements in pass mode */
+        .pass-mode-active .room-info,
+        .pass-mode-active .player-input,
+        .pass-mode-active .transcript,
+        .pass-mode-active #scoreDisplay {
+            display: none;
+        }
+
+        /* Close Match Anticipation Overlay */
+        .close-match-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(249, 202, 36, 0.15);
+            z-index: 500;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            pointer-events: none;
+        }
+        .close-match-overlay.active {
+            display: flex;
+            animation: closeMatchPulse 0.3s ease-in-out infinite alternate;
+        }
+        .close-match-text {
+            font-size: 20vw;
+            font-weight: bold;
+            color: #f9ca24;
+            text-shadow: 0 0 40px rgba(249, 202, 36, 0.8), 0 0 80px rgba(249, 202, 36, 0.5);
+            animation: closeMatchBounce 0.2s ease-in-out infinite alternate;
+        }
+        .close-match-pct {
+            position: absolute;
+            bottom: 20%;
+            font-size: 3rem;
+            color: #f9ca24;
+            text-shadow: 0 0 20px rgba(249, 202, 36, 0.8);
+        }
+        @keyframes closeMatchPulse {
+            0% { background: rgba(249, 202, 36, 0.1); }
+            100% { background: rgba(249, 202, 36, 0.25); }
+        }
+        @keyframes closeMatchBounce {
+            0% { transform: scale(1); }
+            100% { transform: scale(1.05); }
+        }
     </style>
 </head>
 <body>
-    <div class="container">
+    <div class="container" id="mainContainer">
         <h1><span id="wordCount">-</span> words</h1>
 
+        <!-- Mode Toggle -->
+        <div class="mode-toggle">
+            <label>
+                <input type="checkbox" id="passModeTog">
+                Pass This Device Mode
+            </label>
+        </div>
+
+        <!-- Player Setup (Pass Mode) -->
+        <div class="player-setup" id="playerSetup">
+            <h3>Add Players</h3>
+            <div class="player-list" id="playerList">
+                <div class="player-entry">
+                    <input type="text" placeholder="Player 1" maxlength="20">
+                    <button class="remove-player" onclick="removePlayer(this)">&times;</button>
+                </div>
+                <div class="player-entry">
+                    <input type="text" placeholder="Player 2" maxlength="20">
+                    <button class="remove-player" onclick="removePlayer(this)">&times;</button>
+                </div>
+            </div>
+            <button class="add-player-btn" id="addPlayerBtn">+ Add Player</button>
+            <button class="start-pass-game-btn" id="startPassGameBtn">Start Game</button>
+        </div>
+
+        <!-- Online Mode: Room Selection -->
         <div class="room-info">
             <label>Room</label>
             <div class="room-input-row">
@@ -374,9 +699,18 @@
             <input type="text" id="playerName" placeholder="Enter your name" maxlength="20">
         </div>
 
+        <!-- Current Player Indicator (Pass Mode) -->
+        <div class="current-player-indicator" id="currentPlayerIndicator"></div>
+
+        <!-- Orientation Indicator (Pass Mode) -->
+        <div class="orientation-indicator" id="orientationIndicator">
+            Hold device flat to see word
+        </div>
+
         <div class="word-display" id="wordContainer">
             <span class="word-text" id="currentWord">Connecting...</span>
             <span class="redact-label">MEMORIZE THE PHRASE!</span>
+            <span class="orientation-label">Hold device flat<br>(screen facing up)<br>to reveal word</span>
         </div>
 
         <div class="score-display" id="scoreDisplay">
@@ -400,7 +734,26 @@
             <div class="similarity" id="similarity"></div>
         </div>
 
+        <!-- Local Scoreboard (Pass Mode) -->
+        <div class="local-scoreboard" id="localScoreboard">
+            <h3>Scoreboard</h3>
+            <div class="scoreboard-entries" id="scoreboardEntries"></div>
+        </div>
+
         <div class="error" id="error"></div>
+    </div>
+
+    <!-- Pass Device Interstitial -->
+    <div class="pass-interstitial" id="passInterstitial">
+        <h2>Pass the device to</h2>
+        <div class="next-player-name" id="nextPlayerName">Player</div>
+        <button class="ready-btn" id="readyBtn">I'm Ready!</button>
+    </div>
+
+    <!-- Close Match Anticipation Overlay -->
+    <div class="close-match-overlay" id="closeMatchOverlay">
+        <div class="close-match-text">CLOSE!</div>
+        <div class="close-match-pct" id="closeMatchPct">85%</div>
     </div>
 
     <!-- Celebration overlay -->
@@ -426,6 +779,8 @@
         const celebrationEl = document.getElementById('celebration');
         const winnerNameEl = document.getElementById('winnerName');
         const celebrationWordEl = document.getElementById('celebrationWord');
+        const closeMatchOverlay = document.getElementById('closeMatchOverlay');
+        const closeMatchPct = document.getElementById('closeMatchPct');
         const scoreCountEl = document.getElementById('scoreCount');
         const wordCountEl = document.getElementById('wordCount');
         const timerDisplayEl = document.getElementById('timerDisplay');
@@ -448,6 +803,46 @@
         const REDACT_DELAY = 2500; // 2.5 seconds
         const CELEBRATION_DELAY = 2000; // 2 seconds
         const GAME_DURATION = 40; // 40 seconds
+
+        // Pass Mode elements
+        const passModeTog = document.getElementById('passModeTog');
+        const playerSetup = document.getElementById('playerSetup');
+        const playerList = document.getElementById('playerList');
+        const addPlayerBtn = document.getElementById('addPlayerBtn');
+        const startPassGameBtn = document.getElementById('startPassGameBtn');
+        const passInterstitial = document.getElementById('passInterstitial');
+        const nextPlayerNameEl = document.getElementById('nextPlayerName');
+        const readyBtn = document.getElementById('readyBtn');
+        const localScoreboard = document.getElementById('localScoreboard');
+        const scoreboardEntries = document.getElementById('scoreboardEntries');
+        const currentPlayerIndicator = document.getElementById('currentPlayerIndicator');
+        const orientationIndicator = document.getElementById('orientationIndicator');
+        const mainContainer = document.getElementById('mainContainer');
+
+        // Pass Mode state
+        let passMode = false;
+        let passModePlayers = [];
+        let passPlayerScores = {};
+        let currentPlayerIndex = 0;
+        let passModeActive = false; // game in progress
+        let orientationEnabled = false;
+        let deviceIsFlat = false;
+
+        // Local word list (same as server)
+        const localGameWords = [
+            "Running late", "Couch potato", "Road trip", "Window shopping", "People watching",
+            "Channel surfing", "Binge watching", "Party pooper", "Night owl", "Early bird",
+            "Piece of cake", "Spill the beans", "Hot potato", "Cool beans", "Bad apple",
+            "Bread winner", "Smart cookie", "Tough cookie", "Big cheese",
+            "Cat nap", "Dog days", "Fish out of water", "Wild goose chase", "Dark horse",
+            "Eager beaver", "Busy bee", "Social butterfly", "Party animal", "Loan shark",
+            "Under the weather", "Rain check", "Storm brewing", "Cloud nine", "Lightning fast",
+            "Curveball", "Home run", "Slam dunk", "Touchdown", "Hole in one",
+            "Viral video", "Going viral", "Mic drop", "Plot twist", "Cliffhanger",
+            "Binge worthy", "Game changer", "Power move", "Big brain", "Main character",
+            "Break a leg", "Hit the road", "Call it a day", "Piece of work", "Long shot",
+            "Big picture", "Last straw", "Wild card", "Green thumb", "Cold feet"
+        ];
 
         // Random room name words
         const roomNames = [
@@ -549,6 +944,7 @@
             statusEl.classList.remove('winner', 'skipped');
             similarityEl.textContent = '';
             similarityEl.classList.remove('close');
+            closeMatchOverlay.classList.remove('active');
 
             // Update word count in header
             const wordCount = word.trim().split(/\s+/).length;
@@ -822,12 +1218,22 @@
                     const pct = Math.round(result.similarity * 100);
                     similarityEl.textContent = `${pct}% match`;
                     similarityEl.classList.toggle('close', result.similarity >= 0.7);
+
+                    // Show "CLOSE!" anticipation overlay when >80% but not yet matched
+                    if (result.similarity >= 0.80 && !result.matched && !hasClaimedVictory) {
+                        closeMatchPct.textContent = `${pct}%`;
+                        closeMatchOverlay.classList.add('active');
+                    } else {
+                        closeMatchOverlay.classList.remove('active');
+                    }
                 } else {
                     similarityEl.textContent = '';
+                    closeMatchOverlay.classList.remove('active');
                 }
 
                 if (result.matched && !hasClaimedVictory) {
                     hasClaimedVictory = true;
+                    closeMatchOverlay.classList.remove('active');
                     claimVictory();
                 }
             };
@@ -927,6 +1333,389 @@
         const initialRoom = getInitialRoom();
         roomInput.value = initialRoom;
         connect(initialRoom);
+
+        // ========== PASS THIS DEVICE MODE ==========
+
+        // Toggle Pass Mode
+        passModeTog.addEventListener('change', () => {
+            passMode = passModeTog.checked;
+            playerSetup.classList.toggle('active', passMode);
+            mainContainer.classList.toggle('pass-mode-active', passMode);
+
+            if (passMode) {
+                // Disconnect from WebSocket
+                if (ws) {
+                    isReconnecting = true;
+                    ws.close();
+                    ws = null;
+                }
+                wordDisplay.textContent = 'Set up players to start';
+                listenBtn.disabled = true;
+                skipBtn.disabled = true;
+            } else {
+                // Reconnect to WebSocket
+                passModeActive = false;
+                localScoreboard.classList.remove('active');
+                currentPlayerIndicator.classList.remove('active');
+                orientationIndicator.classList.remove('active');
+                wordContainer.classList.remove('orientation-hidden');
+                disableOrientationDetection();
+                connect(currentRoomId || getInitialRoom());
+            }
+        });
+
+        // Add player
+        addPlayerBtn.addEventListener('click', () => {
+            const playerCount = playerList.children.length + 1;
+            const entry = document.createElement('div');
+            entry.className = 'player-entry';
+            entry.innerHTML = `
+                <input type="text" placeholder="Player ${playerCount}" maxlength="20">
+                <button class="remove-player" onclick="removePlayer(this)">&times;</button>
+            `;
+            playerList.appendChild(entry);
+            updateStartButton();
+        });
+
+        // Remove player
+        function removePlayer(btn) {
+            if (playerList.children.length > 2) {
+                btn.parentElement.remove();
+                updateStartButton();
+            }
+        }
+        window.removePlayer = removePlayer; // Make globally accessible
+
+        // Update start button state
+        function updateStartButton() {
+            const inputs = playerList.querySelectorAll('input');
+            const filledCount = Array.from(inputs).filter(i => i.value.trim()).length;
+            startPassGameBtn.disabled = filledCount < 2;
+        }
+
+        // Listen for input changes
+        playerList.addEventListener('input', updateStartButton);
+
+        // Start Pass Mode game
+        startPassGameBtn.addEventListener('click', () => {
+            const inputs = playerList.querySelectorAll('input');
+            passModePlayers = Array.from(inputs)
+                .map((i, idx) => i.value.trim() || `Player ${idx + 1}`)
+                .filter(name => name);
+
+            if (passModePlayers.length < 2) return;
+
+            // Initialize scores
+            passPlayerScores = {};
+            passModePlayers.forEach(p => passPlayerScores[p] = 0);
+
+            // Start game
+            passModeActive = true;
+            currentPlayerIndex = 0;
+            playerSetup.classList.remove('active');
+            localScoreboard.classList.add('active');
+            currentPlayerIndicator.classList.add('active');
+
+            // Enable orientation detection
+            enableOrientationDetection();
+
+            // Show pass interstitial for first player
+            showPassInterstitial();
+        });
+
+        // Show pass interstitial
+        function showPassInterstitial() {
+            const nextPlayer = passModePlayers[currentPlayerIndex];
+            nextPlayerNameEl.textContent = nextPlayer;
+            passInterstitial.classList.add('active');
+            updateScoreboard();
+        }
+
+        // Ready button - start the turn
+        readyBtn.addEventListener('click', () => {
+            passInterstitial.classList.remove('active');
+            currentPlayerIndicator.textContent = `${passModePlayers[currentPlayerIndex]}'s turn`;
+
+            // Pick a random word
+            const word = localGameWords[Math.floor(Math.random() * localGameWords.length)];
+            showNewWordPassMode(word);
+        });
+
+        // Show new word in pass mode
+        function showNewWordPassMode(word) {
+            currentWord = word;
+            hasClaimedVictory = false;
+            wordDisplay.textContent = currentWord;
+
+            // Update word count
+            const wordCount = word.trim().split(/\s+/).length;
+            wordCountEl.textContent = wordCount;
+
+            // In pass mode with orientation or tap-to-reveal
+            if (orientationEnabled || tapToRevealEnabled) {
+                // Reset to hidden state for new word
+                deviceIsFlat = false;
+                updateWordVisibilityByOrientation();
+            } else {
+                // Fallback: use normal redaction timer
+                wordContainer.classList.remove('redacted', 'orientation-hidden');
+                if (redactTimer) clearTimeout(redactTimer);
+                redactTimer = setTimeout(() => {
+                    wordContainer.classList.add('redacted');
+                }, REDACT_DELAY);
+            }
+
+            statusEl.textContent = 'Memorize the phrase, then pass!';
+            statusEl.classList.remove('winner', 'skipped');
+        }
+
+        // Update scoreboard
+        function updateScoreboard() {
+            scoreboardEntries.innerHTML = passModePlayers.map((player, idx) => `
+                <div class="scoreboard-entry ${idx === currentPlayerIndex ? 'current' : ''}">
+                    <span class="player-name">${player}</span>
+                    <span class="player-score">${passPlayerScores[player]}</span>
+                </div>
+            `).join('');
+        }
+
+        // Pass Mode: Got it button (claim victory locally)
+        function passModeClaimVictory() {
+            if (!passModeActive || hasClaimedVictory) return;
+            hasClaimedVictory = true;
+
+            const player = passModePlayers[currentPlayerIndex];
+            passPlayerScores[player]++;
+
+            // Show celebration
+            showCelebration(player, currentWord);
+
+            // After celebration, move to next player
+            setTimeout(() => {
+                nextPassModePlayer();
+            }, CELEBRATION_DELAY + 500);
+        }
+
+        // Pass Mode: Skip word
+        function passModeSkipWord() {
+            if (!passModeActive) return;
+
+            const player = passModePlayers[currentPlayerIndex];
+            statusEl.textContent = `${player} skipped`;
+            statusEl.classList.add('skipped');
+
+            // Move to next player
+            nextPassModePlayer();
+        }
+
+        // Move to next player in pass mode
+        function nextPassModePlayer() {
+            currentPlayerIndex = (currentPlayerIndex + 1) % passModePlayers.length;
+            showPassInterstitial();
+        }
+
+        // Override skip button for pass mode
+        const originalSkipHandler = skipBtn.onclick;
+        skipBtn.addEventListener('click', (e) => {
+            if (passModeActive) {
+                e.stopPropagation();
+                passModeSkipWord();
+            }
+        }, true);
+
+        // Add "Got It!" button functionality for pass mode
+        listenBtn.addEventListener('click', (e) => {
+            if (passModeActive) {
+                e.stopPropagation();
+                e.preventDefault();
+                passModeClaimVictory();
+                return false;
+            }
+        }, true);
+
+        // Update button text in pass mode
+        function updateButtonsForMode() {
+            if (passModeActive) {
+                listenBtn.textContent = 'Got It!';
+                listenBtn.disabled = false;
+                listenBtn.classList.remove('active');
+                skipBtn.textContent = 'Skip';
+                skipBtn.disabled = false;
+            } else if (!passMode) {
+                listenBtn.textContent = isListening ? 'Stop Listening' : 'Start Listening';
+                skipBtn.textContent = 'Skip Word';
+            }
+        }
+
+        // ========== DEVICE ORIENTATION ==========
+
+        let orientationHandler = null;
+
+        function enableOrientationDetection() {
+            // Check if DeviceOrientationEvent is available
+            if (!window.DeviceOrientationEvent) {
+                console.log('DeviceOrientation not supported');
+                orientationIndicator.textContent = 'Orientation not supported';
+                orientationIndicator.classList.add('active');
+                return;
+            }
+
+            // iOS 13+ requires permission
+            if (typeof DeviceOrientationEvent.requestPermission === 'function') {
+                DeviceOrientationEvent.requestPermission()
+                    .then(response => {
+                        if (response === 'granted') {
+                            startOrientationListening();
+                        } else {
+                            console.log('Orientation permission denied');
+                            orientationIndicator.textContent = 'Orientation permission denied';
+                            orientationIndicator.classList.add('active');
+                        }
+                    })
+                    .catch(err => {
+                        console.log('Orientation permission error:', err);
+                    });
+            } else {
+                // Non-iOS or older iOS
+                startOrientationListening();
+            }
+        }
+
+        let orientationDataReceived = false;
+        let orientationCheckTimeout = null;
+
+        function startOrientationListening() {
+            orientationEnabled = true;
+            orientationIndicator.classList.add('active');
+            orientationDataReceived = false;
+
+            orientationHandler = (event) => {
+                const beta = event.beta;  // -180 to 180 (front-to-back tilt)
+                const gamma = event.gamma; // -90 to 90 (left-to-right tilt)
+
+                // Check if we're getting real data (not null/0)
+                if (beta !== null && beta !== 0) {
+                    orientationDataReceived = true;
+                }
+
+                // Device is "flat" when beta is close to 0 and gamma is close to 0
+                // beta ~= 0 means screen facing up
+                // beta ~= 90 means screen facing user (upright)
+                // Adding some hysteresis to prevent flicker
+
+                const flatThreshold = 35;
+                const uprightThreshold = 45;
+
+                if (beta !== null) {
+                    const absBeta = Math.abs(beta);
+
+                    if (absBeta < flatThreshold && Math.abs(gamma) < flatThreshold) {
+                        if (!deviceIsFlat) {
+                            deviceIsFlat = true;
+                            updateWordVisibilityByOrientation();
+                        }
+                    } else if (absBeta > uprightThreshold || Math.abs(gamma) > uprightThreshold) {
+                        if (deviceIsFlat) {
+                            deviceIsFlat = false;
+                            updateWordVisibilityByOrientation();
+                        }
+                    }
+                }
+            };
+
+            window.addEventListener('deviceorientation', orientationHandler);
+
+            // Check after 1 second if we received orientation data
+            // If not, fall back to tap-to-reveal mode
+            orientationCheckTimeout = setTimeout(() => {
+                if (!orientationDataReceived) {
+                    console.log('No orientation data - falling back to tap-to-reveal');
+                    enableTapToReveal();
+                }
+            }, 1000);
+
+            updateWordVisibilityByOrientation();
+        }
+
+        // Tap-to-reveal fallback for laptops/desktops
+        let tapToRevealEnabled = false;
+
+        function enableTapToReveal() {
+            orientationEnabled = false;
+            tapToRevealEnabled = true;
+            deviceIsFlat = false;
+
+            // Update UI for tap mode
+            orientationIndicator.textContent = 'Tap word area to reveal/hide';
+            orientationIndicator.classList.add('active');
+            wordContainer.classList.add('orientation-hidden');
+
+            // Add click handler to word container
+            wordContainer.addEventListener('click', toggleWordVisibility);
+            wordContainer.style.cursor = 'pointer';
+        }
+
+        function toggleWordVisibility() {
+            if (!tapToRevealEnabled || !passModeActive) return;
+
+            deviceIsFlat = !deviceIsFlat;
+            if (deviceIsFlat) {
+                wordContainer.classList.remove('orientation-hidden');
+                orientationIndicator.textContent = 'Tap to hide word';
+                orientationIndicator.classList.add('flat');
+            } else {
+                wordContainer.classList.add('orientation-hidden');
+                orientationIndicator.textContent = 'Tap word area to reveal';
+                orientationIndicator.classList.remove('flat');
+            }
+        }
+
+        function updateWordVisibilityByOrientation() {
+            if (!orientationEnabled && !tapToRevealEnabled) return;
+
+            if (deviceIsFlat) {
+                wordContainer.classList.remove('orientation-hidden');
+                wordContainer.classList.remove('redacted');
+                if (tapToRevealEnabled) {
+                    orientationIndicator.textContent = 'Tap to hide word';
+                } else {
+                    orientationIndicator.textContent = 'Word visible - memorize it!';
+                }
+                orientationIndicator.classList.add('flat');
+            } else {
+                wordContainer.classList.add('orientation-hidden');
+                wordContainer.classList.remove('redacted');
+                if (tapToRevealEnabled) {
+                    orientationIndicator.textContent = 'Tap word area to reveal';
+                } else {
+                    orientationIndicator.textContent = 'Hold device flat to see word';
+                }
+                orientationIndicator.classList.remove('flat');
+            }
+
+            updateButtonsForMode();
+        }
+
+        function disableOrientationDetection() {
+            orientationEnabled = false;
+            deviceIsFlat = false;
+            tapToRevealEnabled = false;
+            if (orientationHandler) {
+                window.removeEventListener('deviceorientation', orientationHandler);
+                orientationHandler = null;
+            }
+            if (orientationCheckTimeout) {
+                clearTimeout(orientationCheckTimeout);
+                orientationCheckTimeout = null;
+            }
+            wordContainer.removeEventListener('click', toggleWordVisibility);
+            wordContainer.style.cursor = '';
+            wordContainer.classList.remove('orientation-hidden');
+            orientationIndicator.classList.remove('active', 'flat');
+        }
+
+        // Initial button state update
+        updateStartButton();
     </script>
 </body>
 </html>
