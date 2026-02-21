@@ -642,57 +642,26 @@
             box-shadow: 0 5px 20px rgba(255, 107, 107, 0.4);
         }
 
-        /* Player Setup */
-        .player-list {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            margin-bottom: 15px;
-        }
-        .player-entry {
-            display: flex;
-            gap: 8px;
-            align-items: center;
-        }
-        .player-entry input {
-            flex: 1;
-            font-size: 0.9rem;
-            padding: 8px 12px;
-            border: 2px solid rgba(255, 255, 255, 0.2);
-            border-radius: 20px;
-            background: rgba(255, 255, 255, 0.1);
-            color: #fff;
-        }
-        .player-entry input:focus {
-            outline: none;
-            border-color: #8a2be2;
-        }
-        .player-entry .remove-player {
-            width: 30px;
-            height: 30px;
-            padding: 0;
+        /* Player Count Selector */
+        .player-count-btn {
+            width: 40px;
+            height: 40px;
             border-radius: 50%;
-            font-size: 1.2rem;
-            background: rgba(255, 107, 107, 0.2);
-            color: #ff6b6b;
-            border: none;
-            cursor: pointer;
-        }
-        .player-entry .remove-player:hover {
-            background: rgba(255, 107, 107, 0.4);
-        }
-        .add-player-btn {
-            font-size: 0.9rem;
-            padding: 8px 16px;
-            border: 2px dashed rgba(138, 43, 226, 0.5);
-            border-radius: 20px;
-            background: transparent;
-            color: #8a2be2;
-            cursor: pointer;
-            width: 100%;
-        }
-        .add-player-btn:hover {
+            border: 2px solid rgba(138, 43, 226, 0.5);
             background: rgba(138, 43, 226, 0.1);
+            color: #8a2be2;
+            font-size: 1.3rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .player-count-btn:hover {
+            background: rgba(138, 43, 226, 0.25);
+        }
+        .player-count-btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
         }
         .start-pass-game-btn {
             margin-top: 10px;
@@ -1065,17 +1034,12 @@
             <div class="mode-section" id="localSection">
                 <button class="mode-btn local" id="localModeBtn">📱 Play on this device</button>
                 <div class="mode-expand" id="localExpand">
-                    <div class="player-list" id="playerList">
-                        <div class="player-entry">
-                            <input type="text" placeholder="Player 1" maxlength="20">
-                            <button class="remove-player" onclick="removePlayer(this)">&times;</button>
-                        </div>
-                        <div class="player-entry">
-                            <input type="text" placeholder="Player 2" maxlength="20">
-                            <button class="remove-player" onclick="removePlayer(this)">&times;</button>
-                        </div>
+                    <div style="display: flex; align-items: center; justify-content: center; gap: 16px; padding: 12px 0;">
+                        <span style="color: #aaa; font-size: 1rem;">Players:</span>
+                        <button class="player-count-btn" id="playerCountDown">−</button>
+                        <span style="font-size: 1.5rem; font-weight: bold; min-width: 30px; text-align: center;" id="playerCountDisplay">2</span>
+                        <button class="player-count-btn" id="playerCountUp">+</button>
                     </div>
-                    <button class="add-player-btn" id="addPlayerBtn">+ Add Player</button>
                 </div>
             </div>
 
@@ -1115,9 +1079,7 @@
 
         <div class="word-display" id="wordContainer">
             <span class="word-text" id="currentWord">Connecting...</span>
-            <div class="redact-label" id="redactLabel">
-                <div class="reveal-hint">Press & Hold to Reveal<br><span class="hint-keys">or hold SPACE</span></div>
-            </div>
+            <div class="redact-label" id="redactLabel"></div>
         </div>
 
         <div class="score-display" id="scoreDisplay">
@@ -1290,8 +1252,10 @@
         const transcriptBox = document.getElementById('transcriptBox');
 
         // Player setup elements
-        const playerList = document.getElementById('playerList');
-        const addPlayerBtn = document.getElementById('addPlayerBtn');
+        const playerCountDisplay = document.getElementById('playerCountDisplay');
+        const playerCountUp = document.getElementById('playerCountUp');
+        const playerCountDown = document.getElementById('playerCountDown');
+        let playerCount = 2;
 
         // State
         let currentWord = '';
@@ -1313,7 +1277,6 @@
         let currentPlayerIndex = 0;
         let orientationEnabled = false;
         let deviceIsFlat = false;
-        let playerSkips = {};  // Track skips per player
 
         // Word-by-word reveal tracking (local mode)
         let currentWords = [];  // Array of words in the phrase
@@ -1360,8 +1323,7 @@
                 return;
             }
 
-            const playerName = localModePlayers[currentPlayerIndex] || '';
-            let html = `<span class="player-name">${playerName}:</span>`;
+            let html = '';
 
             for (let i = 0; i < currentWords.length; i++) {
                 const word = currentWords[i];
@@ -1672,11 +1634,11 @@
             }, CELEBRATION_DELAY);
         }
 
-        // Celebration animation for local mode (shows score + next player)
-        function showCelebrationLocal(word, score, nextPlayer) {
+        // Celebration animation for local mode (shows score)
+        function showCelebrationLocal(word, score) {
             isCelebrating = true;
             celebrationWordEl.textContent = word;
-            winnerNameEl.innerHTML = `<div style="font-size: 2.5rem; margin-bottom: 10px;">${score} 🔥</div><div>Next: ${nextPlayer}</div>`;
+            winnerNameEl.innerHTML = `<div style="font-size: 2.5rem; margin-bottom: 10px;">${score} 🔥</div>`;
             celebrationEl.classList.add('active');
 
             // Create flash effect
@@ -2604,7 +2566,6 @@
                 // Restart local game with same players
                 currentPlayerIndex = 0;
                 localScore = 0;
-                playerSkips = {};
                 scoreCountEl.textContent = '0';
                 wordDisplay.textContent = 'Get Ready!';
                 listenBtn.disabled = false;
@@ -2742,25 +2703,13 @@
 
         // Start Local Game
         function startLocalGame() {
-            // Get players from setup
-            const inputs = playerList.querySelectorAll('input');
-            localModePlayers = Array.from(inputs)
-                .map((i, idx) => i.value.trim() || `Player ${idx + 1}`)
-                .filter(name => name);
-
-            if (localModePlayers.length < 2) {
-                alert('Please add at least 2 players');
-                return;
-            }
-
-            // Save players
-            savePlayersToStorage(localModePlayers);
+            // Create player list from count
+            localModePlayers = Array.from({ length: playerCount }, (_, i) => `Player ${i + 1}`);
 
             // Set up local mode
             isLocalMode = true;
             currentPlayerIndex = 0;
             localScore = 0;
-            playerSkips = {};  // Reset skip tracking
             currentRoomId = getRandomRoomName();
 
             // Show game screen
@@ -2831,62 +2780,19 @@
             connect(currentRoomId);
         }
 
-        // Add player
-        addPlayerBtn.addEventListener('click', () => {
-            const playerCount = playerList.children.length + 1;
-            const entry = document.createElement('div');
-            entry.className = 'player-entry';
-            entry.innerHTML = `
-                <input type="text" placeholder="Player ${playerCount}" maxlength="20">
-                <button class="remove-player" onclick="removePlayer(this)">&times;</button>
-            `;
-            playerList.appendChild(entry);
+        // Player count controls
+        function updatePlayerCountUI() {
+            playerCountDisplay.textContent = playerCount;
+            playerCountDown.disabled = playerCount <= 2;
+            playerCountUp.disabled = playerCount >= 10;
+        }
+        playerCountUp.addEventListener('click', () => {
+            if (playerCount < 10) { playerCount++; updatePlayerCountUI(); }
         });
-
-        // Remove player
-        function removePlayer(btn) {
-            if (playerList.children.length > 2) {
-                btn.parentElement.remove();
-            }
-        }
-        window.removePlayer = removePlayer; // Make globally accessible
-
-        // LocalStorage functions for remembering players
-        function savePlayersToStorage(players) {
-            try {
-                localStorage.setItem('hotwords_players', JSON.stringify(players));
-            } catch (e) {
-                console.log('Could not save players to localStorage');
-            }
-        }
-
-        function loadPlayersFromStorage() {
-            try {
-                const saved = localStorage.getItem('hotwords_players');
-                if (saved) {
-                    return JSON.parse(saved);
-                }
-            } catch (e) {
-                console.log('Could not load players from localStorage');
-            }
-            return null;
-        }
-
-        function restorePlayersUI() {
-            const savedPlayers = loadPlayersFromStorage();
-            if (savedPlayers && savedPlayers.length >= 2) {
-                playerList.innerHTML = '';
-                savedPlayers.forEach((name, idx) => {
-                    const entry = document.createElement('div');
-                    entry.className = 'player-entry';
-                    entry.innerHTML = `
-                        <input type="text" placeholder="Player ${idx + 1}" maxlength="20" value="${name}">
-                        <button class="remove-player" onclick="removePlayer(this)">&times;</button>
-                    `;
-                    playerList.appendChild(entry);
-                });
-            }
-        }
+        playerCountDown.addEventListener('click', () => {
+            if (playerCount > 2) { playerCount--; updatePlayerCountUI(); }
+        });
+        updatePlayerCountUI();
 
 
         // Show new word in local mode (hidden until revealed)
@@ -2900,9 +2806,9 @@
             revealedWords = new Array(currentWords.length).fill(false);
             renderWordProgress();
 
-            // Reset to hidden state for new word
+            // Reset to hidden state for new word (flat = hidden)
             if (orientationEnabled || tapToRevealEnabled) {
-                deviceIsFlat = false;
+                deviceIsFlat = true;
                 updateWordVisibilityByOrientation();
             } else {
                 wordContainer.classList.remove('redacted', 'orientation-hidden');
@@ -2912,8 +2818,8 @@
                 }, REDACT_DELAY);
             }
 
-            // Update label for local mode
-            redactLabelEl.textContent = 'PRESS & HOLD TO REVEAL';
+            // Update label with #### pattern + hint for hidden state
+            redactLabelEl.innerHTML = getHiddenLabel();
 
             statusEl.textContent = 'Listening... Say the phrase!';
             statusEl.classList.remove('winner', 'skipped');
@@ -2931,12 +2837,8 @@
 
             closeMatchOverlay.classList.remove('active');
 
-            // Get next player
-            const nextIndex = (currentPlayerIndex + 1) % localModePlayers.length;
-            const nextPlayer = localModePlayers[nextIndex];
-
-            // Show celebration with score and next player
-            showCelebrationLocal(currentWord, localScore, nextPlayer);
+            // Show celebration with score
+            showCelebrationLocal(currentWord, localScore);
 
             // After celebration, move to next player
             setTimeout(() => {
@@ -2949,12 +2851,7 @@
             if (!isLocalMode || !gameActive || buttonCooldown) return;
             startButtonCooldown();
 
-            const player = localModePlayers[currentPlayerIndex];
-
-            // Track skip for this player
-            playerSkips[player] = (playerSkips[player] || 0) + 1;
-
-            statusEl.textContent = `Skipped! (${playerSkips[player]} skips)`;
+            statusEl.textContent = 'Skipped!';
             statusEl.classList.add('skipped');
 
             closeMatchOverlay.classList.remove('active');
@@ -2977,7 +2874,7 @@
             similarityEl.textContent = '';
             similarityEl.classList.remove('close');
 
-            // Pick a new word (renderWordProgress will show player name)
+            // Pick a new word
             const word = localGameWords[Math.floor(Math.random() * localGameWords.length)];
             showNewWordLocalMode(word);
         }
@@ -3109,7 +3006,7 @@
         function enableTapToReveal() {
             orientationEnabled = false;
             tapToRevealEnabled = true;
-            deviceIsFlat = false;
+            deviceIsFlat = true;  // Start hidden
 
             wordContainer.classList.add('orientation-hidden');
             wordContainer.style.cursor = 'pointer';
@@ -3127,24 +3024,38 @@
 
         function startReveal(e) {
             if (!isLocalMode || !gameActive) return;
-            deviceIsFlat = true;
+            deviceIsFlat = false;  // Not flat = upright = revealed
             wordContainer.classList.remove('orientation-hidden');
         }
 
         function stopReveal(e) {
             if (!isLocalMode || !gameActive) return;
-            deviceIsFlat = false;
+            deviceIsFlat = true;  // Flat = hidden
             wordContainer.classList.add('orientation-hidden');
+            redactLabelEl.innerHTML = getHiddenLabel();
+        }
+
+        function getHiddenLabel() {
+            const pattern = (currentWords && currentWords.length > 0)
+                ? currentWords.map(w => '#'.repeat(w.length)).join(' ')
+                : '';
+            const hint = orientationEnabled
+                ? 'Hold vertical to reveal'
+                : 'Press & hold to reveal <span class="hint-keys">or hold SPACE</span>';
+            return `<div class="reveal-hint" style="font-size: 1.8rem; letter-spacing: 3px; color: #555;">${pattern}</div><div class="reveal-hint" style="margin-top: 8px; font-size: 0.85rem; color: #666;">${hint}</div>`;
         }
 
         function updateWordVisibilityByOrientation() {
             if (!orientationEnabled && !tapToRevealEnabled) return;
 
             if (deviceIsFlat) {
-                wordContainer.classList.remove('orientation-hidden');
-                wordContainer.classList.remove('redacted');
-            } else {
+                // Device is flat (on table) - hide the phrase, show #### pattern
                 wordContainer.classList.add('orientation-hidden');
+                wordContainer.classList.remove('redacted');
+                redactLabelEl.innerHTML = getHiddenLabel();
+            } else {
+                // Device is upright - reveal the phrase
+                wordContainer.classList.remove('orientation-hidden');
                 wordContainer.classList.remove('redacted');
             }
 
@@ -3225,9 +3136,6 @@
                 stopReveal();
             }
         });
-
-        // Restore saved data on page load
-        restorePlayersUI();
 
         // Restore online name
         const savedOnlineName = localStorage.getItem('hotwords_online_name');
