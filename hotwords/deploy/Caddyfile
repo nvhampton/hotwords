@@ -1,3 +1,3 @@
 hotwords.xyz {
-    reverse_proxy hotwords:8080
+    reverse_proxy localhost:8080
 }
