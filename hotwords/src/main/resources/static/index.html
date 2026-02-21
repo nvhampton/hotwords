@@ -144,6 +144,11 @@
             justify-content: center;
             position: relative;
             transition: all 0.3s ease;
+            overflow-wrap: break-word;
+            word-wrap: break-word;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-touch-callout: none;
         }
         .word-display.redacted {
             background: linear-gradient(135deg, #ff6b6b 0%, #ee5a5a 100%);
@@ -157,11 +162,23 @@
         }
         .word-display .redact-label {
             position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
             text-align: center;
             color: rgba(255, 255, 255, 0.9);
             text-shadow: none;
             opacity: 0;
             transition: opacity 0.3s ease;
+            pointer-events: none;
+            padding: 20px;
+            user-select: none;
+            -webkit-user-select: none;
         }
         .word-display.redacted .redact-label,
         .word-display.orientation-hidden .redact-label {
@@ -191,28 +208,31 @@
             animation: dangerFlash 1s ease-in-out;
         }
         body.countdown-danger {
-            animation: dangerPulse 1s ease-in-out infinite;
+            animation: dangerPulse 0.7s ease-in-out infinite;
         }
         @keyframes dangerPulse {
             0%, 100% { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); }
-            50% { background: linear-gradient(135deg, #3a1a1e 0%, #2e1620 100%); }
+            50% { background: linear-gradient(135deg, #6b1a1a 0%, #4a0e0e 100%); }
         }
         .score-display {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 100;
             text-align: center;
-            margin: 20px 0;
         }
         .score-number {
-            font-size: 4rem;
+            font-size: 1.6rem;
             font-weight: bold;
             color: #f9ca24;
-            text-shadow: 0 0 30px rgba(249, 202, 36, 0.6);
+            text-shadow: 0 0 15px rgba(249, 202, 36, 0.4);
             line-height: 1;
         }
         .score-label {
-            font-size: 1rem;
+            font-size: 0.6rem;
             color: #888;
             text-transform: uppercase;
-            letter-spacing: 2px;
+            letter-spacing: 1px;
         }
         .timer-display {
             font-size: 2rem;
@@ -220,16 +240,22 @@
             color: #4ecdc4;
             margin-bottom: 15px;
             opacity: 0.5;
+            transition: font-size 0.3s ease, color 0.3s ease;
         }
         .timer-display.active {
             opacity: 1;
         }
         .timer-display.warning {
             color: #f9ca24;
+            font-size: 3rem;
         }
         .timer-display.danger {
             color: #ff6b6b;
+            font-size: 5rem;
             animation: pulse 0.5s ease-in-out infinite;
+        }
+        .timer-display.paused {
+            opacity: 0.4;
         }
         .status {
             font-size: 1.2rem;
@@ -269,7 +295,7 @@
             background: linear-gradient(135deg, #4ecdc4 0%, #44a08d 100%);
             color: #fff;
             font-size: 1.3rem;
-            padding: 18px 50px;
+            padding: 28px 50px;
         }
         .gotit-btn:hover:not(:disabled) {
             transform: translateY(-2px);
@@ -279,6 +305,7 @@
             background: linear-gradient(135deg, #f9ca24 0%, #f0932b 100%);
             color: #1a1a2e;
             font-weight: bold;
+            padding: 28px 40px;
         }
         .skip-btn:hover:not(:disabled) {
             transform: translateY(-2px);
@@ -1003,6 +1030,61 @@
             100% { transform: scale(1.05); }
         }
 
+        /* Mic Permission Dialog */
+        .mic-dialog-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        .mic-dialog-overlay.active {
+            display: flex;
+        }
+        .mic-dialog {
+            background: linear-gradient(135deg, #1e1e3a 0%, #2a2a4a 100%);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 20px;
+            padding: 30px;
+            max-width: 360px;
+            text-align: center;
+        }
+        .mic-dialog-icon {
+            font-size: 3rem;
+            margin-bottom: 12px;
+        }
+        .mic-dialog-title {
+            font-size: 1.3rem;
+            font-weight: bold;
+            color: #fff;
+            margin-bottom: 12px;
+        }
+        .mic-dialog-body {
+            font-size: 0.9rem;
+            color: #bbb;
+            line-height: 1.5;
+            margin-bottom: 20px;
+        }
+        .mic-dialog-body strong {
+            color: #4ecdc4;
+        }
+        .mic-dialog-btn {
+            background: linear-gradient(135deg, #4ecdc4 0%, #44a08d 100%);
+            color: #fff;
+            font-size: 1.1rem;
+            padding: 14px 36px;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .mic-dialog-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(78, 205, 196, 0.4);
+        }
+
         /* Version number */
         .version {
             position: fixed;
@@ -1122,6 +1204,20 @@
         <div class="celebration-content">
             <div class="celebration-text" id="celebrationWord"></div>
             <div class="celebration-winner" id="winnerName"></div>
+        </div>
+    </div>
+
+    <!-- Mic Permission Dialog -->
+    <div class="mic-dialog-overlay" id="micDialogOverlay">
+        <div class="mic-dialog">
+            <div class="mic-dialog-icon">🎤</div>
+            <div class="mic-dialog-title">Microphone Access</div>
+            <div class="mic-dialog-body">
+                Hotwords uses your microphone to detect spoken words during the game.
+                <br><br>
+                All audio is processed <strong>locally on your device</strong> — nothing is recorded or sent anywhere. Permissions are temporary and can be revoked at any time.
+            </div>
+            <button class="mic-dialog-btn" id="micDialogBtn">Got it, let's go!</button>
         </div>
     </div>
 
@@ -1270,6 +1366,7 @@
         let pendingWord = null;
         let gameTimer = null;
         let timeRemaining = 60;
+        let timerPaused = false;
         let localScore = 0;
         let gameActive = false;
         let isLocalMode = false;
@@ -1277,6 +1374,9 @@
         let currentPlayerIndex = 0;
         let orientationEnabled = false;
         let deviceIsFlat = false;
+
+        // Game difficulty: true = individual words reveal as detected (easy), false = must match full phrase (hard)
+        let partialWordReveal = true;
 
         // Word-by-word reveal tracking (local mode)
         let currentWords = [];  // Array of words in the phrase
@@ -1289,7 +1389,8 @@
         let isHotPlayer = false;       // Am I the describer?
         let heartbeatInterval = null;  // Heartbeat timer
         let onlineRevealedWords = [];  // Which words are revealed (for guessers)
-        let buttonCooldown = false;    // Prevent button spam
+        let gotItCooldown = false;     // Prevent got-it spam
+        let skipCooldown = false;      // Prevent skip spam
 
         // Online mode elements
         const onlinePlayerPanel = document.getElementById('onlinePlayerPanel');
@@ -1317,25 +1418,11 @@
                 return;
             }
 
-            // Local mode view
-            if (!isLocalMode || currentWords.length === 0) {
-                wordProgressEl.innerHTML = '';
-                return;
+            // Local mode: update the hidden-state label to reflect reveals
+            if (isLocalMode && currentWords.length > 0) {
+                redactLabelEl.innerHTML = getHiddenLabel();
             }
-
-            let html = '';
-
-            for (let i = 0; i < currentWords.length; i++) {
-                const word = currentWords[i];
-                if (revealedWords[i]) {
-                    html += `<span class="word-revealed">${word}</span> `;
-                } else {
-                    // Create #### pattern matching word length
-                    const hidden = '#'.repeat(word.length);
-                    html += `<span class="word-hidden">${hidden}</span> `;
-                }
-            }
-            wordProgressEl.innerHTML = html.trim();
+            wordProgressEl.innerHTML = '';
         }
 
         // Check if a specific word exists in the transcript
@@ -1728,20 +1815,30 @@
             timerCountEl.textContent = timeRemaining;
             timerDisplayEl.classList.add('active');
             timerDisplayEl.classList.remove('warning', 'danger');
+            timerDisplayEl.style.fontSize = '';
 
             if (gameTimer) clearInterval(gameTimer);
             document.body.classList.remove('countdown-danger');
 
+            timerPaused = false;
             gameTimer = setInterval(() => {
+                if (timerPaused) return;
                 timeRemaining--;
                 timerCountEl.textContent = timeRemaining;
 
-                // Dramatic countdown for last 8 seconds
+                // Dramatic countdown
                 if (timeRemaining <= 8 && timeRemaining > 0) {
                     document.body.classList.add('countdown-danger');
                     timerDisplayEl.classList.add('danger');
+                    timerDisplayEl.classList.remove('warning');
+                    // Scale up in the final seconds
+                    const urgency = Math.max(0, (8 - timeRemaining) / 8);
+                    timerDisplayEl.style.fontSize = (5 + urgency * 3) + 'rem';
                 } else if (timeRemaining <= 15) {
                     timerDisplayEl.classList.add('warning');
+                    timerDisplayEl.style.fontSize = '';
+                } else {
+                    timerDisplayEl.style.fontSize = '';
                 }
 
                 if (timeRemaining <= 0) {
@@ -1758,6 +1855,7 @@
                 gameTimer = null;
             }
             timerDisplayEl.classList.remove('active', 'warning', 'danger');
+            timerDisplayEl.style.fontSize = '';
             document.body.classList.remove('countdown-danger');
 
             // Stop listening
@@ -1900,13 +1998,13 @@
                 else if (rank === 3) { rankClass = 'bronze'; rankDisplay = '\u{1F949}'; }
 
                 const isYou = currentRoundId && round.id === currentRoundId;
-                const playerNames = round.players.map(p => escapeHtml(p)).join(', ');
+                const playerCount = round.players.length;
                 const timeAgo = formatTimeAgo(round.timestamp);
 
                 html += `<div class="leaderboard-entry${isYou ? ' is-you' : ''}">
                     <div class="leaderboard-rank ${rankClass}">${rankDisplay}</div>
                     <div class="leaderboard-details">
-                        <div class="leaderboard-players">${playerNames}${isYou ? ' (you)' : ''}</div>
+                        <div class="leaderboard-players">${playerCount} player${playerCount !== 1 ? 's' : ''}${isYou ? ' (you)' : ''}</div>
                         <div class="leaderboard-meta">
                             <span class="leaderboard-hash">#${round.sessionHash}</span>
                             <span class="leaderboard-time">${timeAgo}</span>
@@ -2121,8 +2219,8 @@
                 gotItBtn.style.display = '';
                 skipBtn.style.display = '';
                 listenBtn.disabled = false;
-                skipBtn.disabled = buttonCooldown;
-                gotItBtn.disabled = buttonCooldown;
+                skipBtn.disabled = skipCooldown;
+                gotItBtn.disabled = gotItCooldown;
                 gotItBtn.textContent = 'They Got It!';
             } else {
                 // Guesser: listen button, got it button, no skip
@@ -2130,26 +2228,33 @@
                 gotItBtn.style.display = '';
                 skipBtn.style.display = 'none';
                 listenBtn.disabled = false;
-                gotItBtn.disabled = buttonCooldown;
+                gotItBtn.disabled = gotItCooldown;
                 gotItBtn.textContent = 'Got It!';
             }
         }
 
-        function startButtonCooldown() {
-            buttonCooldown = true;
-            skipBtn.disabled = true;
+        function startGotItCooldown() {
+            gotItCooldown = true;
             gotItBtn.disabled = true;
             setTimeout(() => {
-                buttonCooldown = false;
+                gotItCooldown = false;
                 if (gameActive) {
-                    if (isLocalMode) {
-                        skipBtn.disabled = false;
-                        gotItBtn.disabled = false;
-                    } else {
-                        updateOnlineModeButtons();
-                    }
+                    if (isLocalMode) { gotItBtn.disabled = false; }
+                    else { updateOnlineModeButtons(); }
                 }
-            }, 3000);
+            }, 1000);
+        }
+
+        function startSkipCooldown() {
+            skipCooldown = true;
+            skipBtn.disabled = true;
+            setTimeout(() => {
+                skipCooldown = false;
+                if (gameActive) {
+                    if (isLocalMode) { skipBtn.disabled = false; }
+                    else { updateOnlineModeButtons(); }
+                }
+            }, 5000);
         }
 
         // Show word for online mode (role-based display)
@@ -2395,6 +2500,39 @@
         }
 
         // Initialize Speech Recognition
+        const micDialogOverlay = document.getElementById('micDialogOverlay');
+        const micDialogBtn = document.getElementById('micDialogBtn');
+
+        async function ensureMicPermission() {
+            // Check if we already have permission
+            try {
+                const permStatus = await navigator.permissions.query({ name: 'microphone' });
+                if (permStatus.state === 'granted') return true;
+            } catch (e) {
+                // permissions.query not supported for mic in some browsers, continue
+            }
+
+            // Show friendly dialog first
+            await new Promise(resolve => {
+                micDialogOverlay.classList.add('active');
+                micDialogBtn.onclick = () => {
+                    micDialogOverlay.classList.remove('active');
+                    resolve();
+                };
+            });
+
+            // Now request the actual browser permission
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                stream.getTracks().forEach(t => t.stop());
+                return true;
+            } catch (e) {
+                console.log('Mic permission denied:', e);
+                errorEl.textContent = 'Microphone access denied. Please allow microphone access and refresh.';
+                return false;
+            }
+        }
+
         function initSpeechRecognition() {
             if (!SpeechRecognition) return;
 
@@ -2404,21 +2542,23 @@
             recognition.lang = 'en-US';
 
             recognition.onresult = (event) => {
+                // Only process recent results (last 3) to keep matching fast
+                const startIdx = Math.max(event.resultIndex, event.results.length - 3);
                 let transcript = '';
-                for (let i = event.resultIndex; i < event.results.length; i++) {
+                for (let i = startIdx; i < event.results.length; i++) {
                     transcript += event.results[i][0].transcript;
                 }
                 transcriptEl.textContent = transcript || '-';
 
                 // In local mode, check for individual word reveals
-                if (isLocalMode && gameActive && !hasClaimedVictory) {
+                if (partialWordReveal && isLocalMode && gameActive && !hasClaimedVictory) {
                     updateRevealedWords(transcript);
                     // If all words were revealed, victory was already claimed
                     if (hasClaimedVictory) return;
                 }
 
                 // In online mode as guesser, check for individual word reveals
-                if (!isLocalMode && !isHotPlayer && gameActive && !hasClaimedVictory) {
+                if (partialWordReveal && !isLocalMode && !isHotPlayer && gameActive && !hasClaimedVictory) {
                     updateRevealedWordsOnline(transcript);
                     // Check if all words revealed
                     if (onlineRevealedWords.every(r => r)) {
@@ -2481,33 +2621,34 @@
 
         // Claim victory
         function claimVictory() {
-            if (buttonCooldown) return;
+            if (gotItCooldown) return;
             const playerName = playerNameInput.value.trim() || 'Anonymous';
             if (ws && ws.readyState === WebSocket.OPEN) {
                 ws.send(JSON.stringify({
                     type: 'CLAIM_VICTORY',
                     player: playerName
                 }));
-                startButtonCooldown();
+                startGotItCooldown();
             }
         }
 
         // Skip word
         function skipWord() {
-            if (buttonCooldown) return;
+            if (skipCooldown) return;
             const playerName = playerNameInput.value.trim() || 'Anonymous';
             if (ws && ws.readyState === WebSocket.OPEN) {
                 ws.send(JSON.stringify({
                     type: 'SKIP_WORD',
                     player: playerName
                 }));
-                startButtonCooldown();
+                startSkipCooldown();
             }
         }
 
         // Toggle listening
-        listenBtn.addEventListener('click', () => {
+        listenBtn.addEventListener('click', async () => {
             if (!recognition) {
+                await ensureMicPermission();
                 initSpeechRecognition();
             }
 
@@ -2559,7 +2700,7 @@
         });
 
         // Play Again button
-        playAgainBtn.addEventListener('click', () => {
+        playAgainBtn.addEventListener('click', async () => {
             dismissLeaderboard();
             playAgainBtn.style.display = 'none';
             if (isLocalMode) {
@@ -2571,12 +2712,17 @@
                 listenBtn.disabled = false;
                 skipBtn.disabled = false;
                 gotItBtn.disabled = false;
-                enableOrientationDetection();
+                await enableOrientationDetection();
                 startGameTimer();
                 if (!recognition) {
                     initSpeechRecognition();
                 }
-                showNewWordLocalMode();
+                isListening = true;
+                try { recognition.start(); } catch(e) {}
+                listenBtn.textContent = 'Stop Listening';
+                listenBtn.classList.add('active');
+                const word = localGameWords[Math.floor(Math.random() * localGameWords.length)];
+                showNewWordLocalMode(word);
             } else if (ws && ws.readyState === WebSocket.OPEN) {
                 ws.send(JSON.stringify({ type: 'NEW_ROUND' }));
             }
@@ -2658,6 +2804,12 @@
             gotItBtn.style.display = '';
             skipBtn.style.display = '';
 
+            // Clear room from URL so deep link doesn't re-trigger
+            const url = new URL(window.location);
+            url.searchParams.delete('room');
+            url.searchParams.delete('name');
+            window.history.replaceState({}, '', url.pathname);
+
             // Reset mode selection
             selectedMode = null;
             localSection.classList.remove('selected');
@@ -2702,7 +2854,7 @@
         onlineModeBtn.addEventListener('click', () => selectMode('online'));
 
         // Start Local Game
-        function startLocalGame() {
+        async function startLocalGame() {
             // Create player list from count
             localModePlayers = Array.from({ length: playerCount }, (_, i) => `Player ${i + 1}`);
 
@@ -2720,8 +2872,11 @@
             scoreCountEl.textContent = '0';
             wordDisplay.textContent = 'Get Ready!';
 
-            // Enable orientation/tap detection
-            enableOrientationDetection();
+            // Enable orientation/tap detection first (needs user gesture on iOS)
+            await enableOrientationDetection();
+
+            // Request mic permission (after orientation, since that needs the user gesture context)
+            await ensureMicPermission();
 
             // Start the timer
             startGameTimer();
@@ -2731,7 +2886,7 @@
                 initSpeechRecognition();
             }
             isListening = true;
-            recognition.start();
+            try { recognition.start(); } catch(e) {}
             listenBtn.textContent = 'Stop Listening';
             listenBtn.classList.add('active');
             listenBtn.disabled = false;
@@ -2741,7 +2896,7 @@
             statusEl.classList.add('listening');
             transcriptBox.classList.add('listening');
 
-            // Pick the first word
+            // Pick the first word (after orientation is set up so hiding works)
             const word = localGameWords[Math.floor(Math.random() * localGameWords.length)];
             showNewWordLocalMode(word);
         }
@@ -2795,15 +2950,42 @@
         updatePlayerCountUI();
 
 
+        // Sync the word-display box height so it doesn't jump between revealed/hidden
+        function syncWordDisplayHeight() {
+            // Save current state
+            const wasHidden = wordContainer.classList.contains('orientation-hidden');
+            const wasRedacted = wordContainer.classList.contains('redacted');
+
+            // Temporarily remove constraints to measure
+            wordContainer.style.minHeight = '';
+            wordContainer.classList.remove('orientation-hidden', 'redacted');
+
+            // Measure revealed state height
+            const revealedHeight = wordContainer.scrollHeight;
+
+            // Measure hidden state: redact-label is absolute, so measure its content directly
+            const labelHeight = redactLabelEl.scrollHeight + 40; // padding
+
+            // Use the larger of the two
+            const maxHeight = Math.max(revealedHeight, labelHeight, 140);
+            wordContainer.style.minHeight = maxHeight + 'px';
+
+            // Restore state
+            if (wasHidden) wordContainer.classList.add('orientation-hidden');
+            if (wasRedacted) wordContainer.classList.add('redacted');
+        }
+
         // Show new word in local mode (hidden until revealed)
         function showNewWordLocalMode(word) {
             currentWord = word;
             hasClaimedVictory = false;
-            wordDisplay.textContent = currentWord;
 
             // Initialize word-by-word tracking
             currentWords = word.trim().split(/\s+/);
             revealedWords = new Array(currentWords.length).fill(false);
+
+            // Show the full phrase in the word-text span
+            wordDisplay.textContent = currentWord;
             renderWordProgress();
 
             // Reset to hidden state for new word (flat = hidden)
@@ -2821,6 +3003,9 @@
             // Update label with #### pattern + hint for hidden state
             redactLabelEl.innerHTML = getHiddenLabel();
 
+            // Sync box height so it doesn't jump between states
+            syncWordDisplayHeight();
+
             statusEl.textContent = 'Listening... Say the phrase!';
             statusEl.classList.remove('winner', 'skipped');
             statusEl.classList.add('listening');
@@ -2828,9 +3013,13 @@
 
         // Local Mode: Claim victory
         function localModeClaimVictory() {
-            if (!isLocalMode || !gameActive || hasClaimedVictory || buttonCooldown) return;
+            if (!isLocalMode || !gameActive || hasClaimedVictory || gotItCooldown) return;
             hasClaimedVictory = true;
-            startButtonCooldown();
+            startGotItCooldown();
+
+            // Pause timer while passing the device
+            timerPaused = true;
+            timerDisplayEl.classList.add('paused');
 
             localScore++;
             scoreCountEl.textContent = localScore;
@@ -2848,8 +3037,8 @@
 
         // Local Mode: Skip phrase (hot potato - same player, new phrase)
         function localModeSkipWord() {
-            if (!isLocalMode || !gameActive || buttonCooldown) return;
-            startButtonCooldown();
+            if (!isLocalMode || !gameActive || skipCooldown) return;
+            startSkipCooldown();
 
             statusEl.textContent = 'Skipped!';
             statusEl.classList.add('skipped');
@@ -2902,7 +3091,7 @@
 
         let orientationHandler = null;
 
-        function enableOrientationDetection() {
+        async function enableOrientationDetection() {
             // Check if this is likely a mobile/tablet device
             const isTouchDevice = ('ontouchstart' in window) ||
                                   (navigator.maxTouchPoints > 0) ||
@@ -2926,19 +3115,18 @@
 
             // iOS 13+ requires permission
             if (typeof DeviceOrientationEvent.requestPermission === 'function') {
-                DeviceOrientationEvent.requestPermission()
-                    .then(response => {
-                        if (response === 'granted') {
-                            startOrientationListening();
-                        } else {
-                            console.log('Orientation permission denied');
-                            enableTapToReveal();
-                        }
-                    })
-                    .catch(err => {
-                        console.log('Orientation permission error:', err);
+                try {
+                    const response = await DeviceOrientationEvent.requestPermission();
+                    if (response === 'granted') {
+                        startOrientationListening();
+                    } else {
+                        console.log('Orientation permission denied');
                         enableTapToReveal();
-                    });
+                    }
+                } catch (err) {
+                    console.log('Orientation permission error:', err);
+                    enableTapToReveal();
+                }
             } else {
                 // Non-iOS or older iOS
                 startOrientationListening();
@@ -2961,13 +3149,13 @@
                     orientationDataReceived = true;
                 }
 
-                // Device is "flat" when beta is close to 0 and gamma is close to 0
-                // beta ~= 0 means screen facing up
-                // beta ~= 90 means screen facing user (upright)
-                // Adding some hysteresis to prevent flicker
-
-                const flatThreshold = 35;
-                const uprightThreshold = 45;
+                // beta ~= 0: screen facing up (flat), beta ~= 90: upright
+                // Thresholds with hysteresis to prevent flicker
+                const flatThreshold = 75;
+                const uprightThreshold = 80;
+                // Fade zone: between flatThreshold and uprightThreshold
+                const fadeStart = 75;
+                const fadeEnd = 80;
 
                 if (beta !== null) {
                     const absBeta = Math.abs(beta);
@@ -2977,11 +3165,25 @@
                             deviceIsFlat = true;
                             updateWordVisibilityByOrientation();
                         }
-                    } else if (absBeta > uprightThreshold || Math.abs(gamma) > uprightThreshold) {
+                        // Fully hidden
+                        wordContainer.style.opacity = '';
+                        redactLabelEl.style.opacity = '';
+                    } else if (absBeta >= uprightThreshold) {
                         if (deviceIsFlat) {
                             deviceIsFlat = false;
                             updateWordVisibilityByOrientation();
+                            if (timerPaused) { timerPaused = false; timerDisplayEl.classList.remove('paused'); }
                         }
+                        // Fully revealed
+                        wordContainer.style.opacity = '';
+                        redactLabelEl.style.opacity = '';
+                    } else if (absBeta >= fadeStart && absBeta < fadeEnd && deviceIsFlat) {
+                        // Transition zone: fade the redact label, peek the word
+                        const progress = (absBeta - fadeStart) / (fadeEnd - fadeStart);
+                        redactLabelEl.style.opacity = String(1 - progress);
+                        // Show the word text peeking through
+                        const wordText = wordContainer.querySelector('.word-text');
+                        if (wordText) wordText.style.opacity = String(progress * 0.5);
                     }
                 }
             };
@@ -3026,6 +3228,7 @@
             if (!isLocalMode || !gameActive) return;
             deviceIsFlat = false;  // Not flat = upright = revealed
             wordContainer.classList.remove('orientation-hidden');
+            if (timerPaused) { timerPaused = false; timerDisplayEl.classList.remove('paused'); }
         }
 
         function stopReveal(e) {
@@ -3036,17 +3239,34 @@
         }
 
         function getHiddenLabel() {
-            const pattern = (currentWords && currentWords.length > 0)
-                ? currentWords.map(w => '#'.repeat(w.length)).join(' ')
-                : '';
+            let pattern = '';
+            if (currentWords && currentWords.length > 0) {
+                if (partialWordReveal) {
+                    pattern = currentWords.map((w, i) => {
+                        if (isLocalMode && revealedWords && revealedWords[i]) {
+                            return `<span style="color: #4ecdc4;">${w}</span>`;
+                        }
+                        return '#'.repeat(w.length);
+                    }).join(' ');
+                } else {
+                    // Hard mode: just show total character count as #'s
+                    const totalLen = currentWords.join(' ').length;
+                    pattern = '#'.repeat(totalLen);
+                }
+            }
             const hint = orientationEnabled
                 ? 'Hold vertical to reveal'
                 : 'Press & hold to reveal <span class="hint-keys">or hold SPACE</span>';
-            return `<div class="reveal-hint" style="font-size: 1.8rem; letter-spacing: 3px; color: #555;">${pattern}</div><div class="reveal-hint" style="margin-top: 8px; font-size: 0.85rem; color: #666;">${hint}</div>`;
+            return `<div class="reveal-hint" style="font-size: 3rem; letter-spacing: 4px; color: #fff; font-weight: bold; line-height: 1.4; word-break: keep-all;">${pattern}</div><div class="reveal-hint" style="margin-top: 12px; font-size: 0.85rem; color: #999;">${hint}</div>`;
         }
 
         function updateWordVisibilityByOrientation() {
             if (!orientationEnabled && !tapToRevealEnabled) return;
+
+            // Reset transition zone styles
+            redactLabelEl.style.opacity = '';
+            const wordText = wordContainer.querySelector('.word-text');
+            if (wordText) wordText.style.opacity = '';
 
             if (deviceIsFlat) {
                 // Device is flat (on table) - hide the phrase, show #### pattern
