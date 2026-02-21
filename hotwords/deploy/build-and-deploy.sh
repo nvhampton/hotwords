@@ -4,7 +4,7 @@
 
 set -e
 
-EC2_HOST="${1:-44.228.131.174}"
+EC2_HOST="${1:-184.32.87.58}"
 SSH_KEY="${2:-$HOME/Downloads/mysecurekeypair.pem}"
 EC2_USER="ec2-user"
 REMOTE_DIR="~/hotwords/hotwords/deploy"

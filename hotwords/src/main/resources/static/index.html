@@ -52,6 +52,21 @@
             display: inline-block;
             animation: wordReveal 0.3s ease-out;
         }
+        .word-display .word-hidden {
+            color: #666;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 4px 10px;
+            border-radius: 6px;
+            margin: 0 4px;
+            display: inline-block;
+        }
+        .word-display .word-revealed {
+            color: #4ecdc4;
+            text-shadow: 0 0 10px rgba(78, 205, 196, 0.8);
+            margin: 0 4px;
+            display: inline-block;
+            animation: wordReveal 0.3s ease-out;
+        }
         @keyframes wordReveal {
             0% { transform: scale(1.3); color: #f9ca24; }
             100% { transform: scale(1); color: #4ecdc4; }
@@ -1311,6 +1326,7 @@
         let isHotPlayer = false;       // Am I the describer?
         let heartbeatInterval = null;  // Heartbeat timer
         let onlineRevealedWords = [];  // Which words are revealed (for guessers)
+        let buttonCooldown = false;    // Prevent button spam
 
         // Online mode elements
         const onlinePlayerPanel = document.getElementById('onlinePlayerPanel');
@@ -1321,7 +1337,7 @@
 
         // Render word progress display (local mode and online guesser mode)
         function renderWordProgress() {
-            // Online mode guesser view
+            // Online mode guesser view - show in big center box
             if (!isLocalMode && !isHotPlayer && currentWords.length > 0) {
                 let html = '';
                 for (let i = 0; i < currentWords.length; i++) {
@@ -1333,7 +1349,8 @@
                         html += `<span class="word-hidden">${hidden}</span> `;
                     }
                 }
-                wordProgressEl.innerHTML = html.trim();
+                wordDisplay.innerHTML = html.trim();
+                wordProgressEl.innerHTML = '';
                 return;
             }
 
@@ -2142,8 +2159,8 @@
                 gotItBtn.style.display = '';
                 skipBtn.style.display = '';
                 listenBtn.disabled = false;
-                skipBtn.disabled = false;
-                gotItBtn.disabled = false;
+                skipBtn.disabled = buttonCooldown;
+                gotItBtn.disabled = buttonCooldown;
                 gotItBtn.textContent = 'They Got It!';
             } else {
                 // Guesser: listen button, got it button, no skip
@@ -2151,9 +2168,26 @@
                 gotItBtn.style.display = '';
                 skipBtn.style.display = 'none';
                 listenBtn.disabled = false;
-                gotItBtn.disabled = false;
+                gotItBtn.disabled = buttonCooldown;
                 gotItBtn.textContent = 'Got It!';
             }
+        }
+
+        function startButtonCooldown() {
+            buttonCooldown = true;
+            skipBtn.disabled = true;
+            gotItBtn.disabled = true;
+            setTimeout(() => {
+                buttonCooldown = false;
+                if (gameActive) {
+                    if (isLocalMode) {
+                        skipBtn.disabled = false;
+                        gotItBtn.disabled = false;
+                    } else {
+                        updateOnlineModeButtons();
+                    }
+                }
+            }, 3000);
         }
 
         // Show word for online mode (role-based display)
@@ -2174,9 +2208,9 @@
                 wordProgressEl.innerHTML = '';
                 redactLabelEl.innerHTML = '<div class="reveal-hint">Give verbal clues!<br><span class="hint-keys">Don\'t say the words!</span></div>';
             } else {
-                // Guesser sees #### pattern with revealed words
+                // Guesser sees #### pattern in the big center box
+                wordProgressEl.innerHTML = '';
                 renderWordProgress();
-                wordDisplay.textContent = ''; // Hide the main word display for guessers
                 redactLabelEl.innerHTML = '<div class="reveal-hint">Speak your guesses!</div>';
             }
 
@@ -2330,6 +2364,12 @@
                     // Start fresh game timer
                     startGameTimer();
 
+                    // Restart mic if it was previously active
+                    if (isListening) {
+                        if (!recognition) initSpeechRecognition();
+                        try { recognition.start(); } catch(e) {}
+                    }
+
                     // The NEW_WORD message will follow with the new phrase
                 } else if (msg.type === 'SCORE_UPDATE') {
                     // Only update if game not active (initial load)
@@ -2479,23 +2519,27 @@
 
         // Claim victory
         function claimVictory() {
+            if (buttonCooldown) return;
             const playerName = playerNameInput.value.trim() || 'Anonymous';
             if (ws && ws.readyState === WebSocket.OPEN) {
                 ws.send(JSON.stringify({
                     type: 'CLAIM_VICTORY',
                     player: playerName
                 }));
+                startButtonCooldown();
             }
         }
 
         // Skip word
         function skipWord() {
+            if (buttonCooldown) return;
             const playerName = playerNameInput.value.trim() || 'Anonymous';
             if (ws && ws.readyState === WebSocket.OPEN) {
                 ws.send(JSON.stringify({
                     type: 'SKIP_WORD',
                     player: playerName
                 }));
+                startButtonCooldown();
             }
         }
 
@@ -2878,8 +2922,9 @@
 
         // Local Mode: Claim victory
         function localModeClaimVictory() {
-            if (!isLocalMode || !gameActive || hasClaimedVictory) return;
+            if (!isLocalMode || !gameActive || hasClaimedVictory || buttonCooldown) return;
             hasClaimedVictory = true;
+            startButtonCooldown();
 
             localScore++;
             scoreCountEl.textContent = localScore;
@@ -2901,7 +2946,8 @@
 
         // Local Mode: Skip phrase (hot potato - same player, new phrase)
         function localModeSkipWord() {
-            if (!isLocalMode || !gameActive) return;
+            if (!isLocalMode || !gameActive || buttonCooldown) return;
+            startButtonCooldown();
 
             const player = localModePlayers[currentPlayerIndex];
 
