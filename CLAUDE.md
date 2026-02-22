@@ -1,12 +1,6 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code when working with this repository.
-
-## Project Overview
-
-Hotwords is a word/phrase guessing game with two modes:
-- **Local Mode**: Hot potato style - pass one device, say phrases before timer runs out
-- **Online Mode**: Distributed hot potato - one describer gives clues, others guess
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## Build Commands
 
@@ -16,67 +10,74 @@ Run from the `hotwords/` subdirectory:
 ./gradlew build      # Build project
 ./gradlew run        # Run locally on port 8080
 ./gradlew shadowJar  # Build fat JAR for deployment
-docker build -t hotwords .  # Build Docker image
 ```
+
+There are no unit tests. The project has no test dependencies or `src/test/` directory.
+
+## Deploy
+
+```bash
+# One command: builds locally, SCPs to EC2, restarts services
+bash deploy/build-and-deploy.sh
+```
+
+This builds the fat JAR, uploads it to EC2 (184.32.87.58), and runs `deploy.sh` remotely which restarts the systemd service and Caddy reverse proxy. Production URL: `https://hotwords.xyz`
 
 ## Architecture
 
-### Frontend (`src/main/resources/static/index.html`)
-- Single-file HTML/CSS/JS (~2500 lines)
-- Web Speech API for voice recognition
-- DeviceOrientation API for tilt-to-reveal (local mode)
-- Keyboard shortcuts: Space (reveal), Enter (got it), Tab (skip)
+### Two-file application
 
-### Backend (`src/main/kotlin/com/example/Application.kt`)
-- Ktor WebSocket server
-- Room-based multiplayer at `/game/{roomId}`
-- Player tracking with 15s TTL heartbeat
-- In-memory state with `ConcurrentHashMap`
+**Backend** — `src/main/kotlin/com/example/Application.kt` (~700 lines)
+- Ktor WebSocket server with room-based multiplayer at `/game/{roomId}`
+- REST endpoints: `POST /api/scores` (submit round), `GET /api/leaderboard` (fetch rankings)
+- All state in-memory via `ConcurrentHashMap` (rooms, players, scores) — no database
+- Player lifecycle: heartbeat every 10s from client, server TTL cleanup every 5s (15s expiry)
+- Serializable `GameMessage` data class with string `type` discriminator for all WebSocket messages
 
-## Key Features
+**Frontend** — `src/main/resources/static/index.html` (~3700 lines)
+- Single-file vanilla HTML/CSS/JS, no framework
+- Web Speech API for voice recognition (Chrome/Edge/Safari)
+- DeviceOrientation API for tilt-to-reveal on mobile (local mode)
+- Press-to-reveal as fallback/supplement (desktop and mobile)
+- Keyboard shortcuts: Space (reveal), Enter (got it), Tab (skip), Escape (lobby)
 
-### Local Mode
-- Word progress: `Player: #### ### #####`
-- Words reveal as detected in speech
-- Skip = same player, new phrase (hot potato)
-- Timer runs continuously, loser is whoever holds at end
+### Game modes
 
-### Online Mode (Distributed Hot Potato)
-- **Roles**: One "hot" player (describer) + guessers
-- **Describer**: Sees full phrase, gives verbal clues (can't say the words!)
-- **Guessers**: See `####` pattern, words reveal as they guess correctly
-- **Turn rotation**: Victory or skip rotates describer
-- **Speech monitoring**: Describer is penalized for saying forbidden words
-- **Player list**: Shows all connected players with role badges
+**Local Mode** — Single device, pass-and-play hot potato
+- Timer runs continuously, player holding device when timer expires loses
+- Difficulty: easy (words reveal individually as spoken) vs hard (shows word count only, full phrase match)
+- Orientation/press reveals phrase; flat/release hides it
+- Got It → next player, new phrase. Skip → same player, new phrase.
 
-## Message Types
+**Online Mode** — WebSocket rooms, distributed hot potato
+- One "hot" player (describer) sees phrase, gives verbal clues
+- Guessers see `####` pattern, words reveal as matched via speech
+- Victory or skip rotates the describer role
+- Describer penalized for saying forbidden words
+
+### State flow
+
+Room state is isolated per `roomId`. The server tracks: active players (with heartbeat TTL), current hot player index, current phrase, and a boolean array of revealed words. The client manages its own speech recognition, orientation sensors, and local game timer independently.
+
+### Key frontend patterns
+
+- **Reveal system**: `orientationEnabled` (tilt) and `tapToRevealEnabled` (press) can coexist; `pressRevealing` flag prevents orientation handler from hiding during active press; `stopReveal` defers to orientation state when in tilt mode
+- **Cooldowns**: Got It (400ms) and Skip (separate) prevent spam; both re-enabled on word reveal after passing period
+- **Game summary overlay** (z-index 1050) stays behind leaderboard overlay (z-index 1100); dismissing leaderboard reveals summary underneath
+- **`pendingLeaderboard` promise**: Round submitted immediately in `endGame()`, stored as promise; both Leaderboard button and any auto-show await the same promise
+
+## Message Protocol
 
 ### Client → Server
-| Type | Purpose |
-|------|---------|
-| `SET_NAME` | Join room with player name |
-| `HEARTBEAT` | Keep-alive (every 10s) |
-| `WORD_MATCH` | Guesser matched a word |
-| `CLAIM_VICTORY` | Full phrase matched |
-| `SKIP_WORD` | Skip phrase (rotates turn) |
-| `DESCRIBER_SLIP` | Describer said forbidden word |
-| `DESCRIBER_FAIL` | Describer said entire phrase |
+`SET_NAME`, `HEARTBEAT`, `WORD_MATCH`, `CLAIM_VICTORY`, `SKIP_WORD`, `DESCRIBER_SLIP`, `DESCRIBER_FAIL`, `NEW_ROUND`
 
 ### Server → Client
-| Type | Purpose |
-|------|---------|
-| `PLAYER_LIST` | Current players + hot index |
-| `NEW_WORD` | Phrase + revealed state |
-| `WORD_PROGRESS` | Updated revealed words |
-| `ROUND_WON` | Victory notification |
-| `WORD_SKIPPED` | Skip notification |
-| `DESCRIBER_SLIPPED` | Penalty notification |
-| `DESCRIBER_FAILED` | Full fail notification |
+`PLAYER_LIST`, `NEW_WORD`, `WORD_PROGRESS`, `ROUND_WON`, `WORD_SKIPPED`, `DESCRIBER_SLIPPED`, `DESCRIBER_FAILED`, `TIMER_SYNC`, `GAME_STARTED`
 
 ## Tech Stack
 
-- Kotlin 1.9.22 / JVM 21
-- Ktor 2.3.7 + Netty
-- kotlinx.serialization
-- Shadow plugin for fat JAR
-- Docker + Caddy for deployment
+- Kotlin 1.9.22 / JVM 21 / Ktor 2.3.7 + Netty
+- kotlinx.serialization for JSON
+- Shadow plugin 8.1.1 for fat JAR (output: `build/libs/game-server.jar`, ~16MB)
+- Caddy for HTTPS termination (auto Let's Encrypt) + reverse proxy
+- systemd for process management on EC2

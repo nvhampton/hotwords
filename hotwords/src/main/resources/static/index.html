@@ -33,10 +33,6 @@
             letter-spacing: 2px;
             min-height: 40px;
         }
-        .word-progress .player-name {
-            color: #4ecdc4;
-            margin-right: 10px;
-        }
         .word-progress .word-hidden {
             color: #666;
             background: rgba(255, 255, 255, 0.1);
@@ -149,6 +145,7 @@
             user-select: none;
             -webkit-user-select: none;
             -webkit-touch-callout: none;
+            touch-action: manipulation;
         }
         .word-display.redacted {
             background: linear-gradient(135deg, #ff6b6b 0%, #ee5a5a 100%);
@@ -216,20 +213,20 @@
         }
         .score-display {
             position: fixed;
-            top: 20px;
+            top: 22px;
             right: 20px;
             z-index: 100;
-            text-align: center;
+            text-align: right;
         }
         .score-number {
-            font-size: 1.6rem;
+            font-size: 1.4rem;
             font-weight: bold;
             color: #f9ca24;
             text-shadow: 0 0 15px rgba(249, 202, 36, 0.4);
-            line-height: 1;
+            line-height: 1.2;
         }
         .score-label {
-            font-size: 0.6rem;
+            font-size: 0.55rem;
             color: #888;
             text-transform: uppercase;
             letter-spacing: 1px;
@@ -295,7 +292,8 @@
             background: linear-gradient(135deg, #4ecdc4 0%, #44a08d 100%);
             color: #fff;
             font-size: 1.3rem;
-            padding: 28px 50px;
+            padding: 50px 50px;
+            border-radius: 16px;
         }
         .gotit-btn:hover:not(:disabled) {
             transform: translateY(-2px);
@@ -305,7 +303,8 @@
             background: linear-gradient(135deg, #f9ca24 0%, #f0932b 100%);
             color: #1a1a2e;
             font-weight: bold;
-            padding: 28px 40px;
+            padding: 50px 40px;
+            border-radius: 16px;
         }
         .skip-btn:hover:not(:disabled) {
             transform: translateY(-2px);
@@ -332,14 +331,21 @@
             gap: 10px;
         }
         .listen-row {
-            margin-top: 15px;
+            position: fixed;
+            top: 20px;
+            left: 110px;
+            z-index: 100;
+            margin: 0;
         }
         .listen-btn {
             background: rgba(255, 255, 255, 0.1);
             border: 1px solid rgba(255, 255, 255, 0.2);
             color: #888;
-            font-size: 0.9rem;
-            padding: 8px 20px;
+            font-size: 0.85rem;
+            padding: 8px 14px;
+            margin: 0;
+            border-radius: 8px;
+            line-height: 1.2;
         }
         .listen-btn:hover:not(:disabled) {
             background: rgba(255, 255, 255, 0.15);
@@ -381,24 +387,7 @@
             color: #f9ca24;
         }
         .player-input {
-            margin-bottom: 20px;
-        }
-        .player-input input {
-            font-size: 1rem;
-            padding: 10px 20px;
-            border: 2px solid rgba(255, 255, 255, 0.2);
-            border-radius: 25px;
-            background: rgba(255, 255, 255, 0.1);
-            color: #fff;
-            text-align: center;
-            width: 200px;
-        }
-        .player-input input::placeholder {
-            color: rgba(255, 255, 255, 0.5);
-        }
-        .player-input input:focus {
-            outline: none;
-            border-color: #4ecdc4;
+            display: none;
         }
         .error {
             color: #ff6b6b;
@@ -669,7 +658,176 @@
             box-shadow: 0 5px 20px rgba(255, 107, 107, 0.4);
         }
 
+        /* Game Summary Overlay */
+        .game-summary-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(26, 26, 46, 0.97);
+            z-index: 1050;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .game-summary-overlay.active {
+            display: flex;
+        }
+        .game-summary {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 20px;
+            padding: 30px;
+            max-width: 440px;
+            width: 100%;
+            max-height: 80vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .game-summary-title {
+            font-size: 2rem;
+            font-weight: bold;
+            text-align: center;
+            color: #f9ca24;
+            text-shadow: 0 0 20px rgba(249, 202, 36, 0.5);
+            margin-bottom: 8px;
+        }
+        .game-summary-score {
+            font-size: 2.5rem;
+            text-align: center;
+            margin-bottom: 16px;
+        }
+        .game-summary-phrases {
+            width: 100%;
+            overflow-y: auto;
+            flex: 1;
+            min-height: 0;
+            max-height: 40vh;
+            margin-bottom: 20px;
+            padding: 0 4px;
+        }
+        .game-summary-phrase {
+            font-size: 0.95rem;
+            padding: 6px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .game-summary-time {
+            color: rgba(255, 255, 255, 0.25);
+            font-size: 0.8rem;
+            margin-left: 12px;
+            flex-shrink: 0;
+        }
+        .game-summary-phrase.got-it {
+            color: rgba(78, 205, 196, 0.8);
+        }
+        .game-summary-phrase.skipped {
+            color: rgba(255, 255, 255, 0.3);
+            text-decoration: line-through;
+        }
+        .game-summary-phrase.timed-out {
+            color: rgba(255, 255, 255, 0.3);
+            font-style: italic;
+        }
+        .game-summary-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 8px;
+            width: 100%;
+            justify-content: center;
+        }
+        .game-summary-btn {
+            padding: 12px 30px;
+            font-size: 1.1rem;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a5a 100%);
+            color: #fff;
+            transition: all 0.3s ease;
+        }
+        .game-summary-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(255, 107, 107, 0.4);
+        }
+        .game-summary-btn.secondary {
+            background: rgba(255, 255, 255, 0.1);
+        }
+        .game-summary-btn.secondary:hover {
+            background: rgba(255, 255, 255, 0.18);
+            box-shadow: 0 5px 20px rgba(255, 255, 255, 0.1);
+        }
+        .game-summary-back {
+            margin-top: 16px;
+            background: none;
+            border: none;
+            color: rgba(255, 255, 255, 0.4);
+            font-size: 0.85rem;
+            cursor: pointer;
+            padding: 4px 8px;
+            transition: color 0.2s ease;
+        }
+        .game-summary-back:hover {
+            color: rgba(255, 255, 255, 0.7);
+        }
+
         /* Player Count Selector */
+        .difficulty-toggle {
+            display: flex;
+            justify-content: center;
+            gap: 0;
+            margin-bottom: 6px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .diff-btn {
+            flex: 1;
+            padding: 10px 0;
+            font-size: 1rem;
+            font-weight: bold;
+            border: none;
+            background: transparent;
+            color: #666;
+            cursor: pointer;
+            transition: all 0.25s ease;
+        }
+        .diff-btn.active {
+            background: linear-gradient(135deg, #8a2be2 0%, #6a1cb2 100%);
+            color: #fff;
+        }
+        .diff-btn:not(.active):hover {
+            color: #aaa;
+            background: rgba(255, 255, 255, 0.05);
+        }
+        .difficulty-desc {
+            text-align: center;
+            font-size: 0.75rem;
+            color: #888;
+            margin-bottom: 4px;
+        }
+        .local-start-btn {
+            width: 100%;
+            padding: 16px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            border: none;
+            border-radius: 14px;
+            cursor: pointer;
+            background: linear-gradient(135deg, #8a2be2 0%, #6a1cb2 100%);
+            color: #fff;
+            margin-top: 8px;
+            transition: all 0.3s ease;
+        }
+        .local-start-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(138, 43, 226, 0.4);
+        }
         .player-count-btn {
             width: 40px;
             height: 40px;
@@ -846,7 +1004,7 @@
             padding: 0;
         }
         .mode-section.selected .mode-expand {
-            max-height: 300px;
+            max-height: 400px;
             opacity: 1;
             padding-top: 15px;
         }
@@ -902,15 +1060,17 @@
             position: fixed;
             top: 20px;
             left: 20px;
-            font-size: 1rem;
-            padding: 10px 20px;
+            font-size: 0.85rem;
+            padding: 8px 16px;
             background: rgba(255, 255, 255, 0.1);
-            border: 2px solid rgba(255, 255, 255, 0.2);
-            border-radius: 25px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
             color: #fff;
             cursor: pointer;
             z-index: 100;
             display: none;
+            margin: 0;
+            line-height: 1.2;
         }
         .back-btn:hover {
             background: rgba(255, 255, 255, 0.2);
@@ -978,10 +1138,7 @@
             background: rgba(255, 255, 255, 0.1);
         }
 
-        /* Hide online-only elements in local mode */
-        .local-mode .player-input {
-            display: none;
-        }
+        /* Hide elements in local mode */
         .local-mode .transcript {
             display: none;
         }
@@ -1116,12 +1273,18 @@
             <div class="mode-section" id="localSection">
                 <button class="mode-btn local" id="localModeBtn">📱 Play on this device</button>
                 <div class="mode-expand" id="localExpand">
+                    <div class="difficulty-toggle">
+                        <button class="diff-btn active" id="diffEasy">Easy</button>
+                        <button class="diff-btn" id="diffHard">Hard</button>
+                    </div>
+                    <div class="difficulty-desc" id="diffDesc">Words reveal as you say them</div>
                     <div style="display: flex; align-items: center; justify-content: center; gap: 16px; padding: 12px 0;">
                         <span style="color: #aaa; font-size: 1rem;">Players:</span>
                         <button class="player-count-btn" id="playerCountDown">−</button>
                         <span style="font-size: 1.5rem; font-weight: bold; min-width: 30px; text-align: center;" id="playerCountDisplay">2</span>
                         <button class="player-count-btn" id="playerCountUp">+</button>
                     </div>
+                    <button class="local-start-btn" id="localStartBtn">▶ Start Game</button>
                 </div>
             </div>
 
@@ -1135,7 +1298,9 @@
                     <div class="room-input-row">
                         <input type="text" class="room-input" id="roomInput" maxlength="20" spellcheck="false">
                         <button class="join-btn" id="randomBtn">Random</button>
+                        <button class="join-btn" id="shareBtn">Share</button>
                     </div>
+                    <button class="local-start-btn" id="onlineStartBtn">▶ Start Game</button>
                 </div>
             </div>
         </div>
@@ -1203,7 +1368,21 @@
     <div class="celebration" id="celebration">
         <div class="celebration-content">
             <div class="celebration-text" id="celebrationWord"></div>
-            <div class="celebration-winner" id="winnerName"></div>
+            <div class="celebration-winner" id="celebrationInfo"></div>
+        </div>
+    </div>
+
+    <!-- Game Summary Overlay -->
+    <div class="game-summary-overlay" id="gameSummaryOverlay">
+        <div class="game-summary">
+            <div class="game-summary-title">Game Over!</div>
+            <div class="game-summary-score" id="gameSummaryScore"></div>
+            <div class="game-summary-phrases" id="gameSummaryPhrases"></div>
+            <div class="game-summary-buttons">
+                <button class="game-summary-btn" id="gameSummaryPlayAgain">Play Again</button>
+                <button class="game-summary-btn secondary" id="gameSummaryLeaderboard">Leaderboard</button>
+            </div>
+            <button class="game-summary-back" id="gameSummaryBack">&larr; Back to Lobby</button>
         </div>
     </div>
 
@@ -1216,6 +1395,8 @@
                 Hotwords uses your microphone to detect spoken words during the game.
                 <br><br>
                 All audio is processed <strong>locally on your device</strong> — nothing is recorded or sent anywhere. Permissions are temporary and can be revoked at any time.
+                <br><br>
+                You can still play without microphone access, but you'll need to use the buttons instead of voice detection.
             </div>
             <button class="mic-dialog-btn" id="micDialogBtn">Got it, let's go!</button>
         </div>
@@ -1336,11 +1517,21 @@
         const randomBtn = document.getElementById('randomBtn');
         const errorEl = document.getElementById('error');
         const celebrationEl = document.getElementById('celebration');
-        const winnerNameEl = document.getElementById('winnerName');
+        const celebrationInfoEl = document.getElementById('celebrationInfo');
         const celebrationWordEl = document.getElementById('celebrationWord');
         const closeMatchOverlay = document.getElementById('closeMatchOverlay');
         const closeMatchPct = document.getElementById('closeMatchPct');
         const scoreCountEl = document.getElementById('scoreCount');
+        const gameSummaryOverlay = document.getElementById('gameSummaryOverlay');
+        const gameSummaryScore = document.getElementById('gameSummaryScore');
+        const gameSummaryPhrases = document.getElementById('gameSummaryPhrases');
+        const gameSummaryPlayAgain = document.getElementById('gameSummaryPlayAgain');
+        const gameSummaryLeaderboard = document.getElementById('gameSummaryLeaderboard');
+        const gameSummaryBack = document.getElementById('gameSummaryBack');
+
+        function updateScoreDisplay(score) {
+            scoreCountEl.textContent = score;
+        }
         const wordProgressEl = document.getElementById('wordProgress');
         const redactLabelEl = document.getElementById('redactLabel');
         const timerDisplayEl = document.getElementById('timerDisplay');
@@ -1369,11 +1560,14 @@
         let timerPaused = false;
         let localScore = 0;
         let gameActive = false;
+        let pendingLeaderboard = null;
         let isLocalMode = false;
         let localModePlayers = [];
         let currentPlayerIndex = 0;
         let orientationEnabled = false;
         let deviceIsFlat = false;
+        let phraseHistory = [];
+        let phraseStartTime = 0;
 
         // Game difficulty: true = individual words reveal as detected (easy), false = must match full phrase (hard)
         let partialWordReveal = true;
@@ -1637,24 +1831,22 @@
             return roomNames[Math.floor(Math.random() * roomNames.length)];
         }
 
-        // Get room from URL or generate random
+        // Get room from URL, localStorage, or generate random
         function getInitialRoom() {
             const urlParams = new URLSearchParams(window.location.search);
-            return urlParams.get('room') || getRandomRoomName();
+            return urlParams.get('room') || localStorage.getItem('hotwords_room') || getRandomRoomName();
         }
 
-        // Update URL without reloading
+        // Save room to localStorage (no longer updates URL)
         function updateUrl(roomId) {
-            const url = new URL(window.location);
-            url.searchParams.set('room', roomId);
-            window.history.replaceState({}, '', url);
+            localStorage.setItem('hotwords_room', roomId);
         }
 
         // Celebration animation
-        function showCelebration(winnerName, word) {
+        function showCelebration(playerName, word) {
             isCelebrating = true;
             celebrationWordEl.textContent = word;
-            winnerNameEl.textContent = winnerName + ' got it!';
+            celebrationInfoEl.textContent = playerName + ' got it!';
             celebrationEl.classList.add('active');
 
             // Create flash effect
@@ -1725,7 +1917,8 @@
         function showCelebrationLocal(word, score) {
             isCelebrating = true;
             celebrationWordEl.textContent = word;
-            winnerNameEl.innerHTML = `<div style="font-size: 2.5rem; margin-bottom: 10px;">${score} 🔥</div>`;
+            const fires = '🔥'.repeat(Math.min(score, 15));
+            celebrationInfoEl.innerHTML = `<div style="font-size: 2.5rem; margin-bottom: 10px;">${score}${fires}</div>`;
             celebrationEl.classList.add('active');
 
             // Create flash effect
@@ -1810,7 +2003,7 @@
         function startGameTimer() {
             gameActive = true;
             localScore = 0;
-            scoreCountEl.textContent = '0';
+            updateScoreDisplay(0);
             timeRemaining = GAME_DURATION;
             timerCountEl.textContent = timeRemaining;
             timerDisplayEl.classList.add('active');
@@ -1870,23 +2063,33 @@
             statusEl.textContent = `Time's up! Final score: ${localScore}`;
             statusEl.classList.remove('listening');
 
-            // Show Game Over + Play Again for both modes
-            wordDisplay.textContent = 'Game Over!';
             wordProgressEl.innerHTML = '';
             if (isLocalMode) {
                 wordContainer.classList.remove('orientation-hidden');
                 listenBtn.disabled = true;
                 skipBtn.disabled = true;
                 gotItBtn.disabled = true;
+
+                // Add the phrase that was active when time expired
+                if (currentWord) {
+                    phraseHistory.push({ phrase: currentWord, status: 'timed-out', time: Math.round((Date.now() - phraseStartTime) / 1000) });
+                }
+
+                // Show game summary overlay
+                showGameSummary(localScore, phraseHistory);
             } else {
+                // Online mode: keep existing behavior
+                wordDisplay.textContent = 'Game Over!';
                 listenBtn.style.display = 'none';
                 skipBtn.style.display = 'none';
                 gotItBtn.style.display = 'none';
+                playAgainBtn.style.display = '';
             }
-            playAgainBtn.style.display = '';
 
-            // Submit round and show leaderboard after a short delay
-            setTimeout(async () => {
+            // Submit round immediately, store promise for leaderboard
+            const leaderboardMode = isLocalMode ? 'local' : 'online';
+            const leaderboardRoomId = isLocalMode ? null : currentRoomId;
+            pendingLeaderboard = (async () => {
                 let submissionResult = null;
                 if (isLocalMode) {
                     submissionResult = await submitRound('local', null, localModePlayers, localScore);
@@ -1894,17 +2097,15 @@
                     const players = onlinePlayers.map(p => p.name);
                     submissionResult = await submitRound('online', currentRoomId, players, localScore);
                 }
-                const mode = isLocalMode ? 'local' : 'online';
-                const roomId = isLocalMode ? null : currentRoomId;
-                showLeaderboardView(mode, roomId, submissionResult);
-            }, CELEBRATION_DELAY);
+                return { result: submissionResult, mode: leaderboardMode, roomId: leaderboardRoomId };
+            })();
         }
 
         // Update local score
         function incrementLocalScore() {
             if (gameActive) {
                 localScore++;
-                scoreCountEl.textContent = localScore;
+                updateScoreDisplay(localScore);
             }
         }
 
@@ -2036,6 +2237,31 @@
         }
 
         leaderboardClose.addEventListener('click', dismissLeaderboard);
+
+        // ========== GAME SUMMARY ==========
+
+        function showGameSummary(score, history) {
+            const fires = '\u{1F525}'.repeat(Math.min(score, 15));
+            gameSummaryScore.innerHTML = `<span style="font-size: 2.5rem;">${score}</span> ${fires}`;
+
+            let phrasesHtml = '';
+            for (const entry of history) {
+                const cls = entry.status === 'got-it' ? 'got-it' : entry.status === 'timed-out' ? 'timed-out' : 'skipped';
+                const prefix = entry.status === 'got-it' ? '\u2713' : '\u2717';
+                const timeStr = entry.time != null ? `<span class="game-summary-time">${entry.time}s</span>` : '';
+                phrasesHtml += `<div class="game-summary-phrase ${cls}">${prefix} ${escapeHtml(entry.phrase)}${timeStr}</div>`;
+            }
+            if (history.length === 0) {
+                phrasesHtml = '<div class="game-summary-phrase" style="color: rgba(255,255,255,0.3);">No phrases played</div>';
+            }
+            gameSummaryPhrases.innerHTML = phrasesHtml;
+
+            gameSummaryOverlay.classList.add('active');
+        }
+
+        function dismissGameSummary() {
+            gameSummaryOverlay.classList.remove('active');
+        }
 
         // Levenshtein distance for similarity checking
         function levenshteinDistance(str1, str2) {
@@ -2242,7 +2468,7 @@
                     if (isLocalMode) { gotItBtn.disabled = false; }
                     else { updateOnlineModeButtons(); }
                 }
-            }, 1000);
+            }, 400);
         }
 
         function startSkipCooldown() {
@@ -2421,7 +2647,7 @@
                     // New round started - reset and start fresh
                     dismissLeaderboard();
                     localScore = 0;
-                    scoreCountEl.textContent = '0';
+                    updateScoreDisplay(0);
                     hasClaimedVictory = false;
 
                     // Hide play again, show normal buttons
@@ -2441,7 +2667,7 @@
                 } else if (msg.type === 'SCORE_UPDATE') {
                     // Only update if game not active (initial load)
                     if (!gameActive && msg.score !== undefined) {
-                        scoreCountEl.textContent = msg.score;
+                        updateScoreDisplay(msg.score);
                     }
                 } else if (msg.type === 'DESCRIBER_SLIPPED') {
                     // Describer said a forbidden word - show penalty
@@ -2490,7 +2716,7 @@
                 }
                 wordDisplay.textContent = 'Joining...';
                 wordContainer.classList.remove('redacted');
-                scoreCountEl.textContent = '0';
+                updateScoreDisplay(0);
                 currentWords = [];
                 revealedWords = [];
                 renderWordProgress();
@@ -2702,12 +2928,14 @@
         // Play Again button
         playAgainBtn.addEventListener('click', async () => {
             dismissLeaderboard();
+            dismissGameSummary();
             playAgainBtn.style.display = 'none';
             if (isLocalMode) {
                 // Restart local game with same players
                 currentPlayerIndex = 0;
                 localScore = 0;
-                scoreCountEl.textContent = '0';
+                phraseHistory = [];
+                updateScoreDisplay(0);
                 wordDisplay.textContent = 'Get Ready!';
                 listenBtn.disabled = false;
                 skipBtn.disabled = false;
@@ -2728,6 +2956,24 @@
             }
         });
 
+        // Summary Play Again button - same as playAgainBtn but triggered from summary overlay
+        gameSummaryPlayAgain.addEventListener('click', () => {
+            playAgainBtn.click();
+        });
+
+        // Summary Leaderboard button
+        gameSummaryLeaderboard.addEventListener('click', async () => {
+            if (pendingLeaderboard) {
+                const { result, mode, roomId } = await pendingLeaderboard;
+                showLeaderboardView(mode, roomId, result);
+            }
+        });
+
+        // Summary Back to Lobby button
+        gameSummaryBack.addEventListener('click', () => {
+            showLobby();
+        });
+
         // Random room button
         randomBtn.addEventListener('click', () => {
             let newRoom = getRandomRoomName();
@@ -2737,6 +2983,28 @@
             }
             roomInput.value = newRoom;
             joinRoom();
+        });
+
+        // Share room button
+        const shareBtn = document.getElementById('shareBtn');
+        shareBtn.addEventListener('click', async () => {
+            const room = roomInput.value.trim() || currentRoomId;
+            const url = new URL(window.location.origin);
+            url.searchParams.set('room', room);
+            const shareUrl = url.toString();
+
+            if (navigator.share) {
+                try {
+                    await navigator.share({ title: 'Hotwords', text: `Join my Hotwords room!`, url: shareUrl });
+                } catch (e) {
+                    // User cancelled or share failed - ignore
+                }
+            } else {
+                await navigator.clipboard.writeText(shareUrl);
+                const orig = shareBtn.textContent;
+                shareBtn.textContent = 'Copied!';
+                setTimeout(() => { shareBtn.textContent = orig; }, 1500);
+            }
         });
 
         // Auto-join on blur (when done editing)
@@ -2766,6 +3034,7 @@
         // Show lobby, hide game screen
         function showLobby() {
             dismissLeaderboard();
+            dismissGameSummary();
             // Stop any active game
             if (gameActive) {
                 endGame();
@@ -2814,8 +3083,6 @@
             selectedMode = null;
             localSection.classList.remove('selected');
             onlineSection.classList.remove('selected');
-            localModeBtn.textContent = '📱 Play on this device';
-            onlineModeBtn.textContent = '🌐 Join a room';
         }
 
         // Back button
@@ -2824,25 +3091,16 @@
         // Select a mode (expand) or start if already selected
         function selectMode(mode) {
             if (selectedMode === mode) {
-                // Already selected - start the game
-                if (mode === 'local') {
-                    startLocalGame();
-                } else {
-                    startOnlineGame();
-                }
+                // Already selected - each mode uses its own start button
             } else {
                 // Select this mode
                 selectedMode = mode;
                 if (mode === 'local') {
                     localSection.classList.add('selected');
                     onlineSection.classList.remove('selected');
-                    localModeBtn.textContent = '▶ Start';
-                    onlineModeBtn.textContent = '🌐 Join a room';
                 } else {
                     onlineSection.classList.add('selected');
                     localSection.classList.remove('selected');
-                    onlineModeBtn.textContent = '▶ Start';
-                    localModeBtn.textContent = '📱 Play on this device';
                 }
             }
         }
@@ -2850,8 +3108,34 @@
         // Local Mode button
         localModeBtn.addEventListener('click', () => selectMode('local'));
 
+        // Local Start button (inside expanded area)
+        const localStartBtn = document.getElementById('localStartBtn');
+        localStartBtn.addEventListener('click', () => startLocalGame());
+
         // Online Mode button
         onlineModeBtn.addEventListener('click', () => selectMode('online'));
+
+        // Online Start button (inside expanded area)
+        const onlineStartBtn = document.getElementById('onlineStartBtn');
+        onlineStartBtn.addEventListener('click', () => startOnlineGame());
+
+        // Difficulty toggle
+        const diffEasy = document.getElementById('diffEasy');
+        const diffHard = document.getElementById('diffHard');
+        const diffDesc = document.getElementById('diffDesc');
+
+        diffEasy.addEventListener('click', () => {
+            partialWordReveal = true;
+            diffEasy.classList.add('active');
+            diffHard.classList.remove('active');
+            diffDesc.textContent = 'Words reveal as you say them';
+        });
+        diffHard.addEventListener('click', () => {
+            partialWordReveal = false;
+            diffHard.classList.add('active');
+            diffEasy.classList.remove('active');
+            diffDesc.textContent = 'Must say the full phrase to score';
+        });
 
         // Start Local Game
         async function startLocalGame() {
@@ -2862,6 +3146,7 @@
             isLocalMode = true;
             currentPlayerIndex = 0;
             localScore = 0;
+            phraseHistory = [];
             currentRoomId = getRandomRoomName();
 
             // Show game screen
@@ -2869,7 +3154,7 @@
             gameScreen.classList.add('local-mode');
 
             // Initialize UI
-            scoreCountEl.textContent = '0';
+            updateScoreDisplay(0);
             wordDisplay.textContent = 'Get Ready!';
 
             // Enable orientation/tap detection first (needs user gesture on iOS)
@@ -2956,9 +3241,15 @@
             const wasHidden = wordContainer.classList.contains('orientation-hidden');
             const wasRedacted = wordContainer.classList.contains('redacted');
 
+            // Disable transitions so measurements are instant (not mid-animation)
+            wordContainer.style.transition = 'none';
+
             // Temporarily remove constraints to measure
             wordContainer.style.minHeight = '';
             wordContainer.classList.remove('orientation-hidden', 'redacted');
+
+            // Force reflow so cleared styles take effect immediately
+            wordContainer.offsetHeight;
 
             // Measure revealed state height
             const revealedHeight = wordContainer.scrollHeight;
@@ -2973,12 +3264,16 @@
             // Restore state
             if (wasHidden) wordContainer.classList.add('orientation-hidden');
             if (wasRedacted) wordContainer.classList.add('redacted');
+
+            // Re-enable transitions
+            wordContainer.style.transition = '';
         }
 
         // Show new word in local mode (hidden until revealed)
         function showNewWordLocalMode(word) {
             currentWord = word;
             hasClaimedVictory = false;
+            phraseStartTime = Date.now();
 
             // Initialize word-by-word tracking
             currentWords = word.trim().split(/\s+/);
@@ -3013,16 +3308,23 @@
 
         // Local Mode: Claim victory
         function localModeClaimVictory() {
-            if (!isLocalMode || !gameActive || hasClaimedVictory || gotItCooldown) return;
+            if (!isLocalMode || !gameActive || hasClaimedVictory || gotItCooldown || timerPaused) return;
             hasClaimedVictory = true;
-            startGotItCooldown();
 
-            // Pause timer while passing the device
+            // Pause timer and mic while passing the device
+            // Lock buttons immediately; timed cooldowns start when timer resumes (next player reveals)
             timerPaused = true;
             timerDisplayEl.classList.add('paused');
+            gotItCooldown = true;
+            gotItBtn.disabled = true;
+            skipCooldown = true;
+            skipBtn.disabled = true;
+            if (recognition && isListening) { try { recognition.stop(); } catch(e) {} }
+
+            phraseHistory.push({ phrase: currentWord, status: 'got-it', time: Math.round((Date.now() - phraseStartTime) / 1000) });
 
             localScore++;
-            scoreCountEl.textContent = localScore;
+            updateScoreDisplay(localScore);
 
             closeMatchOverlay.classList.remove('active');
 
@@ -3037,8 +3339,10 @@
 
         // Local Mode: Skip phrase (hot potato - same player, new phrase)
         function localModeSkipWord() {
-            if (!isLocalMode || !gameActive || skipCooldown) return;
+            if (!isLocalMode || !gameActive || skipCooldown || timerPaused) return;
             startSkipCooldown();
+
+            phraseHistory.push({ phrase: currentWord, status: 'skipped', time: Math.round((Date.now() - phraseStartTime) / 1000) });
 
             statusEl.textContent = 'Skipped!';
             statusEl.classList.add('skipped');
@@ -3161,7 +3465,7 @@
                     const absBeta = Math.abs(beta);
 
                     if (absBeta < flatThreshold && Math.abs(gamma) < flatThreshold) {
-                        if (!deviceIsFlat) {
+                        if (!deviceIsFlat && !pressRevealing) {
                             deviceIsFlat = true;
                             updateWordVisibilityByOrientation();
                         }
@@ -3172,7 +3476,13 @@
                         if (deviceIsFlat) {
                             deviceIsFlat = false;
                             updateWordVisibilityByOrientation();
-                            if (timerPaused) { timerPaused = false; timerDisplayEl.classList.remove('paused'); }
+                            if (timerPaused) {
+                                timerPaused = false;
+                                timerDisplayEl.classList.remove('paused');
+                                if (recognition && isListening) { try { recognition.start(); } catch(e) {} }
+                                startGotItCooldown();
+                                startSkipCooldown();
+                            }
                         }
                         // Fully revealed
                         wordContainer.style.opacity = '';
@@ -3189,6 +3499,16 @@
             };
 
             window.addEventListener('deviceorientation', orientationHandler);
+
+            // Also allow press-to-reveal as an alternative while in tilt mode
+            wordContainer.style.cursor = 'pointer';
+            wordContainer.addEventListener('mousedown', startReveal);
+            wordContainer.addEventListener('mouseup', stopReveal);
+            wordContainer.addEventListener('mouseleave', stopReveal);
+            wordContainer.addEventListener('touchstart', startReveal, { passive: true });
+            wordContainer.addEventListener('touchend', stopReveal, { passive: true });
+            wordContainer.addEventListener('touchcancel', stopReveal, { passive: true });
+            wordContainer.addEventListener('contextmenu', preventContextMenu);
 
             // Check after 1 second if we received orientation data
             // If not, fall back to tap-to-reveal mode
@@ -3222,17 +3542,37 @@
             wordContainer.addEventListener('touchstart', startReveal, { passive: true });
             wordContainer.addEventListener('touchend', stopReveal, { passive: true });
             wordContainer.addEventListener('touchcancel', stopReveal, { passive: true });
+            wordContainer.addEventListener('contextmenu', preventContextMenu);
         }
 
         function startReveal(e) {
             if (!isLocalMode || !gameActive) return;
+            pressRevealing = true;
             deviceIsFlat = false;  // Not flat = upright = revealed
             wordContainer.classList.remove('orientation-hidden');
-            if (timerPaused) { timerPaused = false; timerDisplayEl.classList.remove('paused'); }
+            if (timerPaused) {
+                timerPaused = false;
+                timerDisplayEl.classList.remove('paused');
+                if (recognition && isListening) { try { recognition.start(); } catch(e) {} }
+                startGotItCooldown();
+                startSkipCooldown();
+            }
+        }
+
+        let pressRevealing = false;
+
+        function preventContextMenu(e) {
+            e.preventDefault();
         }
 
         function stopReveal(e) {
             if (!isLocalMode || !gameActive) return;
+            pressRevealing = false;
+            // In orientation mode, defer to current device orientation
+            if (orientationEnabled) {
+                updateWordVisibilityByOrientation();
+                return;
+            }
             deviceIsFlat = true;  // Flat = hidden
             wordContainer.classList.add('orientation-hidden');
             redactLabelEl.innerHTML = getHiddenLabel();
@@ -3249,13 +3589,13 @@
                         return '#'.repeat(w.length);
                     }).join(' ');
                 } else {
-                    // Hard mode: just show total character count as #'s
-                    const totalLen = currentWords.join(' ').length;
-                    pattern = '#'.repeat(totalLen);
+                    // Hard mode: just show word count
+                    const count = currentWords.length;
+                    pattern = `${count} word${count !== 1 ? 's' : ''}`;
                 }
             }
             const hint = orientationEnabled
-                ? 'Hold vertical to reveal'
+                ? 'Tilt vertical or press & hold to reveal'
                 : 'Press & hold to reveal <span class="hint-keys">or hold SPACE</span>';
             return `<div class="reveal-hint" style="font-size: 3rem; letter-spacing: 4px; color: #fff; font-weight: bold; line-height: 1.4; word-break: keep-all;">${pattern}</div><div class="reveal-hint" style="margin-top: 12px; font-size: 0.85rem; color: #999;">${hint}</div>`;
         }
@@ -3286,6 +3626,7 @@
             orientationEnabled = false;
             deviceIsFlat = false;
             tapToRevealEnabled = false;
+            pressRevealing = false;
             if (orientationHandler) {
                 window.removeEventListener('deviceorientation', orientationHandler);
                 orientationHandler = null;
@@ -3301,6 +3642,7 @@
             wordContainer.removeEventListener('touchstart', startReveal);
             wordContainer.removeEventListener('touchend', stopReveal);
             wordContainer.removeEventListener('touchcancel', stopReveal);
+            wordContainer.removeEventListener('contextmenu', preventContextMenu);
             wordContainer.style.cursor = '';
             wordContainer.classList.remove('orientation-hidden');
         }
@@ -3317,8 +3659,6 @@
                     selectedMode = null;
                     localSection.classList.remove('selected');
                     onlineSection.classList.remove('selected');
-                    localModeBtn.textContent = '📱 Play on this device';
-                    onlineModeBtn.textContent = '🌐 Join a room';
                 }
                 return;
             }
@@ -3383,7 +3723,6 @@
                 selectedMode = 'online';
                 onlineSection.classList.add('selected');
                 localSection.classList.remove('selected');
-                onlineModeBtn.textContent = '▶ Start';
 
                 // Small delay to let UI update, then auto-start
                 setTimeout(() => {
