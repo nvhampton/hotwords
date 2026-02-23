@@ -196,6 +196,7 @@ fun Application.module() {
                     roomStates.remove(roomId)
                     roomWords.remove(roomId)
                     roomScores.remove(roomId)
+                    roomThemes.remove(roomId)
                     true
                 } else false
             }
@@ -320,6 +321,10 @@ fun Application.module() {
         "Raise the bar", "Move the goalposts", "Shift the paradigm",
         "Cross pollinate", "Future proof", "Right size"
     )
+
+    fun getWordForRoom(roomId: String): String {
+        return if (roomThemes[roomId] == "rko") rkoWords.random() else gameWords.random()
+    }
 
     routing {
         staticResources("/", "static") {
@@ -475,7 +480,7 @@ fun Application.module() {
 
             try {
                 // Initialize room word if needed, or get existing
-                val currentWord = roomWords.computeIfAbsent(roomId) { gameWords.random() }
+                val currentWord = roomWords.computeIfAbsent(roomId) { getWordForRoom(roomId) }
                 val currentScore = roomScores.getOrDefault(roomId, 0)
                 sendSerialized(GameMessage(type = "SCORE_UPDATE", score = currentScore))
 
@@ -512,6 +517,18 @@ fun Application.module() {
                                 // Sanitize player name: trim, cap at 20 chars, strip HTML tags
                                 val rawName = (received.player ?: "Anonymous").trim().take(20)
                                 val playerName = rawName.replace(Regex("<[^>]*>"), "").ifEmpty { "Anonymous" }
+
+                                // Set room theme if provided
+                                if (received.theme != null) {
+                                    roomThemes[roomId] = received.theme!!
+                                    // Re-pick word if game hasn't started yet
+                                    if (state.gameStartTime == null) {
+                                        val themedWord = getWordForRoom(roomId)
+                                        roomWords[roomId] = themedWord
+                                        state.currentWord = themedWord
+                                        state.revealedWords = themedWord.split(" ").map { false }.toMutableList()
+                                    }
+                                }
 
                                 // Check if this player already exists (reconnect)
                                 val existingPlayer = state.players.find { it.id == playerId }
@@ -570,12 +587,16 @@ fun Application.module() {
                             }
 
                             "NEW_ROUND" -> {
+                                // Update theme if provided
+                                if (received.theme != null) {
+                                    roomThemes[roomId] = received.theme!!
+                                }
                                 // Start a new round - reset timer and score, get new word
                                 state.gameStartTime = System.currentTimeMillis()
                                 roomScores[roomId] = 0
 
                                 // Get a new word
-                                val newWord = gameWords.random()
+                                val newWord = getWordForRoom(roomId)
                                 roomWords[roomId] = newWord
                                 state.currentWord = newWord
                                 state.revealedWords = newWord.split(" ").map { false }.toMutableList()
@@ -630,7 +651,7 @@ fun Application.module() {
                                             state.currentHotPlayerIndex = (state.currentHotPlayerIndex + 1) % state.players.size
                                         }
 
-                                        val newWord = gameWords.random()
+                                        val newWord = getWordForRoom(roomId)
                                         roomWords[roomId] = newWord
                                         state.currentWord = newWord
                                         state.revealedWords = newWord.split(" ").map { false }.toMutableList()
@@ -708,7 +729,7 @@ fun Application.module() {
                                     state.currentHotPlayerIndex = (state.currentHotPlayerIndex + 1) % state.players.size
                                 }
 
-                                val newWord = gameWords.random()
+                                val newWord = getWordForRoom(roomId)
                                 roomWords[roomId] = newWord
                                 state.currentWord = newWord
                                 state.revealedWords = newWord.split(" ").map { false }.toMutableList()
@@ -748,7 +769,7 @@ fun Application.module() {
                                     state.currentHotPlayerIndex = (state.currentHotPlayerIndex + 1) % state.players.size
                                 }
 
-                                val newWord = gameWords.random()
+                                val newWord = getWordForRoom(roomId)
                                 roomWords[roomId] = newWord
                                 state.currentWord = newWord
                                 state.revealedWords = newWord.split(" ").map { false }.toMutableList()
@@ -787,7 +808,7 @@ fun Application.module() {
                                 val senderIndex = state.players.indexOfFirst { it.id == senderPlayerId }
                                 if (senderIndex != state.currentHotPlayerIndex) continue
                                 // Skip = same describer, new phrase (they take the penalty!)
-                                val newWord = gameWords.random()
+                                val newWord = getWordForRoom(roomId)
                                 roomWords[roomId] = newWord
                                 state.currentWord = newWord
                                 state.revealedWords = newWord.split(" ").map { false }.toMutableList()
