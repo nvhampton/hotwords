@@ -219,14 +219,14 @@
             text-align: right;
         }
         .score-number {
-            font-size: 1.4rem;
+            font-size: 2.4rem;
             font-weight: bold;
             color: #f9ca24;
             text-shadow: 0 0 15px rgba(249, 202, 36, 0.4);
             line-height: 1.2;
         }
         .score-label {
-            font-size: 0.55rem;
+            font-size: 0.85rem;
             color: #888;
             text-transform: uppercase;
             letter-spacing: 1px;
@@ -270,6 +270,24 @@
         }
         .status.skipped {
             color: #f9ca24;
+        }
+        .share-invite {
+            color: #4ecdc4;
+            cursor: pointer;
+            text-decoration: underline;
+            text-underline-offset: 3px;
+            transition: color 0.2s, transform 0.2s;
+            display: inline-block;
+        }
+        .share-invite:hover {
+            color: #7ee8e0;
+        }
+        .share-invite:active {
+            transform: scale(0.97);
+        }
+        .share-invite.copied {
+            color: #2ecc71;
+            text-decoration: none;
         }
         @keyframes pulse {
             0%, 100% { transform: scale(1); }
@@ -946,6 +964,68 @@
             color: #ff6b6b;
         }
 
+        /* Drag handle for reordering players */
+        .drag-handle {
+            cursor: grab;
+            touch-action: none;
+            color: #555;
+            font-size: 1rem;
+            width: 20px;
+            text-align: center;
+            flex-shrink: 0;
+            user-select: none;
+            -webkit-user-select: none;
+            line-height: 1;
+            transition: color 0.2s ease;
+        }
+        .drag-handle:hover {
+            color: #aaa;
+        }
+        .drag-handle:active {
+            cursor: grabbing;
+        }
+        .online-player-item.dragging {
+            opacity: 0.4;
+            border: 1px dashed rgba(255, 255, 255, 0.3);
+        }
+        .online-player-item.drag-over-above {
+            border-top: 2px solid #4ecdc4;
+        }
+        .online-player-item.drag-over-below {
+            border-bottom: 2px solid #4ecdc4;
+        }
+        .online-player-item .player-ready {
+            font-size: 0.85rem;
+            color: #4ecdc4;
+            flex-shrink: 0;
+        }
+
+        /* Ready button */
+        .ready-btn {
+            width: 100%;
+            padding: 16px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            border: none;
+            border-radius: 14px;
+            cursor: pointer;
+            background: linear-gradient(135deg, #4ecdc4 0%, #44a08d 100%);
+            color: #fff;
+            margin-top: 8px;
+            transition: all 0.3s ease;
+        }
+        .ready-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(78, 205, 196, 0.4);
+        }
+        .ready-btn.is-ready {
+            background: linear-gradient(135deg, #f9ca24 0%, #f0932b 100%);
+            color: #1a1a2e;
+        }
+        .ready-btn.is-ready:hover {
+            box-shadow: 0 8px 25px rgba(249, 202, 36, 0.4);
+        }
+
         /* Role indicator for word display */
         .role-indicator {
             display: none;
@@ -1337,6 +1417,38 @@
         .orientation-indicator:hover {
             background: rgba(249, 202, 36, 0.3);
         }
+
+        /* Topic picker */
+        .topic-picker {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+        .topic-pill {
+            padding: 6px 14px;
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            background: rgba(255, 255, 255, 0.05);
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        .topic-pill:hover {
+            border-color: rgba(255, 255, 255, 0.3);
+            color: rgba(255, 255, 255, 0.7);
+            background: rgba(255, 255, 255, 0.1);
+        }
+        .topic-pill.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-color: #667eea;
+            color: #fff;
+            box-shadow: 0 0 12px rgba(102, 126, 234, 0.4);
+        }
     </style>
 </head>
 <body>
@@ -1352,6 +1464,8 @@
             </div>
         </div>
         <h1>🔥 Hotwords 💬</h1>
+
+        <div class="topic-picker" id="topicPicker"></div>
 
         <div class="mode-buttons">
             <!-- Local Mode Section -->
@@ -1872,30 +1986,167 @@
             "Tickle monster", "Stink bug", "Snot rocket", "Armpit fart"
         ];
 
-        // RKO Company Culture phrases — PLACEHOLDER, replace with real phrases
+        // RKO Company Culture phrases
         const rkoGameWords = [
-            "Circle back", "Move the needle", "Deep dive",
-            "Low hanging fruit", "Run it up the flagpole", "Boil the ocean",
-            "Think outside the box", "Synergy", "Alignment",
-            "Take it offline", "Touch base", "Level set",
-            "Net net", "Action item", "Parking lot",
-            "Bandwidth check", "Hard stop", "Pivot",
-            "Value add", "Best practice", "Core competency",
-            "Drill down", "Ecosystem", "Leverage",
-            "Pain point", "Stakeholder", "Deliverable",
-            "Game plan", "On the radar", "In the weeds",
-            "Big picture thinking", "Run the numbers", "Close the loop",
-            "Open the kimono", "Eat our own dog food", "Drink the Kool Aid",
-            "Raise the bar", "Move the goalposts", "Shift the paradigm",
-            "Cross pollinate", "Future proof", "Right size"
+            // Company Jargon
+            "Work Wiser Wednesday", "Book of Record", "Nexus", "Aspen ERG",
+            "Basecamp", "Hands on Keyboard", "Architecture Advisory Forum",
+            "Operations Dashboard", "Directory", "Role Expectations",
+            "Assistant", "Help Center", "Design Partner Program",
+            "Engineering Show and Tell", "Feature Flag Lunch", "Fun Squad",
+            "Service as Software", "Year of CX", "Feature Flag Quiz",
+            "Data Share", "Intelligent Operations", "Agents",
+            "Sandbox Environments", "Market Data", "Ask IO",
+            "Deployments channel", "In Action", "Links hub",
+            "Jitterbug", "Stash", "Feature Megaphone", "P&E Squads", "Props points",
+            // Products & Features
+            "Platform", "Universal Data Model", "Report Builder",
+            "Client Management", "Revenue Management", "Client Portal",
+            "Trade Blotter", "Portfolio Modeling", "Portfolio Rebalancer",
+            "Tax Loss Harvesting", "Post-Trade Dashboard", "Executive Dashboard",
+            "Portfolio Manager Dashboard", "Global Search", "Saved Views",
+            "Hidden but Available", "Group By", "Operations Manager",
+            "Deployment Manager", "Feature Flags", "Users and Entitlements",
+            "Tasks and Notifications", "Data Persistence", "Metadata Service",
+            "Data Replication Service", "Electronic Trading", "Portfolio Construction",
+            "Order Generation", "Trading and Compliance", "Integration Platform",
+            "Integrations Hub",
+            // Values & Culture
+            "Way", "Work Life Harmony", "One", "Stop the Line",
+            "Technology Readiness Level", "TRL 1-9", "Speed at Scale",
+            "Security-first culture", "Core Value Awards", "Props Awards",
+            "Earth Day", "Reading Ambitiously", "Family Hike",
+            "Brilliant jerks are not welcome", "Build, celebrate and grow together",
+            "Outcomes over outputs", "Protect Market Hours", "Security Awareness Week",
+            "Weekly Wednesday", "Responsible AI program",
+            "Our customers are our coworkers", "Empathy and listening",
+            "Keep pushin keep hustlin", "Security-first mindset", "Data Stats", "AI-ready repos",
+            // Executive Catchphrases
+            "RIO", "The Flywheel", "API-first", "Core system of record",
+            "Land and expand", "Automated high availability",
+            "Knowledge Graph", "2030 vision", "Project Octane", "Project One",
+            "Roadshow", "Kickoff", "Everything Base Camp", "AI Platform",
+            "Speed, quality, resilience", "We're all in",
+            // Engineering Lingo
+            "Accounting Processing Engine", "Metadata Delivery Service",
+            "UDM Schema", "UDM Publishing Service", "One API Gateway",
+            "Feature Flag Service", "Release Candidate", "Prod Hotfix",
+            "Zero Downtime", "Ring 0", "Ring 1", "Data Orchestration Engine",
+            "Reporting Engine v2", "Portfolio Access Control", "Reporting Experience",
+            "Service Libs Kotlin", "Data Core", "Event-Driven Backbone",
+            "Elastic by Design", "Observability Everywhere", "Data Source Abstraction",
+            "Kafka Topic Partitions", "Outbox Table", "Pinecone Persistence",
+            "Data Warehouse", "Architecture Decision Record", "Relational Pinecone",
+            "Browser Extension", "DevTools Script",
+            // Customer & Industry
+            "AWS Cloud Practitioner", "Amazon Web Services", "Snowflake Data Warehouse",
+            "Salesforce CRM", "Microsoft Outlook", "Microsoft Teams",
+            "Workato integration", "FactSet analytics", "Bloomberg Terminal",
+            "Bloomberg EMSX", "DTCC Omgeo CTM", "Gresham Technologies",
+            "ICE data feeds", "LSEG market data", "MSCI index data",
+            "GIPS verification", "ISS proxy voting", "ClearPar loans",
+            "Allvue", "Advent APX", "Advent ACD", "Moxy OMS",
+            "Charles River OMS", "SimCorp Dimension", "FundGuard", "Addepar",
+            "Unified data model", "Cloud-native SaaS", "Ex-ante risk", "Ex-post risk",
+            "Composite performance", "UMA model delivery", "Client reporting",
+            "Performance attribution", "Zero-copy data sharing",
+            "Data warehouse connectivity", "Services-as-software",
+            "Agentic automation", "Proactive intelligence",
+            "Real-time books and records", "Custodian authorization", "Custodian connections",
+            // Meetings & Rituals
+            "Demo Day", "Show & Tell", "Engineering Show & Tell",
+            "Tech All Hands", "Company All-Hands", "Product Council",
+            "Operating Reviews", "Manager Community Connect",
+            "Platform PM Team Meeting", "IO Leads Sync", "IO Staff Meeting",
+            "ProDev", "Base Camp", "Nexus Hackathon",
+            "Simulation Exercise", "Day of Giving", "Emoji-nal Support",
+            "Hot Ones: Security Edition", "UI Office Hours",
+            "Technology Show & Tell", "OKTOBERFEST-O-WEEN",
+            "Kick-off costume party", "#product-and-technology-org",
+            "#security-awareness", "#rl-deployments", "#ask-io", "#ask-ui", "#ask-data-persistence",
+            // Inside Jokes
+            "party-bounce", "blob_excited", "heart emoji", "feature-flag",
+            "io emoji", "United States of", "Bricked Environments",
+            "Swag Czar", "DC Swag Czar", "Taxman jam", "Demo Day season",
+            "Mobile app jokes", "Gone Phishing", "Gandalf challenge",
+            "NPC Capital", "Pop Poppin Off", "Concierge", "Error Terrors",
+            "Swipe Right Richies", "Workato is Working Wonders", "Swag drops",
+            "Demo Day Perfection", "Keyboard Navigation Kickoff",
+            "Props & Prize Winners"
         ];
 
         // Theme state
         let rkoTakeoverActive = localStorage.getItem('hotwords_rko_takeover') === 'true';
 
+        // Topic phrase system
+        let activeTopic = null; // null = default (built-in), or topic id string
+        let topicPhrases = null; // loaded phrases array for active topic
+
         function getRandomPhrase() {
-            const words = rkoTakeoverActive ? rkoGameWords : localGameWords;
-            return words[Math.floor(Math.random() * words.length)];
+            // If a specific topic is loaded (RKO or normal), use it
+            if (topicPhrases && topicPhrases.length > 0) {
+                return topicPhrases[Math.floor(Math.random() * topicPhrases.length)];
+            }
+            // RKO mode with no specific topic = all RKO phrases
+            if (rkoTakeoverActive) {
+                return rkoGameWords[Math.floor(Math.random() * rkoGameWords.length)];
+            }
+            return localGameWords[Math.floor(Math.random() * localGameWords.length)];
+        }
+
+        function getActiveThemeForServer() {
+            if (rkoTakeoverActive) {
+                if (activeTopic && activeTopic !== 'default') return 'rko:' + activeTopic;
+                return 'rko';
+            }
+            if (activeTopic && activeTopic !== 'default') return 'topic:' + activeTopic;
+            return null;
+        }
+
+        async function loadTopicPicker() {
+            try {
+                const manifest = rkoTakeoverActive ? '/phrases/rko-topics.json' : '/phrases/topics.json';
+                const res = await fetch(manifest);
+                const topics = await res.json();
+                const picker = document.getElementById('topicPicker');
+                picker.innerHTML = '';
+                topics.forEach(t => {
+                    const pill = document.createElement('span');
+                    pill.className = 'topic-pill' + ((!activeTopic && t.id === 'default') || activeTopic === t.id ? ' active' : '');
+                    pill.textContent = t.label;
+                    pill.dataset.topicId = t.id;
+                    pill.addEventListener('click', () => selectTopic(t.id));
+                    picker.appendChild(pill);
+                });
+            } catch (e) {
+                // If fetch fails, no topic picker — just use defaults
+            }
+        }
+
+        async function selectTopic(topicId) {
+            // Update pills
+            document.querySelectorAll('.topic-pill').forEach(p => {
+                p.classList.toggle('active', p.dataset.topicId === topicId);
+            });
+
+            if (topicId === 'default') {
+                activeTopic = null;
+                topicPhrases = null;
+            } else {
+                try {
+                    // RKO topics live under /phrases/rko/, normal topics under /phrases/
+                    const path = rkoTakeoverActive
+                        ? '/phrases/rko/' + topicId + '.json'
+                        : '/phrases/' + topicId + '.json';
+                    const res = await fetch(path);
+                    topicPhrases = await res.json();
+                    activeTopic = topicId;
+                } catch (e) {
+                    // Fallback to default on error
+                    activeTopic = null;
+                    topicPhrases = null;
+                }
+            }
         }
 
         // Random room name words
@@ -1987,7 +2238,11 @@
                     } else if (typeof pendingWord === 'object' && pendingWord.word) {
                         // Online mode: pendingWord is {word, revealed}
                         onlineRevealedWords = pendingWord.revealed || [];
-                        showNewWordOnline(pendingWord.word, pendingWord.revealed);
+                        if (onlinePlayers.length >= 2) {
+                            showNewWordOnline(pendingWord.word, pendingWord.revealed);
+                        } else {
+                            wordDisplay.textContent = 'Waiting for players...';
+                        }
                     } else {
                         showNewWord(pendingWord);
                     }
@@ -2137,7 +2392,7 @@
             // Stop listening
             if (isListening && recognition) {
                 isListening = false;
-                recognition.stop();
+                silentStop();
                 listenBtn.textContent = 'Start Listening';
                 listenBtn.classList.remove('active');
                 transcriptBox.classList.remove('listening');
@@ -2161,12 +2416,15 @@
                 // Show game summary overlay
                 showGameSummary(localScore, phraseHistory);
             } else {
-                // Online mode: keep existing behavior
-                wordDisplay.textContent = 'Game Over!';
+                // Online mode: track timed-out phrase and show summary
+                if (currentWord) {
+                    phraseHistory.push({ phrase: currentWord, status: 'timed-out', time: Math.round((Date.now() - phraseStartTime) / 1000) });
+                }
                 listenBtn.style.display = 'none';
                 skipBtn.style.display = 'none';
                 gotItBtn.style.display = 'none';
-                playAgainBtn.style.display = '';
+                hideReadyButton();
+                showGameSummary(localScore, phraseHistory);
             }
 
             // Submit round immediately, store promise for leaderboard
@@ -2179,11 +2437,24 @@
                     submissionResult = await submitRound('local', null, localModePlayers, localScore, phrases);
                 } else {
                     const players = onlinePlayers.map(p => p.name);
-                    submissionResult = await submitRound('online', currentRoomId, players, localScore, []);
+                    const phrases = phraseHistory.map(e => ({ phrase: e.phrase, status: e.status, timeSeconds: e.time }));
+                    submissionResult = await submitRound('online', currentRoomId, players, localScore, phrases);
                 }
                 return { result: submissionResult, mode: leaderboardMode, roomId: leaderboardRoomId };
             })();
         }
+
+        // Pause timer when tab/app loses focus (local mode only)
+        document.addEventListener('visibilitychange', () => {
+            if (!isLocalMode || !gameActive) return;
+            if (document.hidden) {
+                timerPaused = true;
+                timerDisplayEl.classList.add('paused');
+            } else {
+                timerPaused = false;
+                timerDisplayEl.classList.remove('paused');
+            }
+        });
 
         // Update local score
         function incrementLocalScore() {
@@ -2455,6 +2726,47 @@
             }
         }
 
+        // Show share-invite link in status area
+        function showShareInvite() {
+            const roomUrl = window.location.origin + '?room=' + encodeURIComponent(currentRoomId);
+            statusEl.innerHTML = '';
+            const link = document.createElement('span');
+            link.className = 'share-invite';
+            link.textContent = '📋 Tap to copy invite link';
+            link.addEventListener('click', async () => {
+                if (navigator.share) {
+                    try {
+                        await navigator.share({ title: 'Join my Hotwords room!', url: roomUrl });
+                        return;
+                    } catch (e) { /* user cancelled or not supported, fall through to copy */ }
+                }
+                try {
+                    await navigator.clipboard.writeText(roomUrl);
+                    link.textContent = '✓ Link copied!';
+                    link.classList.add('copied');
+                    setTimeout(() => {
+                        link.textContent = '📋 Tap to copy invite link';
+                        link.classList.remove('copied');
+                    }, 2000);
+                } catch (e) {
+                    // Fallback: select-and-copy via temporary input
+                    const tmp = document.createElement('input');
+                    tmp.value = roomUrl;
+                    document.body.appendChild(tmp);
+                    tmp.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(tmp);
+                    link.textContent = '✓ Link copied!';
+                    link.classList.add('copied');
+                    setTimeout(() => {
+                        link.textContent = '📋 Tap to copy invite link';
+                        link.classList.remove('copied');
+                    }, 2000);
+                }
+            });
+            statusEl.appendChild(link);
+        }
+
         // Start heartbeat interval
         function startHeartbeat() {
             stopHeartbeat();
@@ -2474,28 +2786,124 @@
             if (!onlinePlayersList) return;
 
             onlinePlayersList.innerHTML = '';
+            const showDragHandles = onlinePlayers.length > 2;
             onlinePlayers.forEach((player, index) => {
                 const isHot = index === onlineHotPlayerIndex;
                 const isMe = player.id === myPlayerId;
 
                 const item = document.createElement('div');
                 item.className = 'online-player-item';
+                item.dataset.playerId = player.id;
                 if (isHot) item.classList.add('is-hot');
                 if (isMe) item.classList.add('is-me');
 
                 const badge = isHot ? '🔥' : (index === (onlineHotPlayerIndex + 1) % onlinePlayers.length ? '→' : '');
                 const role = isHot ? 'Describer' : 'Guesser';
+                const dragHandle = showDragHandles ? '<span class="drag-handle">☰</span>' : '';
+                const readyCheck = (!gameActive && player.ready) ? '<span class="player-ready">✓</span>' : '';
 
                 item.innerHTML = `
+                    ${dragHandle}
                     <span class="player-badge">${badge}</span>
                     <span class="player-name">${escapeHtml(player.name)}${isMe ? ' (you)' : ''}</span>
                     <span class="player-role">${role}</span>
+                    ${readyCheck}
                 `;
                 onlinePlayersList.appendChild(item);
             });
 
+            if (showDragHandles) attachDragListeners();
+
             // Update role indicator
             updateRoleIndicator();
+        }
+
+        // Drag-to-reorder player list
+        function attachDragListeners() {
+            let dragSrcEl = null;
+            let dragPointerId = null;
+
+            const items = onlinePlayersList.querySelectorAll('.online-player-item');
+
+            items.forEach(item => {
+                const handle = item.querySelector('.drag-handle');
+                if (!handle) return;
+
+                handle.addEventListener('pointerdown', (e) => {
+                    e.preventDefault();
+                    dragSrcEl = item;
+                    dragPointerId = e.pointerId;
+                    handle.setPointerCapture(e.pointerId);
+                    item.classList.add('dragging');
+                });
+
+                handle.addEventListener('pointermove', (e) => {
+                    if (!dragSrcEl || e.pointerId !== dragPointerId) return;
+                    // Clear previous indicators
+                    items.forEach(el => {
+                        el.classList.remove('drag-over-above', 'drag-over-below');
+                    });
+                    // Find which item we're over
+                    const target = document.elementFromPoint(e.clientX, e.clientY);
+                    const targetItem = target ? target.closest('.online-player-item') : null;
+                    if (targetItem && targetItem !== dragSrcEl) {
+                        const rect = targetItem.getBoundingClientRect();
+                        const midY = rect.top + rect.height / 2;
+                        if (e.clientY < midY) {
+                            targetItem.classList.add('drag-over-above');
+                        } else {
+                            targetItem.classList.add('drag-over-below');
+                        }
+                    }
+                });
+
+                handle.addEventListener('pointerup', (e) => {
+                    if (!dragSrcEl || e.pointerId !== dragPointerId) return;
+                    // Determine drop target
+                    items.forEach(el => {
+                        el.classList.remove('drag-over-above', 'drag-over-below');
+                    });
+                    dragSrcEl.classList.remove('dragging');
+
+                    const target = document.elementFromPoint(e.clientX, e.clientY);
+                    const targetItem = target ? target.closest('.online-player-item') : null;
+
+                    if (targetItem && targetItem !== dragSrcEl) {
+                        const srcId = dragSrcEl.dataset.playerId;
+                        const tgtId = targetItem.dataset.playerId;
+                        const rect = targetItem.getBoundingClientRect();
+                        const midY = rect.top + rect.height / 2;
+                        const insertBefore = e.clientY < midY;
+
+                        // Build new order
+                        const newOrder = onlinePlayers.map(p => p.id).filter(id => id !== srcId);
+                        const tgtIdx = newOrder.indexOf(tgtId);
+                        const insertIdx = insertBefore ? tgtIdx : tgtIdx + 1;
+                        newOrder.splice(insertIdx, 0, srcId);
+
+                        // Send to server
+                        if (ws && ws.readyState === WebSocket.OPEN) {
+                            ws.send(JSON.stringify({
+                                type: 'REORDER_PLAYERS',
+                                playerOrder: newOrder
+                            }));
+                        }
+                    }
+
+                    dragSrcEl = null;
+                    dragPointerId = null;
+                });
+
+                handle.addEventListener('pointercancel', (e) => {
+                    if (!dragSrcEl || e.pointerId !== dragPointerId) return;
+                    items.forEach(el => {
+                        el.classList.remove('drag-over-above', 'drag-over-below');
+                    });
+                    dragSrcEl.classList.remove('dragging');
+                    dragSrcEl = null;
+                    dragPointerId = null;
+                });
+            });
         }
 
         // Update role indicator and UI based on hot/guesser status
@@ -2505,7 +2913,9 @@
                 onlinePlayers[onlineHotPlayerIndex].id === myPlayerId;
 
             if (roleIndicator) {
-                if (isHotPlayer) {
+                if (!isLocalMode && onlinePlayers.length < 2) {
+                    roleIndicator.textContent = '';
+                } else if (isHotPlayer) {
                     roleIndicator.textContent = '🔥 DESCRIBE IT!';
                     roleIndicator.classList.remove('guesser');
                 } else {
@@ -2519,6 +2929,47 @@
         }
 
         // Update buttons for online mode based on role
+        let myReady = false;
+
+        function showReadyButton() {
+            let readyBtn = document.getElementById('readyBtn');
+            if (!readyBtn) {
+                readyBtn = document.createElement('button');
+                readyBtn.id = 'readyBtn';
+                readyBtn.className = 'ready-btn';
+                readyBtn.addEventListener('click', () => {
+                    if (ws && ws.readyState === WebSocket.OPEN) {
+                        ws.send(JSON.stringify({ type: 'READY' }));
+                    }
+                });
+                // Insert before the button-row
+                const buttonRow = document.querySelector('.button-row');
+                buttonRow.parentNode.insertBefore(readyBtn, buttonRow);
+            }
+            // Update button state based on my ready status
+            const me = onlinePlayers.find(p => p.id === myPlayerId);
+            myReady = me ? me.ready : false;
+            const readyCount = onlinePlayers.filter(p => p.ready).length;
+            const totalCount = onlinePlayers.length;
+            if (myReady) {
+                readyBtn.textContent = `Waiting for others... (${readyCount}/${totalCount})`;
+                readyBtn.classList.add('is-ready');
+            } else {
+                readyBtn.textContent = `Ready! (${readyCount}/${totalCount})`;
+                readyBtn.classList.remove('is-ready');
+            }
+            readyBtn.style.display = '';
+            statusEl.textContent = `${readyCount}/${totalCount} players ready`;
+        }
+
+        function hideReadyButton() {
+            const readyBtn = document.getElementById('readyBtn');
+            if (readyBtn) {
+                readyBtn.style.display = 'none';
+            }
+            myReady = false;
+        }
+
         function updateOnlineModeButtons() {
             if (isLocalMode) return;
 
@@ -2571,6 +3022,13 @@
 
         // Show word for online mode (role-based display)
         function showNewWordOnline(word, revealed) {
+            // Safety: never display phrase with < 2 players in online mode
+            if (!isLocalMode && onlinePlayers.length < 2) {
+                currentWord = word;
+                onlineRevealedWords = revealed || [];
+                wordDisplay.textContent = 'Waiting for players...';
+                return;
+            }
             currentWord = word;
             hasClaimedVictory = false;
             currentWords = word.trim().split(/\s+/);
@@ -2640,16 +3098,17 @@
                     type: 'SET_NAME',
                     player: playerName,
                     playerId: myPlayerId,
-                    theme: rkoTakeoverActive ? 'rko' : null
+                    theme: getActiveThemeForServer()
                 }));
 
                 // Start heartbeat
                 startHeartbeat();
 
                 statusEl.textContent = 'Connected! Waiting for players...';
-                listenBtn.disabled = false;
-                skipBtn.disabled = false;
-                gotItBtn.disabled = false;
+                // Don't enable buttons here — wait for PLAYER_LIST to confirm 2+ players
+                listenBtn.disabled = true;
+                skipBtn.disabled = true;
+                gotItBtn.disabled = true;
             };
 
             ws.onmessage = (event) => {
@@ -2661,8 +3120,26 @@
                     onlineHotPlayerIndex = msg.hotPlayerIndex || 0;
                     updatePlayerListUI();
 
-                    // Refresh word display based on new role
-                    if (currentWord) {
+                    // Enable game controls when 2+ players arrive
+                    if (onlinePlayers.length >= 2 && !gameActive) {
+                        listenBtn.style.display = 'none';
+                        gotItBtn.disabled = true;
+                        skipBtn.disabled = true;
+                        // Show ready button
+                        showReadyButton();
+                        // Show the stored word now that we have enough players
+                        if (currentWord) {
+                            showNewWordOnline(currentWord, onlineRevealedWords);
+                        }
+                    } else if (onlinePlayers.length < 2 && !gameActive) {
+                        listenBtn.style.display = 'none';
+                        gotItBtn.disabled = true;
+                        skipBtn.disabled = true;
+                        hideReadyButton();
+                        wordDisplay.textContent = 'Waiting for players...';
+                        showShareInvite();
+                    } else if (currentWord) {
+                        // Game active with 2+ players — refresh word display based on role
                         showNewWordOnline(currentWord, onlineRevealedWords);
                     }
                 } else if (msg.type === 'WORD_PROGRESS') {
@@ -2675,18 +3152,32 @@
                     const word = msg.word;
                     const revealed = msg.revealed || new Array(word.split(' ').length).fill(false);
 
-                    // If celebrating, queue the word for later
-                    if (isCelebrating) {
+                    // Track phrase start time for online history
+                    if (!isLocalMode) {
+                        phraseStartTime = Date.now();
+                    }
+
+                    // Store word data even if not displaying yet
+                    currentWord = word;
+                    onlineRevealedWords = revealed;
+
+                    // Don't display phrase until 2+ players in online mode
+                    if (!isLocalMode && onlinePlayers.length < 2) {
+                        wordDisplay.textContent = 'Waiting for players...';
+                    } else if (isCelebrating) {
                         pendingWord = { word, revealed };
                     } else {
                         if (isLocalMode) {
                             showNewWord(word);
                         } else {
-                            onlineRevealedWords = revealed;
                             showNewWordOnline(word, revealed);
                         }
                     }
                 } else if (msg.type === 'ROUND_WON') {
+                    // Track phrase as got-it in online mode
+                    if (!isLocalMode && currentWord) {
+                        phraseHistory.push({ phrase: currentWord, status: 'got-it', time: Math.round((Date.now() - phraseStartTime) / 1000) });
+                    }
                     // Update local score if game is active
                     incrementLocalScore();
                     statusEl.textContent = `${msg.player} won the round!`;
@@ -2696,13 +3187,17 @@
                     if (redactTimer) clearTimeout(redactTimer);
                     showCelebration(msg.player, currentWord);
                 } else if (msg.type === 'WORD_SKIPPED') {
+                    // Track phrase as skipped in online mode
+                    if (!isLocalMode && currentWord) {
+                        phraseHistory.push({ phrase: currentWord, status: 'skipped', time: Math.round((Date.now() - phraseStartTime) / 1000) });
+                    }
                     const skipper = msg.player || 'Someone';
                     statusEl.textContent = `${skipper} skipped! New phrase...`;
                     statusEl.classList.remove('listening', 'winner');
                     statusEl.classList.add('skipped');
                 } else if (msg.type === 'TIMER_SYNC') {
-                    // Sync timer for players joining mid-game
-                    if (msg.timeRemaining !== undefined && msg.timeRemaining > 0) {
+                    // Sync timer for players joining mid-game (only if 2+ players)
+                    if (msg.timeRemaining !== undefined && msg.timeRemaining > 0 && onlinePlayers.length >= 2) {
                         timeRemaining = msg.timeRemaining;
                         timerCountEl.textContent = timeRemaining;
                         if (!gameActive) {
@@ -2726,13 +3221,39 @@
                         }
                     }
                 } else if (msg.type === 'GAME_STARTED') {
-                    // Game started by another player
-                    if (!gameActive) {
+                    // All players ready — auto-start game with mic
+                    if (!gameActive && onlinePlayers.length >= 2) {
+                        hideReadyButton();
+                        listenBtn.style.display = '';
                         startGameTimer();
+                        updateOnlineModeButtons();
+                        // Auto-init mic and start listening
+                        (async () => {
+                            try {
+                                if (!recognition) {
+                                    await ensureMicPermission();
+                                    initSpeechRecognition();
+                                }
+                                isListening = true;
+                                silentStart();
+                                listenBtn.textContent = 'Stop Listening';
+                                listenBtn.classList.add('active');
+                                statusEl.textContent = 'Listening... Say the phrase!';
+                                statusEl.classList.add('listening');
+                                transcriptBox.classList.add('listening');
+                            } catch (e) {
+                                // Mic permission failed — player can manually click Start Listening
+                                listenBtn.disabled = false;
+                                statusEl.textContent = 'Game started! Click Start Listening for mic.';
+                            }
+                        })();
                     }
                 } else if (msg.type === 'NEW_ROUND') {
-                    // New round started - reset and start fresh
+                    // New round started - reset and start fresh (only if 2+ players)
+                    if (onlinePlayers.length >= 2) {
+                    dismissGameSummary();
                     dismissLeaderboard();
+                    phraseHistory = [];
                     localScore = 0;
                     updateScoreDisplay(0);
                     hasClaimedVictory = false;
@@ -2747,10 +3268,11 @@
                     // Restart mic if it was previously active
                     if (isListening) {
                         if (!recognition) initSpeechRecognition();
-                        try { recognition.start(); } catch(e) {}
+                        silentStart();
                     }
 
                     // The NEW_WORD message will follow with the new phrase
+                    }
                 } else if (msg.type === 'SCORE_UPDATE') {
                     // Only update if game not active (initial load)
                     if (!gameActive && msg.score !== undefined) {
@@ -2766,6 +3288,10 @@
                     wordContainer.classList.add('slip-penalty');
                     setTimeout(() => wordContainer.classList.remove('slip-penalty'), 500);
                 } else if (msg.type === 'DESCRIBER_FAILED') {
+                    // Track phrase as skipped in online mode
+                    if (!isLocalMode && currentWord) {
+                        phraseHistory.push({ phrase: currentWord, status: 'skipped', time: Math.round((Date.now() - phraseStartTime) / 1000) });
+                    }
                     // Describer said the whole phrase - big fail!
                     const describerName = msg.player || 'Describer';
                     statusEl.textContent = `${describerName} said the phrase! Skipping...`;
@@ -2781,6 +3307,7 @@
                 listenBtn.disabled = true;
                 skipBtn.disabled = true;
                 gotItBtn.disabled = true;
+                hideReadyButton();
                 stopHeartbeat();
                 if (!isReconnecting) {
                     statusEl.textContent = 'Disconnected. Reconnecting...';
@@ -2846,10 +3373,37 @@
             }
         }
 
+        // Suppress Chrome's speech recognition chime:
+        // - Use abort() instead of stop() (skips the end chime)
+        // - Track running state to avoid redundant start() calls (each triggers a chime)
+        let recognitionRunning = false;
+
+        function silentStart() {
+            if (!recognition || recognitionRunning) return;
+            try {
+                recognition.start();
+                recognitionRunning = true;
+            } catch(e) {
+                // Already started — ignore
+                recognitionRunning = true;
+            }
+        }
+
+        function silentStop() {
+            if (!recognition || !recognitionRunning) return;
+            try {
+                recognition.abort(); // abort() doesn't play the end chime
+                recognitionRunning = false;
+            } catch(e) {
+                recognitionRunning = false;
+            }
+        }
+
         function initSpeechRecognition() {
             if (!SpeechRecognition) return;
 
             recognition = new SpeechRecognition();
+            recognitionRunning = false;
             recognition.continuous = true;
             recognition.interimResults = true;
             recognition.lang = 'en-US';
@@ -2928,9 +3482,10 @@
             };
 
             recognition.onend = () => {
+                recognitionRunning = false;
                 // Restart if still supposed to be listening
                 if (isListening) {
-                    recognition.start();
+                    silentStart();
                 }
             };
         }
@@ -2988,7 +3543,7 @@
 
             if (isListening) {
                 isListening = false;
-                recognition.stop();
+                silentStop();
                 listenBtn.textContent = 'Start Listening';
                 listenBtn.classList.remove('active');
                 statusEl.textContent = 'Stopped listening';
@@ -3001,19 +3556,15 @@
                 }
             } else {
                 isListening = true;
-                recognition.start();
+                silentStart();
                 listenBtn.textContent = 'Stop Listening';
                 listenBtn.classList.add('active');
                 statusEl.textContent = 'Listening... Say the phrase!';
                 statusEl.classList.add('listening');
                 transcriptBox.classList.add('listening');
-                // Start the game timer (online mode only)
-                if (!isLocalMode && !gameActive) {
-                    startGameTimer();
-                    // Tell server the game started (for timer sync)
-                    if (ws && ws.readyState === WebSocket.OPEN) {
-                        ws.send(JSON.stringify({ type: 'START_GAME' }));
-                    }
+                // In online mode, enable buttons if game is already active
+                if (!isLocalMode && gameActive) {
+                    updateOnlineModeButtons();
                 }
             }
         });
@@ -3054,13 +3605,13 @@
                     initSpeechRecognition();
                 }
                 isListening = true;
-                try { recognition.start(); } catch(e) {}
+                silentStart();
                 listenBtn.textContent = 'Stop Listening';
                 listenBtn.classList.add('active');
                 const word = getRandomPhrase();
                 showNewWordLocalMode(word);
             } else if (ws && ws.readyState === WebSocket.OPEN) {
-                ws.send(JSON.stringify({ type: 'NEW_ROUND', theme: rkoTakeoverActive ? 'rko' : null }));
+                ws.send(JSON.stringify({ type: 'NEW_ROUND', theme: getActiveThemeForServer() }));
             }
         });
 
@@ -3143,6 +3694,7 @@
         function showLobby() {
             dismissLeaderboard();
             dismissGameSummary();
+            hideReadyButton();
             // Stop any active game
             if (gameActive) {
                 endGame();
@@ -3158,7 +3710,7 @@
             // Stop listening
             if (isListening && recognition) {
                 isListening = false;
-                recognition.stop();
+                silentStop();
             }
             // Reset state
             isLocalMode = false;
@@ -3220,7 +3772,14 @@
             rkoTakeoverActive = !rkoTakeoverActive;
             localStorage.setItem('hotwords_rko_takeover', rkoTakeoverActive.toString());
             rkoToggle.classList.toggle('active', rkoTakeoverActive);
+            // Reset topic selection and reload picker for the new mode
+            activeTopic = null;
+            topicPhrases = null;
+            loadTopicPicker();
         });
+
+        // Load topic picker
+        loadTopicPicker();
 
         // Local Mode button
         localModeBtn.addEventListener('click', () => selectMode('local'));
@@ -3288,7 +3847,7 @@
                 initSpeechRecognition();
             }
             isListening = true;
-            try { recognition.start(); } catch(e) {}
+            silentStart();
             listenBtn.textContent = 'Stop Listening';
             listenBtn.classList.add('active');
             listenBtn.disabled = false;
@@ -3330,8 +3889,13 @@
             gotItBtn.style.display = '';
             skipBtn.style.display = '';
 
-            // Start the game timer
-            startGameTimer();
+            // Don't start timer yet — wait for 2+ players
+            wordDisplay.textContent = 'Waiting for players...';
+            showShareInvite();
+            statusEl.classList.remove('listening');
+            listenBtn.disabled = true;
+            gotItBtn.disabled = true;
+            skipBtn.disabled = true;
 
             // Connect to WebSocket
             connect(currentRoomId);

@@ -34,20 +34,23 @@ data class GameMessage(
     val wordIndex: Int? = null,
     val timeRemaining: Int? = null,
     val gameStartTime: Long? = null,
-    val theme: String? = null
+    val theme: String? = null,
+    val playerOrder: List<String>? = null
 )
 
 @Serializable
 data class PlayerInfo(
     val id: String,
-    val name: String
+    val name: String,
+    val ready: Boolean = false
 )
 
 data class Player(
     val id: String,
     val name: String,
     var lastHeartbeat: Long = System.currentTimeMillis(),
-    val session: DefaultWebSocketServerSession
+    val session: DefaultWebSocketServerSession,
+    var ready: Boolean = false
 )
 
 data class RoomState(
@@ -222,7 +225,7 @@ fun Application.module() {
                     }
 
                     // Broadcast updated player list
-                    val playerInfoList = state.players.map { PlayerInfo(it.id, it.name) }
+                    val playerInfoList = state.players.map { PlayerInfo(it.id, it.name, it.ready) }
                     val playerListMsg = GameMessage(
                         type = "PLAYER_LIST",
                         players = playerInfoList,
@@ -323,26 +326,138 @@ fun Application.module() {
         "Tickle monster", "Stink bug", "Snot rocket", "Armpit fart"
     )
 
-    // RKO Company Culture phrases — PLACEHOLDER, replace with real phrases
+    // RKO Company Culture phrases
     val rkoWords = listOf(
-        "Circle back", "Move the needle", "Deep dive",
-        "Low hanging fruit", "Run it up the flagpole", "Boil the ocean",
-        "Think outside the box", "Synergy", "Alignment",
-        "Take it offline", "Touch base", "Level set",
-        "Net net", "Action item", "Parking lot",
-        "Bandwidth check", "Hard stop", "Pivot",
-        "Value add", "Best practice", "Core competency",
-        "Drill down", "Ecosystem", "Leverage",
-        "Pain point", "Stakeholder", "Deliverable",
-        "Game plan", "On the radar", "In the weeds",
-        "Big picture thinking", "Run the numbers", "Close the loop",
-        "Open the kimono", "Eat our own dog food", "Drink the Kool Aid",
-        "Raise the bar", "Move the goalposts", "Shift the paradigm",
-        "Cross pollinate", "Future proof", "Right size"
+        // Company Jargon
+        "Work Wiser Wednesday", "Book of Record", "Nexus", "Aspen ERG",
+        "Basecamp", "Hands on Keyboard", "Architecture Advisory Forum",
+        "Operations Dashboard", "Directory", "Role Expectations",
+        "Assistant", "Help Center", "Design Partner Program",
+        "Engineering Show and Tell", "Feature Flag Lunch", "Fun Squad",
+        "Service as Software", "Year of CX", "Feature Flag Quiz",
+        "Data Share", "Intelligent Operations", "Agents",
+        "Sandbox Environments", "Market Data", "Ask IO",
+        "Deployments channel", "In Action", "Links hub",
+        "Jitterbug", "Stash", "Feature Megaphone", "P&E Squads", "Props points",
+        // Products & Features
+        "Platform", "Universal Data Model", "Report Builder",
+        "Client Management", "Revenue Management", "Client Portal",
+        "Trade Blotter", "Portfolio Modeling", "Portfolio Rebalancer",
+        "Tax Loss Harvesting", "Post-Trade Dashboard", "Executive Dashboard",
+        "Portfolio Manager Dashboard", "Global Search", "Saved Views",
+        "Hidden but Available", "Group By", "Operations Manager",
+        "Deployment Manager", "Feature Flags", "Users and Entitlements",
+        "Tasks and Notifications", "Data Persistence", "Metadata Service",
+        "Data Replication Service", "Electronic Trading", "Portfolio Construction",
+        "Order Generation", "Trading and Compliance", "Integration Platform",
+        "Integrations Hub",
+        // Values & Culture
+        "Way", "Work Life Harmony", "One", "Stop the Line",
+        "Technology Readiness Level", "TRL 1-9", "Speed at Scale",
+        "Security-first culture", "Core Value Awards", "Props Awards",
+        "Earth Day", "Reading Ambitiously", "Family Hike",
+        "Brilliant jerks are not welcome", "Build, celebrate and grow together",
+        "Outcomes over outputs", "Protect Market Hours", "Security Awareness Week",
+        "Weekly Wednesday", "Responsible AI program",
+        "Our customers are our coworkers", "Empathy and listening",
+        "Keep pushin keep hustlin", "Security-first mindset", "Data Stats", "AI-ready repos",
+        // Executive Catchphrases
+        "RIO", "The Flywheel", "API-first", "Core system of record",
+        "Land and expand", "Automated high availability",
+        "Knowledge Graph", "2030 vision", "Project Octane", "Project One",
+        "Roadshow", "Kickoff", "Everything Base Camp", "AI Platform",
+        "Speed, quality, resilience", "We're all in",
+        // Engineering Lingo
+        "Accounting Processing Engine", "Metadata Delivery Service",
+        "UDM Schema", "UDM Publishing Service", "One API Gateway",
+        "Feature Flag Service", "Release Candidate", "Prod Hotfix",
+        "Zero Downtime", "Ring 0", "Ring 1", "Data Orchestration Engine",
+        "Reporting Engine v2", "Portfolio Access Control", "Reporting Experience",
+        "Service Libs Kotlin", "Data Core", "Event-Driven Backbone",
+        "Elastic by Design", "Observability Everywhere", "Data Source Abstraction",
+        "Kafka Topic Partitions", "Outbox Table", "Pinecone Persistence",
+        "Data Warehouse", "Architecture Decision Record", "Relational Pinecone",
+        "Browser Extension", "DevTools Script",
+        // Customer & Industry
+        "AWS Cloud Practitioner", "Amazon Web Services", "Snowflake Data Warehouse",
+        "Salesforce CRM", "Microsoft Outlook", "Microsoft Teams",
+        "Workato integration", "FactSet analytics", "Bloomberg Terminal",
+        "Bloomberg EMSX", "DTCC Omgeo CTM", "Gresham Technologies",
+        "ICE data feeds", "LSEG market data", "MSCI index data",
+        "GIPS verification", "ISS proxy voting", "ClearPar loans",
+        "Allvue", "Advent APX", "Advent ACD", "Moxy OMS",
+        "Charles River OMS", "SimCorp Dimension", "FundGuard", "Addepar",
+        "Unified data model", "Cloud-native SaaS", "Ex-ante risk", "Ex-post risk",
+        "Composite performance", "UMA model delivery", "Client reporting",
+        "Performance attribution", "Zero-copy data sharing",
+        "Data warehouse connectivity", "Services-as-software",
+        "Agentic automation", "Proactive intelligence",
+        "Real-time books and records", "Custodian authorization", "Custodian connections",
+        // Meetings & Rituals
+        "Demo Day", "Show & Tell", "Engineering Show & Tell",
+        "Tech All Hands", "Company All-Hands", "Product Council",
+        "Operating Reviews", "Manager Community Connect",
+        "Platform PM Team Meeting", "IO Leads Sync", "IO Staff Meeting",
+        "ProDev", "Base Camp", "Nexus Hackathon",
+        "Simulation Exercise", "Day of Giving", "Emoji-nal Support",
+        "Hot Ones: Security Edition", "UI Office Hours",
+        "Technology Show & Tell", "OKTOBERFEST-O-WEEN",
+        "Kick-off costume party", "#product-and-technology-org",
+        "#security-awareness", "#rl-deployments", "#ask-io", "#ask-ui", "#ask-data-persistence",
+        // Inside Jokes
+        "party-bounce", "blob_excited", "heart emoji", "feature-flag",
+        "io emoji", "United States of", "Bricked Environments",
+        "Swag Czar", "DC Swag Czar", "Taxman jam", "Demo Day season",
+        "Mobile app jokes", "Gone Phishing", "Gandalf challenge",
+        "NPC Capital", "Pop Poppin Off", "Concierge", "Error Terrors",
+        "Swipe Right Richies", "Workato is Working Wonders", "Swag drops",
+        "Demo Day Perfection", "Keyboard Navigation Kickoff",
+        "Props & Prize Winners"
     )
 
+    // Cache for topic phrase packs loaded from classpath
+    val topicPhrasesCache = ConcurrentHashMap<String, List<String>>()
+
+    fun loadTopicPhrases(topicId: String): List<String>? {
+        return topicPhrasesCache.getOrPut(topicId) {
+            try {
+                val json = Application::class.java.getResource("/static/phrases/$topicId.json")?.readText()
+                    ?: return null
+                Json.decodeFromString<List<String>>(json)
+            } catch (e: Exception) {
+                return null
+            }
+        }
+    }
+
+    fun loadRkoTopicPhrases(topicId: String): List<String>? {
+        val cacheKey = "rko:$topicId"
+        return topicPhrasesCache.getOrPut(cacheKey) {
+            try {
+                val json = Application::class.java.getResource("/static/phrases/rko/$topicId.json")?.readText()
+                    ?: return null
+                Json.decodeFromString<List<String>>(json)
+            } catch (e: Exception) {
+                return null
+            }
+        }
+    }
+
     fun getWordForRoom(roomId: String): String {
-        return if (roomThemes[roomId] == "rko") rkoWords.random() else gameWords.random()
+        val theme = roomThemes[roomId]
+        if (theme == "rko") return rkoWords.random()
+        if (theme != null && theme.startsWith("rko:")) {
+            val topicId = theme.removePrefix("rko:")
+            val phrases = loadRkoTopicPhrases(topicId)
+            if (phrases != null && phrases.isNotEmpty()) return phrases.random()
+            return rkoWords.random() // fallback to all RKO
+        }
+        if (theme != null && theme.startsWith("topic:")) {
+            val topicId = theme.removePrefix("topic:")
+            val phrases = loadTopicPhrases(topicId)
+            if (phrases != null && phrases.isNotEmpty()) return phrases.random()
+        }
+        return gameWords.random()
     }
 
     val appVersion = Application::class.java.`package`?.implementationVersion ?: "dev"
@@ -358,7 +473,8 @@ fun Application.module() {
 
         post("/api/scores") {
             try {
-                val remoteIp = call.request.local.remoteHost
+                val remoteIp = call.request.header("X-Forwarded-For")?.split(",")?.firstOrNull()?.trim()
+                    ?: call.request.local.remoteHost
                 val now = System.currentTimeMillis()
 
                 // Rate limit: max 10 requests per minute per IP
@@ -671,8 +787,13 @@ fun Application.module() {
                                 state.players.add(player)
                                 sessionToPlayerId[this] = playerId
 
+                                // Reset all ready states when roster changes (new player joined)
+                                if (state.gameStartTime == null) {
+                                    state.players.forEach { it.ready = false }
+                                }
+
                                 // Broadcast player list to all
-                                val playerInfoList = state.players.map { PlayerInfo(it.id, it.name) }
+                                val playerInfoList = state.players.map { PlayerInfo(it.id, it.name, it.ready) }
                                 val playerListMsg = GameMessage(
                                     type = "PLAYER_LIST",
                                     players = playerInfoList,
@@ -689,8 +810,8 @@ fun Application.module() {
                                     revealed = state.revealedWords
                                 ))
 
-                                // If game is in progress, send timer sync
-                                if (state.gameStartTime != null) {
+                                // If game is in progress and 2+ players, send timer sync
+                                if (state.gameStartTime != null && state.players.size >= 2) {
                                     val elapsed = (System.currentTimeMillis() - state.gameStartTime!!) / 1000
                                     val remaining = maxOf(0, 60 - elapsed.toInt())
                                     sendSerialized(GameMessage(
@@ -700,11 +821,27 @@ fun Application.module() {
                                 }
                             }
 
-                            "START_GAME" -> {
-                                // Start the game timer for this room
-                                if (state.gameStartTime == null) {
+                            "READY" -> {
+                                val playerId = sessionToPlayerId[this] ?: continue
+                                val player = state.players.find { it.id == playerId } ?: continue
+                                // Toggle ready state
+                                player.ready = !player.ready
+
+                                // Broadcast updated player list
+                                val playerInfoList = state.players.map { PlayerInfo(it.id, it.name, it.ready) }
+                                val playerListMsg = GameMessage(
+                                    type = "PLAYER_LIST",
+                                    players = playerInfoList,
+                                    hotPlayerIndex = state.currentHotPlayerIndex
+                                )
+                                room.forEach { session ->
+                                    session.sendSerialized(playerListMsg)
+                                }
+
+                                // Check if all players ready and >= 2: auto-start
+                                if (state.gameStartTime == null && state.players.size >= 2 && state.players.all { it.ready }) {
                                     state.gameStartTime = System.currentTimeMillis()
-                                    // Broadcast to all players
+                                    state.players.forEach { it.ready = false }
                                     room.forEach { session ->
                                         session.sendSerialized(GameMessage(
                                             type = "GAME_STARTED",
@@ -722,6 +859,7 @@ fun Application.module() {
                                 }
                                 // Start a new round - reset timer and score, get new word
                                 state.gameStartTime = System.currentTimeMillis()
+                                state.players.forEach { it.ready = false }
                                 roomScores[roomId] = 0
 
                                 // Get a new word
@@ -793,7 +931,7 @@ fun Application.module() {
                                         )
 
                                         // Send updated player list with new hot player
-                                        val playerInfoList = state.players.map { PlayerInfo(it.id, it.name) }
+                                        val playerInfoList = state.players.map { PlayerInfo(it.id, it.name, it.ready) }
                                         val playerListMsg = GameMessage(
                                             type = "PLAYER_LIST",
                                             players = playerInfoList,
@@ -870,7 +1008,7 @@ fun Application.module() {
                                 )
 
                                 // Send updated player list with new hot player
-                                val playerInfoList = state.players.map { PlayerInfo(it.id, it.name) }
+                                val playerInfoList = state.players.map { PlayerInfo(it.id, it.name, it.ready) }
                                 val playerListMsg = GameMessage(
                                     type = "PLAYER_LIST",
                                     players = playerInfoList,
@@ -911,7 +1049,7 @@ fun Application.module() {
                                 )
 
                                 // Send updated player list with new hot player
-                                val playerInfoList = state.players.map { PlayerInfo(it.id, it.name) }
+                                val playerInfoList = state.players.map { PlayerInfo(it.id, it.name, it.ready) }
                                 val playerListMsg = GameMessage(
                                     type = "PLAYER_LIST",
                                     players = playerInfoList,
@@ -955,6 +1093,25 @@ fun Application.module() {
                                     session.sendSerialized(newWordMsg)
                                 }
                             }
+
+                            "REORDER_PLAYERS" -> {
+                                val newOrder = received.playerOrder ?: continue
+                                // Validate: same set of player IDs
+                                val currentIds = state.players.map { it.id }.toSet()
+                                if (newOrder.size != state.players.size || newOrder.toSet() != currentIds) continue
+                                // Remember who is hot
+                                val hotPlayerId = state.players.getOrNull(state.currentHotPlayerIndex)?.id
+                                // Reorder
+                                val playerMap = state.players.associateBy { it.id }
+                                state.players.clear()
+                                newOrder.forEach { id -> playerMap[id]?.let { state.players.add(it) } }
+                                // Restore hot player index
+                                state.currentHotPlayerIndex = state.players.indexOfFirst { it.id == hotPlayerId }.coerceAtLeast(0)
+                                // Broadcast
+                                val playerInfoList = state.players.map { PlayerInfo(it.id, it.name, it.ready) }
+                                val playerListMsg = GameMessage(type = "PLAYER_LIST", players = playerInfoList, hotPlayerIndex = state.currentHotPlayerIndex)
+                                room.forEach { session -> session.sendSerialized(playerListMsg) }
+                            }
                         }
                     }
                 }
@@ -975,7 +1132,7 @@ fun Application.module() {
                     }
 
                     // Broadcast updated player list
-                    val playerInfoList = state.players.map { PlayerInfo(it.id, it.name) }
+                    val playerInfoList = state.players.map { PlayerInfo(it.id, it.name, it.ready) }
                     val playerListMsg = GameMessage(
                         type = "PLAYER_LIST",
                         players = playerInfoList,
