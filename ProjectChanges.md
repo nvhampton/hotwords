@@ -177,3 +177,38 @@ Comprehensive security pass before sharing with colleagues. All changes in 4 fil
 9. **`synchronized {}` in Kotlin is an inline lambda** — you cannot use `continue` (break/continue in inline lambdas is experimental) or suspension points (`call.respond()`) inside it. Pattern: return a flag from `synchronized` and handle flow control outside.
 10. **Defense-in-depth for innerHTML** — even when data is server-controlled (like game phrases), wrap with `escapeHtml()`. Today's trusted data source could become tomorrow's user input.
 11. **Room cleanup needs hysteresis** — don't remove rooms the instant they're empty (players might be reconnecting). Track an `emptySince` timestamp and require sustained emptiness (60s) before cleanup.
+
+## Session: 2026-02-22 (cont.)
+
+### Online Mode Game Summary & Leaderboard
+
+Online mode previously showed a bare "Game Over!" text with a Play Again button — no score summary, no phrase history, no leaderboard access. Local mode already had a polished end-of-round overlay. This session brought feature parity.
+
+#### Phrase History Tracking (Online)
+- `NEW_WORD` handler now sets `phraseStartTime = Date.now()` in online mode
+- `ROUND_WON` handler pushes `{ phrase, status: 'got-it', time }` to `phraseHistory`
+- `WORD_SKIPPED` handler pushes `{ phrase, status: 'skipped', time }`
+- `DESCRIBER_FAILED` handler pushes `{ phrase, status: 'skipped', time }`
+- `endGame()` online branch pushes current phrase as `timed-out` (same pattern as local mode)
+- Reuses existing `phraseHistory` array and `phraseStartTime` variable — no new state needed
+
+#### Game Summary Overlay (Online)
+- Replaced bare "Game Over!" text + `playAgainBtn` with `showGameSummary(localScore, phraseHistory)` — same overlay local mode uses
+- Shows score with fire emojis, scrollable phrase list with ✓/✗ prefixes and times, Play Again + Leaderboard + Back to Lobby buttons
+- Play Again in the overlay delegates to `playAgainBtn.click()` which already handles online mode (`NEW_ROUND` message)
+- `NEW_ROUND` handler now calls `dismissGameSummary()` + resets `phraseHistory = []` so overlays clear when any player starts a new round
+
+#### Score Submission with Phrase Data
+- Online score submission now sends actual phrase history instead of empty array
+- Maps `phraseHistory` entries to `{ phrase, status, timeSeconds }` format matching the API
+
+### Timer Pause on Focus Loss (Local Mode)
+- Added `visibilitychange` event listener that pauses/unpauses the timer when the tab or app loses/regains focus
+- Only active in local mode during an active game (`!isLocalMode || !gameActive` guard)
+- Reuses existing `timerPaused` flag and `.paused` CSS class (40% opacity dim) — same mechanism used for pass-between-players pause
+- When tab is hidden: `timerPaused = true`, timer dims. When visible again: `timerPaused = false`, timer resumes
+
+### Key Learnings
+12. **Reuse existing UI components across modes** — the game summary overlay, `timerPaused` flag, and `phraseHistory` array were all built for local mode but designed generically enough to work for online mode with minimal wiring.
+13. **Track events at the source** — adding phrase history entries in message handlers (ROUND_WON, WORD_SKIPPED, DESCRIBER_FAILED) rather than trying to reconstruct history after the fact is simpler and more reliable.
+14. **`visibilitychange` vs `blur`/`focus`** — `visibilitychange` is the correct API for detecting tab switches and app minimization. `blur`/`focus` fire for in-page focus changes (clicking between elements) which would cause false pauses.
