@@ -994,11 +994,6 @@
         .online-player-item.drag-over-below {
             border-bottom: 2px solid #4ecdc4;
         }
-        .online-player-item .player-ready {
-            font-size: 0.85rem;
-            color: #4ecdc4;
-            flex-shrink: 0;
-        }
 
         /* Ready button */
         .ready-btn {
@@ -1024,6 +1019,146 @@
         }
         .ready-btn.is-ready:hover {
             box-shadow: 0 8px 25px rgba(249, 202, 36, 0.4);
+        }
+
+        /* Ready overlay */
+        .ready-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 1050;
+            align-items: center;
+            justify-content: center;
+        }
+        .ready-overlay.active {
+            display: flex;
+        }
+        .ready-back-btn {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            font-size: 0.85rem;
+            padding: 8px 16px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            color: #fff;
+            cursor: pointer;
+            z-index: 1051;
+            line-height: 1.2;
+        }
+        .ready-back-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+        .ready-dialog {
+            background: linear-gradient(135deg, #1e1e3a 0%, #2a2a4a 100%);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 20px;
+            padding: 30px;
+            max-width: 400px;
+            width: 90%;
+            text-align: center;
+        }
+        .ready-title {
+            font-size: 1.6rem;
+            font-weight: bold;
+            color: #fff;
+            margin-bottom: 20px;
+        }
+        .ready-players {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+        .ready-player-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 12px;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.05);
+            margin-bottom: 6px;
+            font-size: 0.95rem;
+        }
+        .ready-player-item.is-me {
+            background: rgba(78, 205, 196, 0.1);
+            border: 1px solid rgba(78, 205, 196, 0.2);
+        }
+        .ready-player-name {
+            color: #ddd;
+        }
+        .ready-player-check {
+            color: #4ecdc4;
+            font-weight: bold;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+        .ready-player-check.visible {
+            opacity: 1;
+        }
+        .ready-mic-toggle {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .mic-switch {
+            position: relative;
+            display: inline-block;
+            width: 46px;
+            height: 26px;
+        }
+        .mic-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .mic-switch-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: #444;
+            border-radius: 26px;
+            transition: 0.3s;
+        }
+        .mic-switch-slider:before {
+            content: '';
+            position: absolute;
+            height: 20px;
+            width: 20px;
+            left: 3px;
+            bottom: 3px;
+            background: #fff;
+            border-radius: 50%;
+            transition: 0.3s;
+        }
+        .mic-switch input:checked + .mic-switch-slider {
+            background: #4ecdc4;
+        }
+        .mic-switch input:checked + .mic-switch-slider:before {
+            transform: translateX(20px);
+        }
+        .mic-switch-label {
+            color: #bbb;
+            font-size: 0.95rem;
+        }
+        .ready-mic-hint {
+            color: #666;
+            font-size: 0.75rem;
+            margin-top: -12px;
+            margin-bottom: 16px;
+        }
+        .ready-mic-error {
+            color: #ff6b6b;
+            font-size: 0.8rem;
+            margin-top: -12px;
+            margin-bottom: 12px;
+        }
+        .ready-status {
+            color: #888;
+            font-size: 0.85rem;
+            margin-top: 12px;
         }
 
         /* Role indicator for word display */
@@ -1499,7 +1634,7 @@
                         <button class="join-btn" id="randomBtn">Random</button>
                         <button class="join-btn" id="shareBtn">Share</button>
                     </div>
-                    <button class="local-start-btn" id="onlineStartBtn">▶ Start Game</button>
+                    <button class="local-start-btn" id="onlineStartBtn">▶ Join</button>
                 </div>
             </div>
         </div>
@@ -1599,6 +1734,26 @@
                 You can still play without microphone access, but you'll need to use the buttons instead of voice detection.
             </div>
             <button class="mic-dialog-btn" id="micDialogBtn">Got it, let's go!</button>
+        </div>
+    </div>
+
+    <!-- Ready overlay -->
+    <div class="ready-overlay" id="readyOverlay">
+        <button class="ready-back-btn" id="readyBackBtn">&larr; Back</button>
+        <div class="ready-dialog">
+            <div class="ready-title">Get Ready!</div>
+            <div class="ready-players" id="readyPlayersList"></div>
+            <div class="ready-mic-toggle">
+                <label class="mic-switch">
+                    <input type="checkbox" id="readyMicToggle" checked>
+                    <span class="mic-switch-slider"></span>
+                </label>
+                <span class="mic-switch-label">Voice detection</span>
+            </div>
+            <div class="ready-mic-hint">Audio is processed locally on your device</div>
+            <div class="ready-mic-error" id="readyMicError" style="display:none"></div>
+            <button class="ready-btn" id="readyOverlayBtn">Ready!</button>
+            <div class="ready-status" id="readyStatus">0/0 players ready</div>
         </div>
     </div>
 
@@ -2180,7 +2335,7 @@
         function showCelebration(playerName, word) {
             isCelebrating = true;
             celebrationWordEl.textContent = word;
-            celebrationInfoEl.textContent = playerName + ' got it!';
+            celebrationInfoEl.textContent = '';
             celebrationEl.classList.add('active');
 
             // Create flash effect
@@ -2423,15 +2578,21 @@
                 listenBtn.style.display = 'none';
                 skipBtn.style.display = 'none';
                 gotItBtn.style.display = 'none';
-                hideReadyButton();
+                hideReadyOverlay();
                 showGameSummary(localScore, phraseHistory);
             }
 
             // Submit round immediately, store promise for leaderboard
+            // In online mode, only the hot player (describer) submits to avoid duplicates
             const leaderboardMode = isLocalMode ? 'local' : 'online';
             const leaderboardRoomId = isLocalMode ? null : currentRoomId;
+            const shouldSubmit = isLocalMode || isHotPlayer;
             pendingLeaderboard = (async () => {
                 let submissionResult = null;
+                if (!shouldSubmit) {
+                    // Non-hot players just fetch the leaderboard without submitting
+                    return { result: null, mode: leaderboardMode, roomId: leaderboardRoomId };
+                }
                 if (isLocalMode) {
                     const phrases = phraseHistory.map(e => ({ phrase: e.phrase, status: e.status, timeSeconds: e.time }));
                     submissionResult = await submitRound('local', null, localModePlayers, localScore, phrases);
@@ -2800,14 +2961,12 @@
                 const badge = isHot ? '🔥' : (index === (onlineHotPlayerIndex + 1) % onlinePlayers.length ? '→' : '');
                 const role = isHot ? 'Describer' : 'Guesser';
                 const dragHandle = showDragHandles ? '<span class="drag-handle">☰</span>' : '';
-                const readyCheck = (!gameActive && player.ready) ? '<span class="player-ready">✓</span>' : '';
 
                 item.innerHTML = `
                     ${dragHandle}
                     <span class="player-badge">${badge}</span>
                     <span class="player-name">${escapeHtml(player.name)}${isMe ? ' (you)' : ''}</span>
                     <span class="player-role">${role}</span>
-                    ${readyCheck}
                 `;
                 onlinePlayersList.appendChild(item);
             });
@@ -2930,44 +3089,100 @@
 
         // Update buttons for online mode based on role
         let myReady = false;
+        let readyMicEnabled = true;
 
-        function showReadyButton() {
-            let readyBtn = document.getElementById('readyBtn');
-            if (!readyBtn) {
-                readyBtn = document.createElement('button');
-                readyBtn.id = 'readyBtn';
-                readyBtn.className = 'ready-btn';
-                readyBtn.addEventListener('click', () => {
-                    if (ws && ws.readyState === WebSocket.OPEN) {
-                        ws.send(JSON.stringify({ type: 'READY' }));
-                    }
-                });
-                // Insert before the button-row
-                const buttonRow = document.querySelector('.button-row');
-                buttonRow.parentNode.insertBefore(readyBtn, buttonRow);
-            }
-            // Update button state based on my ready status
+        function showReadyOverlay() {
+            const overlay = document.getElementById('readyOverlay');
+            const btn = document.getElementById('readyOverlayBtn');
+            const statusDiv = document.getElementById('readyStatus');
+            const playersList = document.getElementById('readyPlayersList');
+            const micToggle = document.getElementById('readyMicToggle');
+            const micError = document.getElementById('readyMicError');
+
+            // Populate player list
+            playersList.innerHTML = '';
+            onlinePlayers.forEach(player => {
+                const isMe = player.id === myPlayerId;
+                const item = document.createElement('div');
+                item.className = 'ready-player-item' + (isMe ? ' is-me' : '');
+                item.innerHTML = `
+                    <span class="ready-player-name">${escapeHtml(player.name)}${isMe ? ' (you)' : ''}</span>
+                    <span class="ready-player-check ${player.ready ? 'visible' : ''}">&#10003;</span>
+                `;
+                playersList.appendChild(item);
+            });
+
+            // Update button and status
             const me = onlinePlayers.find(p => p.id === myPlayerId);
             myReady = me ? me.ready : false;
             const readyCount = onlinePlayers.filter(p => p.ready).length;
             const totalCount = onlinePlayers.length;
+
             if (myReady) {
-                readyBtn.textContent = `Waiting for others... (${readyCount}/${totalCount})`;
-                readyBtn.classList.add('is-ready');
+                btn.textContent = `Waiting for others... (${readyCount}/${totalCount})`;
+                btn.classList.add('is-ready');
             } else {
-                readyBtn.textContent = `Ready! (${readyCount}/${totalCount})`;
-                readyBtn.classList.remove('is-ready');
+                btn.textContent = `Ready! (${readyCount}/${totalCount})`;
+                btn.classList.remove('is-ready');
             }
-            readyBtn.style.display = '';
+            statusDiv.textContent = `${readyCount}/${totalCount} players ready`;
             statusEl.textContent = `${readyCount}/${totalCount} players ready`;
+
+            // Wire up buttons (only once)
+            if (!btn._bound) {
+                btn._bound = true;
+
+                // Back button returns to lobby
+                document.getElementById('readyBackBtn').addEventListener('click', () => {
+                    showLobby();
+                });
+
+                btn.addEventListener('click', async () => {
+                    // Request mic permission on the Ready click (user gesture required by Safari/iOS)
+                    // Skip the separate mic dialog — the toggle already explains what's happening
+                    if (readyMicEnabled && !recognition) {
+                        try {
+                            await ensureMicPermission(true);
+                            initSpeechRecognition();
+                        } catch (e) {
+                            micToggle.checked = false;
+                            readyMicEnabled = false;
+                            micError.textContent = 'Mic permission denied. You can still play using buttons.';
+                            micError.style.display = '';
+                        }
+                    }
+                    if (ws && ws.readyState === WebSocket.OPEN) {
+                        ws.send(JSON.stringify({ type: 'READY' }));
+                    }
+                });
+
+                // Wire up mic toggle
+                micToggle.addEventListener('change', async () => {
+                    readyMicEnabled = micToggle.checked;
+                    micError.style.display = 'none';
+                    if (micToggle.checked) {
+                        try {
+                            await ensureMicPermission(true);
+                            initSpeechRecognition();
+                        } catch (e) {
+                            micToggle.checked = false;
+                            readyMicEnabled = false;
+                            micError.textContent = 'Mic permission denied. You can still play using buttons.';
+                            micError.style.display = '';
+                        }
+                    }
+                });
+            }
+
+            overlay.classList.add('active');
         }
 
-        function hideReadyButton() {
-            const readyBtn = document.getElementById('readyBtn');
-            if (readyBtn) {
-                readyBtn.style.display = 'none';
-            }
+        function hideReadyOverlay() {
+            const overlay = document.getElementById('readyOverlay');
+            overlay.classList.remove('active');
             myReady = false;
+            const micError = document.getElementById('readyMicError');
+            if (micError) micError.style.display = 'none';
         }
 
         function updateOnlineModeButtons() {
@@ -3126,7 +3341,7 @@
                         gotItBtn.disabled = true;
                         skipBtn.disabled = true;
                         // Show ready button
-                        showReadyButton();
+                        showReadyOverlay();
                         // Show the stored word now that we have enough players
                         if (currentWord) {
                             showNewWordOnline(currentWord, onlineRevealedWords);
@@ -3135,7 +3350,7 @@
                         listenBtn.style.display = 'none';
                         gotItBtn.disabled = true;
                         skipBtn.disabled = true;
-                        hideReadyButton();
+                        hideReadyOverlay();
                         wordDisplay.textContent = 'Waiting for players...';
                         showShareInvite();
                     } else if (currentWord) {
@@ -3180,9 +3395,8 @@
                     }
                     // Update local score if game is active
                     incrementLocalScore();
-                    statusEl.textContent = `${msg.player} won the round!`;
+                    statusEl.textContent = '';
                     statusEl.classList.remove('listening', 'skipped');
-                    statusEl.classList.add('winner');
                     // Clear redaction timer during celebration
                     if (redactTimer) clearTimeout(redactTimer);
                     showCelebration(msg.player, currentWord);
@@ -3221,36 +3435,48 @@
                         }
                     }
                 } else if (msg.type === 'GAME_STARTED') {
-                    // All players ready — auto-start game with mic
+                    // All players ready — start game
                     if (!gameActive && onlinePlayers.length >= 2) {
-                        hideReadyButton();
+                        hideReadyOverlay();
                         listenBtn.style.display = '';
                         startGameTimer();
                         updateOnlineModeButtons();
-                        // Auto-init mic and start listening
-                        (async () => {
-                            try {
-                                if (!recognition) {
-                                    await ensureMicPermission();
+                        // Start mic only if player enabled it in the ready overlay
+                        if (readyMicEnabled && recognition) {
+                            isListening = true;
+                            silentStart();
+                            listenBtn.textContent = 'Stop Listening';
+                            listenBtn.classList.add('active');
+                            statusEl.textContent = 'Listening... Say the phrase!';
+                            statusEl.classList.add('listening');
+                            transcriptBox.classList.add('listening');
+                        } else if (!readyMicEnabled) {
+                            listenBtn.disabled = false;
+                            statusEl.textContent = 'Game started! Click Start Listening for mic.';
+                        } else {
+                            // Mic enabled but recognition not initialized — try now
+                            (async () => {
+                                try {
+                                    await ensureMicPermission(true);
                                     initSpeechRecognition();
+                                    isListening = true;
+                                    silentStart();
+                                    listenBtn.textContent = 'Stop Listening';
+                                    listenBtn.classList.add('active');
+                                    statusEl.textContent = 'Listening... Say the phrase!';
+                                    statusEl.classList.add('listening');
+                                    transcriptBox.classList.add('listening');
+                                } catch (e) {
+                                    listenBtn.disabled = false;
+                                    statusEl.textContent = 'Game started! Click Start Listening for mic.';
                                 }
-                                isListening = true;
-                                silentStart();
-                                listenBtn.textContent = 'Stop Listening';
-                                listenBtn.classList.add('active');
-                                statusEl.textContent = 'Listening... Say the phrase!';
-                                statusEl.classList.add('listening');
-                                transcriptBox.classList.add('listening');
-                            } catch (e) {
-                                // Mic permission failed — player can manually click Start Listening
-                                listenBtn.disabled = false;
-                                statusEl.textContent = 'Game started! Click Start Listening for mic.';
-                            }
-                        })();
+                            })();
+                        }
                     }
                 } else if (msg.type === 'NEW_ROUND') {
                     // New round started - reset and start fresh (only if 2+ players)
                     if (onlinePlayers.length >= 2) {
+                    hideReadyOverlay();
                     dismissGameSummary();
                     dismissLeaderboard();
                     phraseHistory = [];
@@ -3307,7 +3533,7 @@
                 listenBtn.disabled = true;
                 skipBtn.disabled = true;
                 gotItBtn.disabled = true;
-                hideReadyButton();
+                hideReadyOverlay();
                 stopHeartbeat();
                 if (!isReconnecting) {
                     statusEl.textContent = 'Disconnected. Reconnecting...';
@@ -3343,7 +3569,7 @@
         const micDialogOverlay = document.getElementById('micDialogOverlay');
         const micDialogBtn = document.getElementById('micDialogBtn');
 
-        async function ensureMicPermission() {
+        async function ensureMicPermission(skipDialog) {
             // Check if we already have permission
             try {
                 const permStatus = await navigator.permissions.query({ name: 'microphone' });
@@ -3352,14 +3578,16 @@
                 // permissions.query not supported for mic in some browsers, continue
             }
 
-            // Show friendly dialog first
-            await new Promise(resolve => {
-                micDialogOverlay.classList.add('active');
-                micDialogBtn.onclick = () => {
-                    micDialogOverlay.classList.remove('active');
-                    resolve();
-                };
-            });
+            // Show friendly dialog first (unless called from ready overlay)
+            if (!skipDialog) {
+                await new Promise(resolve => {
+                    micDialogOverlay.classList.add('active');
+                    micDialogBtn.onclick = () => {
+                        micDialogOverlay.classList.remove('active');
+                        resolve();
+                    };
+                });
+            }
 
             // Now request the actual browser permission
             try {
@@ -3368,7 +3596,9 @@
                 return true;
             } catch (e) {
                 console.log('Mic permission denied:', e);
-                errorEl.textContent = 'Microphone access denied. Please allow microphone access and refresh.';
+                if (!skipDialog) {
+                    errorEl.textContent = 'Microphone access denied. Please allow microphone access and refresh.';
+                }
                 return false;
             }
         }
@@ -3694,7 +3924,7 @@
         function showLobby() {
             dismissLeaderboard();
             dismissGameSummary();
-            hideReadyButton();
+            hideReadyOverlay();
             // Stop any active game
             if (gameActive) {
                 endGame();
