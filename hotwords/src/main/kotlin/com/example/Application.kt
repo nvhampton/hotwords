@@ -14,6 +14,7 @@ import io.ktor.websocket.*
 import kotlinx.coroutines.*
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import java.io.File
 import java.security.MessageDigest
 import java.time.Duration
 import java.util.*
@@ -69,11 +70,19 @@ data class RoundEntry(
 )
 
 @Serializable
+data class PhraseEvent(
+    val phrase: String,
+    val status: String,
+    val timeSeconds: Int
+)
+
+@Serializable
 data class RoundSubmission(
     val score: Int,
     val players: List<String>,
     val mode: String,
-    val roomId: String? = null
+    val roomId: String? = null,
+    val phrases: List<PhraseEvent> = emptyList()
 )
 
 @Serializable
@@ -97,6 +106,42 @@ data class LeaderboardResponse(
     val totalRounds: Int
 )
 
+@Serializable
+data class RoundLog(
+    val id: String,
+    val timestamp: Long,
+    val mode: String,
+    val roomId: String?,
+    val sessionHash: String,
+    val playerCount: Int,
+    val score: Int,
+    val phrases: List<PhraseEvent>
+)
+
+@Serializable
+data class PhraseStats(
+    val phrase: String,
+    val totalSeen: Int,
+    val gotIt: Int,
+    val skipped: Int,
+    val timedOut: Int,
+    val avgTimeSeconds: Double,
+    val successRate: Double
+)
+
+@Serializable
+data class DateRange(
+    val from: Long,
+    val to: Long
+)
+
+@Serializable
+data class AnalyticsResponse(
+    val phrases: List<PhraseStats>,
+    val totalRounds: Int,
+    val dateRange: DateRange
+)
+
 fun generateSessionHash(remoteHost: String): String {
     val salt = "hotwords-session-salt"
     val digest = MessageDigest.getInstance("SHA-256")
@@ -104,9 +149,17 @@ fun generateSessionHash(remoteHost: String): String {
     return hash.take(3).joinToString("") { "%02x".format(it) }
 }
 
+// JSONL persistence for phrase analytics
+private val dataDir = if (File("/opt/hotwords/data").exists()) File("/opt/hotwords/data") else File("data")
+private val roundLogFile = File(dataDir, "rounds.jsonl")
+private val roundLogLock = Any()
+private val jsonLenient = Json { ignoreUnknownKeys = true }
+private val validStatuses = setOf("got-it", "skipped", "timed-out")
+
 fun main(args: Array<String>): Unit = io.ktor.server.netty.EngineMain.main(args)
 
 fun Application.module() {
+    dataDir.mkdirs()
     install(WebSockets) {
         contentConverter = KotlinxWebsocketSerializationConverter(Json)
         maxFrameSize = 65536
@@ -218,96 +271,56 @@ fun Application.module() {
     environment.monitor.subscribe(ApplicationStopped) {
         cleanupJob.cancel()
     }
+    // Original adult phrases saved in phrases/original-phrases.txt
     val gameWords = listOf(
-        // Activities & Lifestyle
-        "Running late", "Couch potato", "Road trip", "Window shopping", "People watching",
-        "Channel surfing", "Binge watching", "Party pooper", "Night owl", "Early bird",
-        "Backseat driver", "Joy ride", "Happy hour", "Beauty sleep", "Power nap",
-        "All nighter", "Gym rat", "Beach bum", "Movie buff", "Sunday scaries",
-        // Food & Drink
-        "Piece of cake", "Spill the beans", "Hot potato", "Cool beans", "Bad apple",
-        "Bread winner", "Smart cookie", "Tough cookie", "Big cheese", "Top banana",
-        "Sour grapes", "Easy as pie", "Cream of the crop", "Best thing since sliced bread",
-        "Butter fingers", "Egg on your face", "Small potatoes", "In a pickle",
-        "Full plate", "Food coma", "Brain freeze", "Bite off more than you can chew",
-        // Animals
-        "Cat nap", "Dog days", "Fish out of water", "Wild goose chase", "Dark horse",
-        "Eager beaver", "Busy bee", "Social butterfly", "Party animal", "Loan shark",
-        "Scaredy cat", "Cat got your tongue", "Puppy love", "Top dog",
-        "Let sleeping dogs lie", "Monkey business", "Monkey see monkey do",
-        "Hold your horses", "One trick pony", "Bull in a china shop",
-        "Cash cow", "Holy cow", "Pig out", "Guinea pig", "Chicken out",
-        "Sitting duck", "Cold turkey", "Free as a bird", "Bird brain",
-        "When pigs fly", "Straight from the horse's mouth", "Elephant in the room",
-        // Weather & Nature
-        "Under the weather", "Rain check", "Storm is brewing", "Cloud nine", "Lightning fast",
-        "Right as rain", "Come rain or shine", "Steal your thunder",
-        "Perfect storm", "Calm before the storm", "Head in the clouds",
-        "Ray of sunshine", "Walking on sunshine", "Chasing rainbows", "Silver lining",
-        "Tip of the iceberg", "Break the ice", "Snowball effect",
-        // Sports & Competition
-        "Home run", "Slam dunk", "Hole in one", "Drop the ball", "On the ball",
-        "Game face", "Fair game", "Hail Mary", "Moving the goalposts",
-        "Par for the course", "Behind the eight ball", "Knock it out of the park",
-        "Down to the wire", "Jump through hoops", "Raise the bar",
-        "Threw a curveball", "Photo finish", "Front runner", "Goal line stand",
-        // Pop Culture & Modern
-        "Mic drop", "Plot twist", "Game changer", "Power move", "Main character energy",
-        "Hot take", "Living rent free", "Caught in 4K", "Reality check",
-        "Plot armor", "Origin story", "Redemption arc", "Side quest",
-        "Doom scrolling", "Touch grass", "Glow up", "Vibe check",
-        "Read the room", "Left on read", "Hits different", "Built different",
-        "It's giving", "Say less", "Rent free", "Understood the assignment",
-        // Famous Phrases & Sayings
-        "Actions speak louder than words", "Barking up the wrong tree",
-        "Burning bridges", "Caught red handed", "Cost an arm and a leg",
-        "Cry over spilled milk", "Curiosity killed the cat", "Devil's advocate",
-        "Every cloud has a silver lining", "Hit the nail on the head",
-        "Jump on the bandwagon", "Keep your eyes peeled", "Kill two birds with one stone",
-        "Let the cat out of the bag", "Method to the madness",
-        "Miss the boat", "Speak of the devil", "Steal the spotlight",
-        "Take it with a grain of salt", "The ball is in your court",
-        "The best of both worlds", "Under the radar", "Up in the air",
-        "Wouldn't hurt a fly", "You can say that again",
-        // Common Expressions
-        "Break a leg", "Hit the road", "Call it a day", "Piece of work", "Long shot",
-        "Big picture", "Last straw", "Wild card", "Green thumb", "Cold feet",
-        "Gut feeling", "No brainer", "Train of thought", "Food for thought",
-        "Penny for your thoughts", "Bottom line", "Fine print",
-        "Red flag", "Green light", "Gray area", "Golden rule",
-        "Magic touch", "Sixth sense", "Sweet spot", "Comfort zone",
-        "Done deal", "No dice", "In the bag", "Bag of tricks",
-        // Work & Hustle
-        "Heavy hitter", "Big shot", "Glass ceiling", "Rat race", "Fast track",
-        "Paper trail", "Think outside the box", "Back to the drawing board",
-        "Get the ball rolling", "Low hanging fruit", "Burning the candle at both ends",
-        "Cut corners", "Go the extra mile", "Learn the ropes", "Up to speed",
-        // Time
-        "Around the clock", "Against the clock", "Beat the clock", "Crunch time",
-        "Prime time", "Time flies", "In the nick of time",
-        "Once in a blue moon", "At the drop of a hat", "Better late than never",
-        "Burning the midnight oil", "Rise and shine", "Ship has sailed",
-        "Time is money", "Back to square one",
-        // Emotions & States
-        "Over the moon", "On top of the world", "Walking on air", "Head over heels",
-        "Butterflies in your stomach", "Heart of gold", "Broken heart", "Change of heart",
-        "Thick skinned", "Gets under your skin", "Skin deep",
-        "Keep it together", "Get a grip", "Hang in there", "Losing your marbles",
-        "Scared to death", "Bored to tears", "Tickled pink", "Green with envy",
-        // Actions & Movement
-        "Hit the ground running", "Jump the gun", "Bite the bullet", "Dodge a bullet",
-        "Cross the line", "Draw the line", "Read between the lines",
-        "Push the envelope", "Push your luck", "Pull some strings",
-        "Throw in the towel", "Throw shade", "Throw caution to the wind",
-        "Kick the bucket", "Kick it up a notch", "Go with the flow",
-        "Roll with the punches", "Shake things up", "Stir the pot",
-        "Rock the boat", "Blow off steam", "Cut to the chase",
-        // Relationships & People
-        "Tied the knot", "Pop the question", "Match made in heaven", "Two peas in a pod",
-        "Better half", "Partner in crime", "Thick as thieves", "Birds of a feather",
-        "Joined at the hip", "Heart to heart", "Eye to eye", "Neck and neck",
-        "Sparks fly", "Love at first sight", "Life of the party",
-        "Old soul", "Trouble maker", "Apple of my eye", "Takes one to know one"
+        // Animals & Creatures
+        "Baby shark", "Grumpy cat", "Flying squirrel", "Hungry hippo",
+        "Silly goose", "Lazy sloth", "Sneaky snake", "Crazy monkey",
+        "Dancing penguin", "Barking dog", "Fuzzy bunny", "Angry bird",
+        "Spider web", "Dinosaur egg", "Dragon fire", "Unicorn horn",
+        // Food & Yummy Stuff
+        "Pizza party", "Ice cream cone", "Chocolate cake", "Candy bar",
+        "Popcorn bucket", "Banana split", "Jelly bean", "Hot dog",
+        "French fries", "Bubble gum", "Cotton candy", "Apple juice",
+        "Peanut butter", "Mac and cheese", "Taco Tuesday", "Pancake stack",
+        // Silly Actions
+        "Belly flop", "Cannonball splash", "Pillow fight", "Food fight",
+        "Dance battle", "Thumb war", "Snow angel", "Belly laugh",
+        "High five", "Fist bump", "Happy dance", "Silly walk",
+        "Jumping jacks", "Cartwheel", "Belly button", "Funny face",
+        // Movies & Shows
+        "Toy Story", "Finding Nemo", "Lion King", "Frozen",
+        "Spider Man", "Super Mario", "Harry Potter", "Star Wars",
+        "Jurassic Park", "Inside Out", "Kung Fu Panda", "Shrek",
+        "Moana", "Encanto", "Minecraft", "Pokemon",
+        // School & Play
+        "Recess time", "Show and tell", "Field trip", "Snow day",
+        "Summer break", "Lunch box", "Back pack", "Playground slide",
+        "Dodgeball", "Hide and seek", "Tag you're it", "Capture the flag",
+        "Treasure hunt", "Water balloon", "Nerf gun", "Lego tower",
+        // Space & Adventure
+        "Rocket ship", "Shooting star", "Black hole", "Alien invasion",
+        "Moon landing", "Time travel", "Treasure map", "Pirate ship",
+        "Magic wand", "Secret door", "Haunted house", "Roller coaster",
+        "Water slide", "Zip line", "Bungee jump", "Hot air balloon",
+        // Sounds & Expressions
+        "Plot twist", "Mind blown", "Game over", "Level up",
+        "Power up", "Mic drop", "Brain freeze", "Oops",
+        "No way", "So cool", "Super gross", "Epic fail",
+        "Piece of cake", "Easy peasy", "Oh snap", "Yolo",
+        // Sports & Games
+        "Slam dunk", "Home run", "Hole in one", "Touchdown",
+        "Belly slide", "Cannonball", "Marco Polo", "Red rover",
+        "King of the hill", "Musical chairs", "Simon says", "Freeze tag",
+        "Rock paper scissors", "Thumb wrestling", "Arm wrestling", "Tug of war",
+        // Nature & Weather
+        "Rainbow", "Thunderstorm", "Snowball fight", "Sand castle",
+        "Mud puddle", "Volcano eruption", "Earthquake", "Tornado",
+        "Tidal wave", "Northern lights", "Shooting star", "Lightning bolt",
+        // Weird & Wacky
+        "Stinky cheese", "Slime monster", "Booger flick", "Burp contest",
+        "Fart noise", "Wet willy", "Rubber duck", "Whoopee cushion",
+        "Tickle monster", "Stink bug", "Snot rocket", "Armpit fart"
     )
 
     // RKO Company Culture phrases — PLACEHOLDER, replace with real phrases
@@ -395,6 +408,35 @@ fun Application.module() {
                 )
                 roundEntries[roundId] = entry
 
+                // Persist phrase-level data to JSONL
+                if (submission.phrases.isNotEmpty()) {
+                    val validatedPhrases = submission.phrases
+                        .take(200)
+                        .filter { it.status in validStatuses }
+                        .map { it.copy(
+                            phrase = it.phrase.take(100),
+                            timeSeconds = it.timeSeconds.coerceIn(0, 3600)
+                        ) }
+                    val roundLog = RoundLog(
+                        id = roundId,
+                        timestamp = now,
+                        mode = submission.mode,
+                        roomId = submission.roomId?.take(30),
+                        sessionHash = sessionHash,
+                        playerCount = validatedPlayers.size,
+                        score = validatedScore,
+                        phrases = validatedPhrases
+                    )
+                    try {
+                        synchronized(roundLogLock) {
+                            roundLogFile.appendText(Json.encodeToString(RoundLog.serializer(), roundLog) + "\n")
+                        }
+                    } catch (e: Exception) {
+                        // Log but don't fail the request
+                        println("Failed to write round log: ${e.message}")
+                    }
+                }
+
                 // Compute percentile among rounds in last 24h (same mode/room)
                 val ttl24h = 24 * 60 * 60 * 1000L
                 val comparable = roundEntries.values.filter { r ->
@@ -460,6 +502,79 @@ fun Application.module() {
                     grouped = grouped,
                     totalRounds = totalRounds
                 ))
+            }
+        }
+
+        get("/api/analytics/phrases") {
+            try {
+                if (!roundLogFile.exists()) {
+                    call.respond(AnalyticsResponse(
+                        phrases = emptyList(),
+                        totalRounds = 0,
+                        dateRange = DateRange(0, 0)
+                    ))
+                    return@get
+                }
+
+                val since = call.request.queryParameters["since"]?.toLongOrNull() ?: 0L
+                val limit = (call.request.queryParameters["limit"]?.toIntOrNull() ?: 50).coerceIn(1, 500)
+
+                val rounds = synchronized(roundLogLock) {
+                    roundLogFile.readLines()
+                }.mapNotNull { line ->
+                    try { jsonLenient.decodeFromString(RoundLog.serializer(), line) } catch (e: Exception) { null }
+                }.filter { it.timestamp >= since }
+
+                if (rounds.isEmpty()) {
+                    call.respond(AnalyticsResponse(
+                        phrases = emptyList(),
+                        totalRounds = 0,
+                        dateRange = DateRange(since, System.currentTimeMillis())
+                    ))
+                    return@get
+                }
+
+                // Aggregate by normalized phrase
+                data class Agg(var gotIt: Int = 0, var skipped: Int = 0, var timedOut: Int = 0, var totalTime: Int = 0, var gotItCount: Int = 0)
+                val byPhrase = mutableMapOf<String, Agg>()
+
+                for (round in rounds) {
+                    for (pe in round.phrases) {
+                        val key = pe.phrase.lowercase().trim()
+                        val agg = byPhrase.getOrPut(key) { Agg() }
+                        when (pe.status) {
+                            "got-it" -> { agg.gotIt++; agg.totalTime += pe.timeSeconds; agg.gotItCount++ }
+                            "skipped" -> agg.skipped++
+                            "timed-out" -> agg.timedOut++
+                        }
+                    }
+                }
+
+                val phraseStats = byPhrase.map { (phrase, agg) ->
+                    val total = agg.gotIt + agg.skipped + agg.timedOut
+                    PhraseStats(
+                        phrase = phrase,
+                        totalSeen = total,
+                        gotIt = agg.gotIt,
+                        skipped = agg.skipped,
+                        timedOut = agg.timedOut,
+                        avgTimeSeconds = if (agg.gotItCount > 0) (agg.totalTime.toDouble() / agg.gotItCount * 10).toLong() / 10.0 else 0.0,
+                        successRate = if (total > 0) (agg.gotIt.toDouble() / total * 100).toLong() / 100.0 else 0.0
+                    )
+                }
+                    .sortedBy { it.successRate }
+                    .take(limit)
+
+                val minTs = rounds.minOf { it.timestamp }
+                val maxTs = rounds.maxOf { it.timestamp }
+
+                call.respond(AnalyticsResponse(
+                    phrases = phraseStats,
+                    totalRounds = rounds.size,
+                    dateRange = DateRange(minTs, maxTs)
+                ))
+            } catch (e: Exception) {
+                call.respond(HttpStatusCode.InternalServerError, mapOf("error" to (e.message ?: "Unknown error")))
             }
         }
 

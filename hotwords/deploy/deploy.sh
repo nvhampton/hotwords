@@ -81,6 +81,7 @@ fi
 # Install JAR
 sudo mkdir -p /opt/hotwords
 sudo cp game-server.jar /opt/hotwords/game-server.jar
+sudo mkdir -p /opt/hotwords/data
 sudo chown -R hotwords:hotwords /opt/hotwords
 
 # Create systemd service for hotwords
