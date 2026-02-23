@@ -1,6 +1,6 @@
 # Hotwords - Requirements & Design Document
 
-**Version:** 2.0.0
+**Version:** 0.9.0
 
 ## Overview
 

@@ -15,6 +15,7 @@ import kotlinx.coroutines.*
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import java.security.MessageDigest
+import java.time.Duration
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 
@@ -31,7 +32,8 @@ data class GameMessage(
     val revealed: List<Boolean>? = null,
     val wordIndex: Int? = null,
     val timeRemaining: Int? = null,
-    val gameStartTime: Long? = null
+    val gameStartTime: Long? = null,
+    val theme: String? = null
 )
 
 @Serializable
@@ -107,6 +109,8 @@ fun main(args: Array<String>): Unit = io.ktor.server.netty.EngineMain.main(args)
 fun Application.module() {
     install(WebSockets) {
         contentConverter = KotlinxWebsocketSerializationConverter(Json)
+        maxFrameSize = 65536
+        pingPeriod = Duration.ofSeconds(30)
     }
     install(ContentNegotiation) {
         json()
@@ -120,7 +124,17 @@ fun Application.module() {
     val roomScores = ConcurrentHashMap<String, Int>()
     val roomWords = ConcurrentHashMap<String, String>()  // Per-room active word
     val roomStates = ConcurrentHashMap<String, RoomState>()  // Per-room player state
+    val roomThemes = ConcurrentHashMap<String, String>()  // Per-room phrase theme
     val sessionToPlayerId = ConcurrentHashMap<DefaultWebSocketServerSession, String>()  // Session to player ID mapping
+
+    // Rate limiting for POST /api/scores: IP -> list of timestamps
+    val scoreRateLimit = ConcurrentHashMap<String, MutableList<Long>>()
+
+    // Track when rooms became empty for cleanup
+    val roomEmptySince = ConcurrentHashMap<String, Long>()
+
+    // Per-connection message rate limiting: session -> list of timestamps
+    val wsMessageTimestamps = ConcurrentHashMap<DefaultWebSocketServerSession, MutableList<Long>>()
 
     // TTL cleanup coroutine - removes inactive players every 5 seconds
     val cleanupJob = CoroutineScope(Dispatchers.Default).launch {
@@ -165,6 +179,31 @@ fun Application.module() {
                         }
                     }
                 }
+
+                // Track empty rooms for cleanup
+                val roomSessions = rooms[roomId]
+                if (state.players.isEmpty() && (roomSessions == null || roomSessions.isEmpty())) {
+                    roomEmptySince.putIfAbsent(roomId, now)
+                } else {
+                    roomEmptySince.remove(roomId)
+                }
+            }
+
+            // Clean up rooms that have been empty for >60 seconds
+            roomEmptySince.entries.removeIf { (roomId, emptySince) ->
+                if (now - emptySince > 60_000L) {
+                    rooms.remove(roomId)
+                    roomStates.remove(roomId)
+                    roomWords.remove(roomId)
+                    roomScores.remove(roomId)
+                    true
+                } else false
+            }
+
+            // Clean up stale rate limit entries
+            scoreRateLimit.entries.removeIf { (_, timestamps) ->
+                timestamps.removeIf { now - it > 60_000L }
+                timestamps.isEmpty()
             }
         }
     }
@@ -176,80 +215,110 @@ fun Application.module() {
         // Activities & Lifestyle
         "Running late", "Couch potato", "Road trip", "Window shopping", "People watching",
         "Channel surfing", "Binge watching", "Party pooper", "Night owl", "Early bird",
-        "Sunday driver", "Backseat driver", "Joy ride", "Happy hour", "Beauty sleep",
-        "Power nap", "All nighter", "Gym rat", "Beach bum", "Mall rat",
-        "Bookworm", "Movie buff", "Foodie heaven", "Coffee addict", "Retail therapy",
-        // Food & Drink Idioms
+        "Backseat driver", "Joy ride", "Happy hour", "Beauty sleep", "Power nap",
+        "All nighter", "Gym rat", "Beach bum", "Movie buff", "Sunday scaries",
+        // Food & Drink
         "Piece of cake", "Spill the beans", "Hot potato", "Cool beans", "Bad apple",
         "Bread winner", "Smart cookie", "Tough cookie", "Big cheese", "Top banana",
-        "Sour grapes", "Apple pie", "Easy as pie", "Cream of the crop", "Best thing since sliced bread",
-        "Butter fingers", "Egg head", "Small potatoes", "Hot dog",
-        "In a pickle", "Full plate", "Food coma", "Comfort food", "Brain freeze",
-        // Animal Expressions
+        "Sour grapes", "Easy as pie", "Cream of the crop", "Best thing since sliced bread",
+        "Butter fingers", "Egg on your face", "Small potatoes", "In a pickle",
+        "Full plate", "Food coma", "Brain freeze", "Bite off more than you can chew",
+        // Animals
         "Cat nap", "Dog days", "Fish out of water", "Wild goose chase", "Dark horse",
         "Eager beaver", "Busy bee", "Social butterfly", "Party animal", "Loan shark",
-        "Copy cat", "Fat cat", "Scaredy cat", "Cool cat", "Cat got your tongue",
-        "Puppy love", "Top dog", "Dog tired", "Let sleeping dogs lie", "Underdog",
-        "Monkey business", "Monkey see monkey do", "Horse around", "Hold your horses", "One trick pony",
-        "Bull in a china shop", "Cash cow", "Holy cow", "Pig out", "Guinea pig",
-        "Chicken out", "Sitting duck", "Lame duck", "Lucky duck", "Cold turkey",
-        "Wise owl", "Free bird", "Bird brain",
+        "Scaredy cat", "Cat got your tongue", "Puppy love", "Top dog",
+        "Let sleeping dogs lie", "Monkey business", "Monkey see monkey do",
+        "Hold your horses", "One trick pony", "Bull in a china shop",
+        "Cash cow", "Holy cow", "Pig out", "Guinea pig", "Chicken out",
+        "Sitting duck", "Cold turkey", "Free as a bird", "Bird brain",
+        "When pigs fly", "Straight from the horse's mouth", "Elephant in the room",
         // Weather & Nature
-        "Under the weather", "Rain check", "Storm brewing", "Cloud nine", "Lightning fast",
-        "Sunny disposition", "Right as rain", "Come rain or shine", "Steal thunder", "Brainstorm",
-        "Perfect storm", "Calm before the storm", "Weather the storm", "Head in the clouds", "On cloud nine",
-        "Ray of sunshine", "Walking on sunshine", "Chasing rainbows", "Silver lining", "Golden hour",
-        // Sports & Games
-        "Curveball", "Home run", "Slam dunk", "Touchdown", "Hole in one",
-        "Drop the ball", "On the ball", "Play ball", "Ball park", "Foul play",
-        "Game on", "Game over", "Game face", "Fair game", "Blame game",
-        "Level up", "Boss level", "High score", "Side quest", "Easter egg",
-        "Full court press", "Hail Mary", "Moving the goalposts", "Par for the course", "Behind the eight ball",
+        "Under the weather", "Rain check", "Storm is brewing", "Cloud nine", "Lightning fast",
+        "Right as rain", "Come rain or shine", "Steal your thunder",
+        "Perfect storm", "Calm before the storm", "Head in the clouds",
+        "Ray of sunshine", "Walking on sunshine", "Chasing rainbows", "Silver lining",
+        "Tip of the iceberg", "Break the ice", "Snowball effect",
+        // Sports & Competition
+        "Home run", "Slam dunk", "Hole in one", "Drop the ball", "On the ball",
+        "Game face", "Fair game", "Hail Mary", "Moving the goalposts",
+        "Par for the course", "Behind the eight ball", "Knock it out of the park",
+        "Down to the wire", "Jump through hoops", "Raise the bar",
+        "Threw a curveball", "Photo finish", "Front runner", "Goal line stand",
         // Pop Culture & Modern
-        "Viral video", "Going viral", "Mic drop", "Plot twist", "Cliffhanger",
-        "Binge worthy", "Game changer", "Power move", "Big brain", "Main character",
-        "Hot take", "Humble brag", "Low key", "High key", "No cap",
-        "Side hustle", "Glow up", "Vibe check",
-        "Cancel culture", "Doom scrolling", "Touch grass", "Living rent free", "Caught in 4K",
-        "Send it", "Slay", "Iconic", "Legendary",
-        "Reality check", "Plot armor", "Character arc", "Origin story", "Redemption arc",
+        "Mic drop", "Plot twist", "Game changer", "Power move", "Main character energy",
+        "Hot take", "Living rent free", "Caught in 4K", "Reality check",
+        "Plot armor", "Origin story", "Redemption arc", "Side quest",
+        "Doom scrolling", "Touch grass", "Glow up", "Vibe check",
+        "Read the room", "Left on read", "Hits different", "Built different",
+        "It's giving", "Say less", "Rent free", "Understood the assignment",
+        // Famous Phrases & Sayings
+        "Actions speak louder than words", "Barking up the wrong tree",
+        "Burning bridges", "Caught red handed", "Cost an arm and a leg",
+        "Cry over spilled milk", "Curiosity killed the cat", "Devil's advocate",
+        "Every cloud has a silver lining", "Hit the nail on the head",
+        "Jump on the bandwagon", "Keep your eyes peeled", "Kill two birds with one stone",
+        "Let the cat out of the bag", "Method to the madness",
+        "Miss the boat", "Speak of the devil", "Steal the spotlight",
+        "Take it with a grain of salt", "The ball is in your court",
+        "The best of both worlds", "Under the radar", "Up in the air",
+        "Wouldn't hurt a fly", "You can say that again",
         // Common Expressions
         "Break a leg", "Hit the road", "Call it a day", "Piece of work", "Long shot",
         "Big picture", "Last straw", "Wild card", "Green thumb", "Cold feet",
-        "Gut feeling", "Second guess", "No brainer", "Think tank", "Train of thought",
-        "Food for thought", "Penny for your thoughts", "Two cents", "Bottom line", "Fine print",
-        "Red flag", "Green light", "Gray area", "Black and white", "Golden rule",
-        "Silver bullet", "Magic touch", "Midas touch", "Sixth sense", "Sweet spot",
-        "Comfort zone", "Safe bet", "Sure thing", "Done deal", "No dice",
-        "Mixed bag", "Grab bag", "In the bag", "Bag of tricks",
-        // Work & Business
-        "Team player", "Go getter", "Self starter", "Heavy hitter", "Big shot",
-        "Corner office", "Glass ceiling", "Rat race", "Fast track", "Inside track",
-        "Paper trail", "Paper pusher", "Number cruncher", "Bean counter", "Pencil pusher",
-        "Think outside the box", "Back to the drawing board", "Get the ball rolling", "Touch base", "Circle back",
-        "Deep dive", "Low hanging fruit", "Move the needle", "Boil the ocean", "Drink the Kool Aid",
-        // Time Expressions
-        "Around the clock", "Against the clock", "Beat the clock", "Kill time", "Crunch time",
-        "Prime time", "Big time", "About time", "High time", "Time flies",
-        "In the nick of time", "Ahead of time", "Behind the times", "Once in a blue moon", "At the drop of a hat",
-        "Day in day out", "Day and night", "Call it a night", "Burning the midnight oil", "Rise and shine",
+        "Gut feeling", "No brainer", "Train of thought", "Food for thought",
+        "Penny for your thoughts", "Bottom line", "Fine print",
+        "Red flag", "Green light", "Gray area", "Golden rule",
+        "Magic touch", "Sixth sense", "Sweet spot", "Comfort zone",
+        "Done deal", "No dice", "In the bag", "Bag of tricks",
+        // Work & Hustle
+        "Heavy hitter", "Big shot", "Glass ceiling", "Rat race", "Fast track",
+        "Paper trail", "Think outside the box", "Back to the drawing board",
+        "Get the ball rolling", "Low hanging fruit", "Burning the candle at both ends",
+        "Cut corners", "Go the extra mile", "Learn the ropes", "Up to speed",
+        // Time
+        "Around the clock", "Against the clock", "Beat the clock", "Crunch time",
+        "Prime time", "Time flies", "In the nick of time",
+        "Once in a blue moon", "At the drop of a hat", "Better late than never",
+        "Burning the midnight oil", "Rise and shine", "Ship has sailed",
+        "Time is money", "Back to square one",
         // Emotions & States
-        "Over the moon", "On top of the world", "Walking on air", "Head over heels", "Butterflies in stomach",
-        "Heart of gold", "Cold hearted", "Broken heart", "Change of heart", "Heavy heart",
-        "Thick skinned", "Thin skinned", "Get under skin", "Jump out of skin", "Skin deep",
-        "Keep cool", "Play it cool", "Cool headed", "Hot headed", "Level headed",
-        "Losing it", "Keep it together", "Fall apart", "Get a grip", "Hang in there",
+        "Over the moon", "On top of the world", "Walking on air", "Head over heels",
+        "Butterflies in your stomach", "Heart of gold", "Broken heart", "Change of heart",
+        "Thick skinned", "Gets under your skin", "Skin deep",
+        "Keep it together", "Get a grip", "Hang in there", "Losing your marbles",
+        "Scared to death", "Bored to tears", "Tickled pink", "Green with envy",
         // Actions & Movement
-        "Hit the ground running", "Jump the gun", "Pull the trigger", "Bite the bullet", "Dodge a bullet",
-        "Cross the line", "Draw the line", "Walk the line", "Read between the lines", "Drop a line",
-        "Push the envelope", "Push your luck", "Push comes to shove", "Pull strings", "Pull punches",
-        "Throw in the towel", "Throw shade", "Throw a curve", "Throw caution to the wind", "Throw for a loop",
-        "Kick the bucket", "Kick back", "Kick it up a notch", "Kick start", "Kick the habit",
-        // Relationships
-        "Tied the knot", "Pop the question", "Match made in heaven", "Two peas in a pod", "Better half",
-        "Partner in crime", "Thick as thieves", "Birds of a feather", "Joined at hip",
-        "Heart to heart", "Eye to eye", "Face to face", "Hand in hand", "Neck and neck",
-        "Old flame", "Spark fly", "Love at first sight", "Blind date", "Double date"
+        "Hit the ground running", "Jump the gun", "Bite the bullet", "Dodge a bullet",
+        "Cross the line", "Draw the line", "Read between the lines",
+        "Push the envelope", "Push your luck", "Pull some strings",
+        "Throw in the towel", "Throw shade", "Throw caution to the wind",
+        "Kick the bucket", "Kick it up a notch", "Go with the flow",
+        "Roll with the punches", "Shake things up", "Stir the pot",
+        "Rock the boat", "Blow off steam", "Cut to the chase",
+        // Relationships & People
+        "Tied the knot", "Pop the question", "Match made in heaven", "Two peas in a pod",
+        "Better half", "Partner in crime", "Thick as thieves", "Birds of a feather",
+        "Joined at the hip", "Heart to heart", "Eye to eye", "Neck and neck",
+        "Sparks fly", "Love at first sight", "Life of the party",
+        "Old soul", "Trouble maker", "Apple of my eye", "Takes one to know one"
+    )
+
+    // RKO Company Culture phrases — PLACEHOLDER, replace with real phrases
+    val rkoWords = listOf(
+        "Circle back", "Move the needle", "Deep dive",
+        "Low hanging fruit", "Run it up the flagpole", "Boil the ocean",
+        "Think outside the box", "Synergy", "Alignment",
+        "Take it offline", "Touch base", "Level set",
+        "Net net", "Action item", "Parking lot",
+        "Bandwidth check", "Hard stop", "Pivot",
+        "Value add", "Best practice", "Core competency",
+        "Drill down", "Ecosystem", "Leverage",
+        "Pain point", "Stakeholder", "Deliverable",
+        "Game plan", "On the radar", "In the weeds",
+        "Big picture thinking", "Run the numbers", "Close the loop",
+        "Open the kimono", "Eat our own dog food", "Drink the Kool Aid",
+        "Raise the bar", "Move the goalposts", "Shift the paradigm",
+        "Cross pollinate", "Future proof", "Right size"
     )
 
     routing {
@@ -259,17 +328,51 @@ fun Application.module() {
 
         post("/api/scores") {
             try {
-                val submission = call.receive<RoundSubmission>()
-                val sessionHash = generateSessionHash(call.request.local.remoteHost)
+                val remoteIp = call.request.local.remoteHost
                 val now = System.currentTimeMillis()
+
+                // Rate limit: max 10 requests per minute per IP
+                val timestamps = scoreRateLimit.computeIfAbsent(remoteIp) { mutableListOf() }
+                val rateLimited = synchronized(timestamps) {
+                    timestamps.removeIf { now - it > 60_000L }
+                    if (timestamps.size >= 10) {
+                        true
+                    } else {
+                        timestamps.add(now)
+                        false
+                    }
+                }
+                if (rateLimited) {
+                    call.respond(HttpStatusCode.TooManyRequests, RoundSubmissionResponse(
+                        status = "error",
+                        error = "Rate limit exceeded"
+                    ))
+                    return@post
+                }
+
+                val submission = call.receive<RoundSubmission>()
+
+                // Validate submission fields
+                if (submission.mode !in listOf("local", "online")) {
+                    call.respond(HttpStatusCode.BadRequest, RoundSubmissionResponse(
+                        status = "error", error = "Invalid mode"
+                    ))
+                    return@post
+                }
+                val validatedScore = submission.score.coerceIn(0, 999)
+                val validatedPlayers = submission.players
+                    .take(20)
+                    .map { it.take(20) }
+
+                val sessionHash = generateSessionHash(remoteIp)
                 val roundId = UUID.randomUUID().toString()
 
                 val entry = RoundEntry(
                     id = roundId,
-                    score = submission.score,
-                    players = submission.players,
+                    score = validatedScore,
+                    players = validatedPlayers,
                     mode = submission.mode,
-                    roomId = submission.roomId,
+                    roomId = submission.roomId?.take(30),
                     sessionHash = sessionHash,
                     timestamp = now
                 )
@@ -283,7 +386,7 @@ fun Application.module() {
                     (if (submission.mode == "online") r.roomId == submission.roomId else true)
                 }
                 val total = comparable.size
-                val atOrBelow = comparable.count { it.score <= submission.score }
+                val atOrBelow = comparable.count { it.score <= validatedScore }
                 val percentile = if (total > 0) (atOrBelow * 100) / total else 100
 
                 call.respond(RoundSubmissionResponse(
@@ -345,9 +448,30 @@ fun Application.module() {
 
         webSocket("/game/{roomId}") {
             val roomId = call.parameters["roomId"] ?: "lobby"
+
+            // Validate room ID: alphanumeric (plus hyphens/underscores), max 30 chars
+            if (roomId.length > 30 || !roomId.matches(Regex("^[a-zA-Z0-9_-]+$"))) {
+                close(CloseReason(CloseReason.Codes.VIOLATED_POLICY, "Invalid room ID"))
+                return@webSocket
+            }
+
+            // Room cap: max 100 concurrent rooms
+            if (!rooms.containsKey(roomId) && rooms.size >= 100) {
+                close(CloseReason(CloseReason.Codes.TRY_AGAIN_LATER, "Too many rooms"))
+                return@webSocket
+            }
+
             val room = rooms.computeIfAbsent(roomId) { Collections.synchronizedSet(LinkedHashSet()) }
             val state = roomStates.computeIfAbsent(roomId) { RoomState() }
+
+            // Player cap: max 20 players per room
+            if (state.players.size >= 20) {
+                close(CloseReason(CloseReason.Codes.TRY_AGAIN_LATER, "Room is full"))
+                return@webSocket
+            }
+
             room.add(this)
+            roomEmptySince.remove(roomId)
 
             try {
                 // Initialize room word if needed, or get existing
@@ -365,13 +489,29 @@ fun Application.module() {
 
                 for (frame in incoming) {
                     if (frame is Frame.Text) {
+                        // Per-connection rate limit: max 30 messages per second
+                        val msgNow = System.currentTimeMillis()
+                        val msgTimestamps = wsMessageTimestamps.computeIfAbsent(this) { mutableListOf() }
+                        val msgDropped = synchronized(msgTimestamps) {
+                            msgTimestamps.removeIf { msgNow - it > 1000L }
+                            if (msgTimestamps.size >= 30) {
+                                true
+                            } else {
+                                msgTimestamps.add(msgNow)
+                                false
+                            }
+                        }
+                        if (msgDropped) continue  // Drop excess messages
+
                         val text = frame.readText()
                         val received = Json.decodeFromString<GameMessage>(text)
 
                         when (received.type) {
                             "SET_NAME" -> {
                                 val playerId = received.playerId ?: UUID.randomUUID().toString()
-                                val playerName = received.player ?: "Anonymous"
+                                // Sanitize player name: trim, cap at 20 chars, strip HTML tags
+                                val rawName = (received.player ?: "Anonymous").trim().take(20)
+                                val playerName = rawName.replace(Regex("<[^>]*>"), "").ifEmpty { "Anonymous" }
 
                                 // Check if this player already exists (reconnect)
                                 val existingPlayer = state.players.find { it.id == playerId }
@@ -465,7 +605,11 @@ fun Application.module() {
                             }
 
                             "WORD_MATCH" -> {
-                                // A guesser matched a word
+                                // A guesser matched a word - only non-hot players allowed
+                                val senderPlayerId = sessionToPlayerId[this]
+                                if (senderPlayerId == null) continue
+                                val senderIndex = state.players.indexOfFirst { it.id == senderPlayerId }
+                                if (senderIndex == state.currentHotPlayerIndex) continue  // Hot player can't send word matches
                                 val wordIndex = received.wordIndex
                                 if (wordIndex != null && wordIndex >= 0 && wordIndex < state.revealedWords.size) {
                                     state.revealedWords[wordIndex] = true
@@ -522,7 +666,10 @@ fun Application.module() {
                             }
 
                             "DESCRIBER_SLIP" -> {
-                                // Describer accidentally said a forbidden word - reveal it as penalty
+                                // Describer accidentally said a forbidden word - only hot player
+                                val senderPlayerId = sessionToPlayerId[this] ?: continue
+                                val senderIndex = state.players.indexOfFirst { it.id == senderPlayerId }
+                                if (senderIndex != state.currentHotPlayerIndex) continue
                                 val wordIndex = received.wordIndex
                                 if (wordIndex != null && wordIndex >= 0 && wordIndex < state.revealedWords.size) {
                                     if (!state.revealedWords[wordIndex]) {
@@ -552,7 +699,10 @@ fun Application.module() {
                             }
 
                             "DESCRIBER_FAIL" -> {
-                                // Describer said the whole phrase - fail and skip!
+                                // Describer said the whole phrase - only hot player
+                                val senderPlayerId = sessionToPlayerId[this] ?: continue
+                                val senderIndex = state.players.indexOfFirst { it.id == senderPlayerId }
+                                if (senderIndex != state.currentHotPlayerIndex) continue
                                 // Rotate to next describer
                                 if (state.players.isNotEmpty()) {
                                     state.currentHotPlayerIndex = (state.currentHotPlayerIndex + 1) % state.players.size
@@ -591,6 +741,8 @@ fun Application.module() {
                             }
 
                             "CLAIM_VICTORY" -> {
+                                // Any room member can claim victory
+                                if (sessionToPlayerId[this] == null) continue
                                 // Rotate to next describer
                                 if (state.players.isNotEmpty()) {
                                     state.currentHotPlayerIndex = (state.currentHotPlayerIndex + 1) % state.players.size
@@ -630,8 +782,11 @@ fun Application.module() {
                             }
 
                             "SKIP_WORD" -> {
+                                // Only hot player (describer) can skip
+                                val senderPlayerId = sessionToPlayerId[this] ?: continue
+                                val senderIndex = state.players.indexOfFirst { it.id == senderPlayerId }
+                                if (senderIndex != state.currentHotPlayerIndex) continue
                                 // Skip = same describer, new phrase (they take the penalty!)
-                                // Does NOT rotate - like local mode hot potato
                                 val newWord = gameWords.random()
                                 roomWords[roomId] = newWord
                                 state.currentWord = newWord
@@ -657,6 +812,7 @@ fun Application.module() {
                 println("Socket error: ${e.localizedMessage}")
             } finally {
                 room.remove(this)
+                wsMessageTimestamps.remove(this)
                 // Remove player from state
                 val playerId = sessionToPlayerId.remove(this)
                 if (playerId != null) {

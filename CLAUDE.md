@@ -14,6 +14,10 @@ Run from the `hotwords/` subdirectory:
 
 There are no unit tests. The project has no test dependencies or `src/test/` directory.
 
+## Versioning
+
+Version is defined in `build.gradle.kts` (`version = "0.9.0"`) as the single source of truth. The `@@VERSION@@` placeholder in `index.html` is replaced at build time via Gradle's `processResources`. To bump the version, only edit `build.gradle.kts`. Follow semver: patch for bug fixes, minor for new features, major for breaking changes.
+
 ## Deploy
 
 ```bash
@@ -73,6 +77,16 @@ Room state is isolated per `roomId`. The server tracks: active players (with hea
 
 ### Server → Client
 `PLAYER_LIST`, `NEW_WORD`, `WORD_PROGRESS`, `ROUND_WON`, `WORD_SKIPPED`, `DESCRIBER_SLIPPED`, `DESCRIBER_FAILED`, `TIMER_SYNC`, `GAME_STARTED`
+
+## Changelog
+
+After every session involving significant changes (20+ minutes of work, new features, bug fixes, security changes, or architectural decisions), append a dated section to `ProjectChanges.md` documenting:
+- What changed and why
+- Any bugs encountered and how they were fixed
+- Key learnings (numbered, continuing from the last entry)
+- Decisions made and alternatives considered
+
+This is the project's institutional memory. Keep entries concise but specific enough to avoid repeating mistakes.
 
 ## Tech Stack
 

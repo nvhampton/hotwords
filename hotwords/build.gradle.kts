@@ -10,7 +10,7 @@ plugins {
 }
 
 group = "com.example"
-version = "1.0-SNAPSHOT"
+version = "0.9.0"
 
 // This is what the Shadow plugin was looking for
 application {
@@ -41,6 +41,12 @@ java {
 tasks.withType<KotlinCompile>().configureEach {
     kotlinOptions {
         jvmTarget = "21"
+    }
+}
+
+tasks.named<ProcessResources>("processResources") {
+    filesMatching("static/index.html") {
+        filter { it.replace("@@VERSION@@", version.toString()) }
     }
 }
 

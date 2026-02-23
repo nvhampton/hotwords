@@ -72,9 +72,16 @@ echo "Stopping existing services..."
 sudo systemctl stop hotwords 2>/dev/null || true
 sudo systemctl stop caddy 2>/dev/null || true
 
+# Create hotwords user if needed
+if ! id -u hotwords &>/dev/null; then
+    echo "Creating hotwords user..."
+    sudo useradd --system --no-create-home --shell /usr/sbin/nologin hotwords
+fi
+
 # Install JAR
 sudo mkdir -p /opt/hotwords
 sudo cp game-server.jar /opt/hotwords/game-server.jar
+sudo chown -R hotwords:hotwords /opt/hotwords
 
 # Create systemd service for hotwords
 sudo tee /etc/systemd/system/hotwords.service > /dev/null <<'EOF'
@@ -84,10 +91,16 @@ After=network.target
 
 [Service]
 Type=simple
+User=hotwords
 ExecStart=/usr/bin/java -jar /opt/hotwords/game-server.jar
 WorkingDirectory=/opt/hotwords
 Restart=always
 RestartSec=5
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/opt/hotwords
 
 [Install]
 WantedBy=multi-user.target

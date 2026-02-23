@@ -970,11 +970,74 @@
             text-align: center;
             max-width: 500px;
             width: 100%;
+            position: relative;
         }
         .lobby h1 {
             font-size: 3rem;
             margin-bottom: 30px;
             color: #ff6b6b;
+        }
+
+        /* RKO Takeover bookmark toggle */
+        .rko-toggle {
+            position: absolute;
+            top: -10px;
+            right: -10px;
+            width: 64px;
+            cursor: pointer;
+            user-select: none;
+            -webkit-user-select: none;
+            z-index: 10;
+            transition: all 0.3s ease;
+            transform: rotate(8deg);
+        }
+        .rko-toggle-inner {
+            background: rgba(255, 255, 255, 0.08);
+            border: 2px solid rgba(255, 255, 255, 0.15);
+            border-radius: 6px 6px 0 0;
+            padding: 10px 8px 14px;
+            text-align: center;
+            clip-path: polygon(0 0, 100% 0, 100% 85%, 50% 100%, 0 85%);
+            transition: all 0.3s ease;
+        }
+        .rko-label {
+            display: block;
+            font-size: 0.9rem;
+            font-weight: 900;
+            letter-spacing: 2px;
+            color: rgba(255, 255, 255, 0.3);
+            transition: all 0.3s ease;
+        }
+        .rko-sublabel {
+            display: block;
+            font-size: 0.5rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: rgba(255, 255, 255, 0.2);
+            margin-top: 2px;
+            transition: all 0.3s ease;
+        }
+        .rko-toggle.active .rko-toggle-inner {
+            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+            border-color: #e74c3c;
+            box-shadow: 0 0 20px rgba(231, 76, 60, 0.5), 0 0 40px rgba(231, 76, 60, 0.2);
+        }
+        .rko-toggle.active .rko-label {
+            color: #fff;
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+        }
+        .rko-toggle.active .rko-sublabel {
+            color: rgba(255, 255, 255, 0.8);
+        }
+        .rko-toggle:hover {
+            transform: rotate(8deg) scale(1.1);
+        }
+        .rko-toggle:hover:not(.active) .rko-toggle-inner {
+            border-color: rgba(231, 76, 60, 0.4);
+            background: rgba(231, 76, 60, 0.15);
+        }
+        .rko-toggle:hover:not(.active) .rko-label {
+            color: rgba(255, 255, 255, 0.6);
         }
         .mode-buttons {
             display: flex;
@@ -1266,6 +1329,12 @@
 
     <!-- Lobby Screen -->
     <div class="lobby" id="lobbyScreen">
+        <div class="rko-toggle" id="rkoToggle" title="RKO Takeover mode">
+            <div class="rko-toggle-inner">
+                <span class="rko-label">RKO</span>
+                <span class="rko-sublabel">takeover</span>
+            </div>
+        </div>
         <h1>🔥 Hotwords 💬</h1>
 
         <div class="mode-buttons">
@@ -1305,7 +1374,7 @@
             </div>
         </div>
 
-        <div class="version">v2.0.0</div>
+        <div class="version">v@@VERSION@@</div>
     </div>
 
     <!-- Game Screen -->
@@ -1415,7 +1484,7 @@
     <script>
         /*
          * ============================================================================
-         * HOTWORDS v2.0.0-alpha
+         * HOTWORDS v@@VERSION@@
          * ============================================================================
          * A multiplayer word/phrase guessing game with two modes:
          *   - Local Mode: Hot potato style, pass device between players
@@ -1601,7 +1670,7 @@
                 for (let i = 0; i < currentWords.length; i++) {
                     const word = currentWords[i];
                     if (onlineRevealedWords[i]) {
-                        html += `<span class="word-revealed">${word}</span> `;
+                        html += `<span class="word-revealed">${escapeHtml(word)}</span> `;
                     } else {
                         const hidden = '#'.repeat(word.length);
                         html += `<span class="word-hidden">${hidden}</span> `;
@@ -1728,92 +1797,131 @@
             // Activities & Lifestyle
             "Running late", "Couch potato", "Road trip", "Window shopping", "People watching",
             "Channel surfing", "Binge watching", "Party pooper", "Night owl", "Early bird",
-            "Sunday driver", "Backseat driver", "Joy ride", "Happy hour", "Beauty sleep",
-            "Power nap", "All nighter", "Gym rat", "Beach bum", "Mall rat",
-            "Bookworm", "Movie buff", "Foodie heaven", "Coffee addict", "Retail therapy",
+            "Backseat driver", "Joy ride", "Happy hour", "Beauty sleep", "Power nap",
+            "All nighter", "Gym rat", "Beach bum", "Movie buff", "Sunday scaries",
 
-            // Food & Drink Idioms
+            // Food & Drink
             "Piece of cake", "Spill the beans", "Hot potato", "Cool beans", "Bad apple",
             "Bread winner", "Smart cookie", "Tough cookie", "Big cheese", "Top banana",
-            "Sour grapes", "Apple pie", "Easy as pie", "Cream of the crop", "Best thing since sliced bread",
-            "Butter fingers", "Egg head", "Couch potato", "Small potatoes", "Hot dog",
-            "In a pickle", "Full plate", "Food coma", "Comfort food", "Brain freeze",
+            "Sour grapes", "Easy as pie", "Cream of the crop", "Best thing since sliced bread",
+            "Butter fingers", "Egg on your face", "Small potatoes", "In a pickle",
+            "Full plate", "Food coma", "Brain freeze", "Bite off more than you can chew",
 
-            // Animal Expressions
+            // Animals
             "Cat nap", "Dog days", "Fish out of water", "Wild goose chase", "Dark horse",
             "Eager beaver", "Busy bee", "Social butterfly", "Party animal", "Loan shark",
-            "Copy cat", "Fat cat", "Scaredy cat", "Cool cat", "Cat got your tongue",
-            "Puppy love", "Top dog", "Dog tired", "Let sleeping dogs lie", "Underdog",
-            "Monkey business", "Monkey see monkey do", "Horse around", "Hold your horses", "One trick pony",
-            "Bull in a china shop", "Cash cow", "Holy cow", "Pig out", "Guinea pig",
-            "Chicken out", "Sitting duck", "Lame duck", "Lucky duck", "Cold turkey",
-            "Night owl", "Wise owl", "Early bird", "Free bird", "Bird brain",
+            "Scaredy cat", "Cat got your tongue", "Puppy love", "Top dog",
+            "Let sleeping dogs lie", "Monkey business", "Monkey see monkey do",
+            "Hold your horses", "One trick pony", "Bull in a china shop",
+            "Cash cow", "Holy cow", "Pig out", "Guinea pig", "Chicken out",
+            "Sitting duck", "Cold turkey", "Free as a bird", "Bird brain",
+            "When pigs fly", "Straight from the horse's mouth", "Elephant in the room",
 
             // Weather & Nature
-            "Under the weather", "Rain check", "Storm brewing", "Cloud nine", "Lightning fast",
-            "Sunny disposition", "Right as rain", "Come rain or shine", "Steal thunder", "Brainstorm",
-            "Perfect storm", "Calm before the storm", "Weather the storm", "Head in the clouds", "On cloud nine",
-            "Ray of sunshine", "Walking on sunshine", "Chasing rainbows", "Silver lining", "Golden hour",
+            "Under the weather", "Rain check", "Storm is brewing", "Cloud nine", "Lightning fast",
+            "Right as rain", "Come rain or shine", "Steal your thunder",
+            "Perfect storm", "Calm before the storm", "Head in the clouds",
+            "Ray of sunshine", "Walking on sunshine", "Chasing rainbows", "Silver lining",
+            "Tip of the iceberg", "Break the ice", "Snowball effect",
 
-            // Sports & Games
-            "Curveball", "Home run", "Slam dunk", "Touchdown", "Hole in one",
-            "Drop the ball", "On the ball", "Play ball", "Ball park", "Foul play",
-            "Game on", "Game over", "Game face", "Fair game", "Blame game",
-            "Level up", "Boss level", "High score", "Side quest", "Easter egg",
-            "Full court press", "Hail Mary", "Moving the goalposts", "Par for the course", "Behind the eight ball",
+            // Sports & Competition
+            "Home run", "Slam dunk", "Hole in one", "Drop the ball", "On the ball",
+            "Game face", "Fair game", "Hail Mary", "Moving the goalposts",
+            "Par for the course", "Behind the eight ball", "Knock it out of the park",
+            "Down to the wire", "Jump through hoops", "Raise the bar",
+            "Threw a curveball", "Photo finish", "Front runner", "Goal line stand",
 
             // Pop Culture & Modern
-            "Viral video", "Going viral", "Mic drop", "Plot twist", "Cliffhanger",
-            "Binge worthy", "Game changer", "Power move", "Big brain", "Main character",
-            "Hot take", "Humble brag", "Low key", "High key", "No cap",
-            "Side hustle", "Glow up", "Level up", "Vibe check", "Mood",
-            "Cancel culture", "Doom scrolling", "Touch grass", "Living rent free", "Caught in 4K",
-            "Send it", "Slay", "Period", "Iconic", "Legendary",
-            "Reality check", "Plot armor", "Character arc", "Origin story", "Redemption arc",
+            "Mic drop", "Plot twist", "Game changer", "Power move", "Main character energy",
+            "Hot take", "Living rent free", "Caught in 4K", "Reality check",
+            "Plot armor", "Origin story", "Redemption arc", "Side quest",
+            "Doom scrolling", "Touch grass", "Glow up", "Vibe check",
+            "Read the room", "Left on read", "Hits different", "Built different",
+            "It's giving", "Say less", "Rent free", "Understood the assignment",
+
+            // Famous Phrases & Sayings
+            "Actions speak louder than words", "Barking up the wrong tree",
+            "Burning bridges", "Caught red handed", "Cost an arm and a leg",
+            "Cry over spilled milk", "Curiosity killed the cat", "Devil's advocate",
+            "Every cloud has a silver lining", "Hit the nail on the head",
+            "Jump on the bandwagon", "Keep your eyes peeled", "Kill two birds with one stone",
+            "Let the cat out of the bag", "Method to the madness",
+            "Miss the boat", "Speak of the devil", "Steal the spotlight",
+            "Take it with a grain of salt", "The ball is in your court",
+            "The best of both worlds", "Under the radar", "Up in the air",
+            "Wouldn't hurt a fly", "You can say that again",
 
             // Common Expressions
             "Break a leg", "Hit the road", "Call it a day", "Piece of work", "Long shot",
             "Big picture", "Last straw", "Wild card", "Green thumb", "Cold feet",
-            "Gut feeling", "Second guess", "No brainer", "Think tank", "Train of thought",
-            "Food for thought", "Penny for your thoughts", "Two cents", "Bottom line", "Fine print",
-            "Red flag", "Green light", "Gray area", "Black and white", "Golden rule",
-            "Silver bullet", "Magic touch", "Midas touch", "Sixth sense", "Sweet spot",
-            "Comfort zone", "Safe bet", "Sure thing", "Done deal", "No dice",
-            "Mixed bag", "Grab bag", "In the bag", "Bag of tricks", "Old bag",
+            "Gut feeling", "No brainer", "Train of thought", "Food for thought",
+            "Penny for your thoughts", "Bottom line", "Fine print",
+            "Red flag", "Green light", "Gray area", "Golden rule",
+            "Magic touch", "Sixth sense", "Sweet spot", "Comfort zone",
+            "Done deal", "No dice", "In the bag", "Bag of tricks",
 
-            // Work & Business
-            "Team player", "Go getter", "Self starter", "Heavy hitter", "Big shot",
-            "Corner office", "Glass ceiling", "Rat race", "Fast track", "Inside track",
-            "Paper trail", "Paper pusher", "Number cruncher", "Bean counter", "Pencil pusher",
-            "Think outside the box", "Back to the drawing board", "Get the ball rolling", "Touch base", "Circle back",
-            "Deep dive", "Low hanging fruit", "Move the needle", "Boil the ocean", "Drink the Kool Aid",
+            // Work & Hustle
+            "Heavy hitter", "Big shot", "Glass ceiling", "Rat race", "Fast track",
+            "Paper trail", "Think outside the box", "Back to the drawing board",
+            "Get the ball rolling", "Low hanging fruit", "Burning the candle at both ends",
+            "Cut corners", "Go the extra mile", "Learn the ropes", "Up to speed",
 
-            // Time Expressions
-            "Around the clock", "Against the clock", "Beat the clock", "Kill time", "Crunch time",
-            "Prime time", "Big time", "About time", "High time", "Time flies",
-            "In the nick of time", "Ahead of time", "Behind the times", "Once in a blue moon", "At the drop of a hat",
-            "Day in day out", "Day and night", "Call it a night", "Burning the midnight oil", "Rise and shine",
+            // Time
+            "Around the clock", "Against the clock", "Beat the clock", "Crunch time",
+            "Prime time", "Time flies", "In the nick of time",
+            "Once in a blue moon", "At the drop of a hat", "Better late than never",
+            "Burning the midnight oil", "Rise and shine", "Ship has sailed",
+            "Time is money", "Back to square one",
 
             // Emotions & States
-            "Over the moon", "On top of the world", "Walking on air", "Head over heels", "Butterflies in stomach",
-            "Heart of gold", "Cold hearted", "Broken heart", "Change of heart", "Heavy heart",
-            "Thick skinned", "Thin skinned", "Get under skin", "Jump out of skin", "Skin deep",
-            "Keep cool", "Play it cool", "Cool headed", "Hot headed", "Level headed",
-            "Losing it", "Keep it together", "Fall apart", "Get a grip", "Hang in there",
+            "Over the moon", "On top of the world", "Walking on air", "Head over heels",
+            "Butterflies in your stomach", "Heart of gold", "Broken heart", "Change of heart",
+            "Thick skinned", "Gets under your skin", "Skin deep",
+            "Keep it together", "Get a grip", "Hang in there", "Losing your marbles",
+            "Scared to death", "Bored to tears", "Tickled pink", "Green with envy",
 
             // Actions & Movement
-            "Hit the ground running", "Jump the gun", "Pull the trigger", "Bite the bullet", "Dodge a bullet",
-            "Cross the line", "Draw the line", "Walk the line", "Read between the lines", "Drop a line",
-            "Push the envelope", "Push your luck", "Push comes to shove", "Pull strings", "Pull punches",
-            "Throw in the towel", "Throw shade", "Throw a curve", "Throw caution to the wind", "Throw for a loop",
-            "Kick the bucket", "Kick back", "Kick it up a notch", "Kick start", "Kick the habit",
+            "Hit the ground running", "Jump the gun", "Bite the bullet", "Dodge a bullet",
+            "Cross the line", "Draw the line", "Read between the lines",
+            "Push the envelope", "Push your luck", "Pull some strings",
+            "Throw in the towel", "Throw shade", "Throw caution to the wind",
+            "Kick the bucket", "Kick it up a notch", "Go with the flow",
+            "Roll with the punches", "Shake things up", "Stir the pot",
+            "Rock the boat", "Blow off steam", "Cut to the chase",
 
-            // Relationships
-            "Tied the knot", "Pop the question", "Match made in heaven", "Two peas in a pod", "Better half",
-            "Partner in crime", "Thick as thieves", "Birds of a feather", "Like two peas", "Joined at hip",
-            "Heart to heart", "Eye to eye", "Face to face", "Hand in hand", "Neck and neck",
-            "Old flame", "Spark fly", "Love at first sight", "Blind date", "Double date"
+            // Relationships & People
+            "Tied the knot", "Pop the question", "Match made in heaven", "Two peas in a pod",
+            "Better half", "Partner in crime", "Thick as thieves", "Birds of a feather",
+            "Joined at the hip", "Heart to heart", "Eye to eye", "Neck and neck",
+            "Sparks fly", "Love at first sight", "Life of the party",
+            "Old soul", "Trouble maker", "Apple of my eye", "Takes one to know one"
         ];
+
+        // RKO Company Culture phrases — PLACEHOLDER, replace with real phrases
+        const rkoGameWords = [
+            "Circle back", "Move the needle", "Deep dive",
+            "Low hanging fruit", "Run it up the flagpole", "Boil the ocean",
+            "Think outside the box", "Synergy", "Alignment",
+            "Take it offline", "Touch base", "Level set",
+            "Net net", "Action item", "Parking lot",
+            "Bandwidth check", "Hard stop", "Pivot",
+            "Value add", "Best practice", "Core competency",
+            "Drill down", "Ecosystem", "Leverage",
+            "Pain point", "Stakeholder", "Deliverable",
+            "Game plan", "On the radar", "In the weeds",
+            "Big picture thinking", "Run the numbers", "Close the loop",
+            "Open the kimono", "Eat our own dog food", "Drink the Kool Aid",
+            "Raise the bar", "Move the goalposts", "Shift the paradigm",
+            "Cross pollinate", "Future proof", "Right size"
+        ];
+
+        // Theme state
+        let rkoTakeoverActive = localStorage.getItem('hotwords_rko_takeover') === 'true';
+
+        function getRandomPhrase() {
+            const words = rkoTakeoverActive ? rkoGameWords : localGameWords;
+            return words[Math.floor(Math.random() * words.length)];
+        }
 
         // Random room name words
         const roomNames = [
@@ -2205,13 +2313,13 @@
                 html += `<div class="leaderboard-entry${isYou ? ' is-you' : ''}">
                     <div class="leaderboard-rank ${rankClass}">${rankDisplay}</div>
                     <div class="leaderboard-details">
-                        <div class="leaderboard-players">${playerCount} player${playerCount !== 1 ? 's' : ''}${isYou ? ' (you)' : ''}</div>
+                        <div class="leaderboard-players">${Number(playerCount)} player${playerCount !== 1 ? 's' : ''}${isYou ? ' (you)' : ''}</div>
                         <div class="leaderboard-meta">
-                            <span class="leaderboard-hash">#${round.sessionHash}</span>
-                            <span class="leaderboard-time">${timeAgo}</span>
+                            <span class="leaderboard-hash">#${escapeHtml(round.sessionHash)}</span>
+                            <span class="leaderboard-time">${escapeHtml(timeAgo)}</span>
                         </div>
                     </div>
-                    <div class="leaderboard-score">${round.score}</div>
+                    <div class="leaderboard-score">${Number(round.score)}</div>
                 </div>`;
             });
 
@@ -2220,14 +2328,14 @@
                 html += '<hr class="leaderboard-divider">';
                 grouped.forEach(g => {
                     html += `<div class="leaderboard-grouped">
-                        <span class="leaderboard-grouped-score">Score ${g.score}</span>
-                        <span class="leaderboard-grouped-count">${g.roundCount} round${g.roundCount !== 1 ? 's' : ''}</span>
+                        <span class="leaderboard-grouped-score">Score ${Number(g.score)}</span>
+                        <span class="leaderboard-grouped-count">${Number(g.roundCount)} round${g.roundCount !== 1 ? 's' : ''}</span>
                     </div>`;
                 });
             }
 
             // Footer
-            html += `<div class="leaderboard-total">${totalRounds} total round${totalRounds !== 1 ? 's' : ''} today</div>`;
+            html += `<div class="leaderboard-total">${Number(totalRounds)} total round${totalRounds !== 1 ? 's' : ''} today</div>`;
 
             leaderboardList.innerHTML = html;
         }
@@ -2356,7 +2464,9 @@
         function getOrCreatePlayerId() {
             let id = localStorage.getItem('hotwords_player_id');
             if (!id) {
-                id = 'p_' + Math.random().toString(36).substring(2, 11);
+                const arr = new Uint8Array(16);
+                crypto.getRandomValues(arr);
+                id = 'p_' + Array.from(arr, b => b.toString(16).padStart(2, '0')).join('');
                 localStorage.setItem('hotwords_player_id', id);
             }
             return id;
@@ -2402,7 +2512,7 @@
 
                 item.innerHTML = `
                     <span class="player-badge">${badge}</span>
-                    <span class="player-name">${player.name}${isMe ? ' (you)' : ''}</span>
+                    <span class="player-name">${escapeHtml(player.name)}${isMe ? ' (you)' : ''}</span>
                     <span class="player-role">${role}</span>
                 `;
                 onlinePlayersList.appendChild(item);
@@ -2553,7 +2663,8 @@
                 ws.send(JSON.stringify({
                     type: 'SET_NAME',
                     player: playerName,
-                    playerId: myPlayerId
+                    playerId: myPlayerId,
+                    theme: rkoTakeoverActive ? 'rko' : null
                 }));
 
                 // Start heartbeat
@@ -2949,10 +3060,10 @@
                 try { recognition.start(); } catch(e) {}
                 listenBtn.textContent = 'Stop Listening';
                 listenBtn.classList.add('active');
-                const word = localGameWords[Math.floor(Math.random() * localGameWords.length)];
+                const word = getRandomPhrase();
                 showNewWordLocalMode(word);
             } else if (ws && ws.readyState === WebSocket.OPEN) {
-                ws.send(JSON.stringify({ type: 'NEW_ROUND' }));
+                ws.send(JSON.stringify({ type: 'NEW_ROUND', theme: rkoTakeoverActive ? 'rko' : null }));
             }
         });
 
@@ -3105,6 +3216,15 @@
             }
         }
 
+        // RKO Takeover toggle
+        const rkoToggle = document.getElementById('rkoToggle');
+        if (rkoTakeoverActive) rkoToggle.classList.add('active');
+        rkoToggle.addEventListener('click', () => {
+            rkoTakeoverActive = !rkoTakeoverActive;
+            localStorage.setItem('hotwords_rko_takeover', rkoTakeoverActive.toString());
+            rkoToggle.classList.toggle('active', rkoTakeoverActive);
+        });
+
         // Local Mode button
         localModeBtn.addEventListener('click', () => selectMode('local'));
 
@@ -3182,7 +3302,7 @@
             transcriptBox.classList.add('listening');
 
             // Pick the first word (after orientation is set up so hiding works)
-            const word = localGameWords[Math.floor(Math.random() * localGameWords.length)];
+            const word = getRandomPhrase();
             showNewWordLocalMode(word);
         }
 
@@ -3354,7 +3474,7 @@
             similarityEl.textContent = '';
             similarityEl.classList.remove('close');
 
-            const word = localGameWords[Math.floor(Math.random() * localGameWords.length)];
+            const word = getRandomPhrase();
             showNewWordLocalMode(word);
         }
 
@@ -3368,7 +3488,7 @@
             similarityEl.classList.remove('close');
 
             // Pick a new word
-            const word = localGameWords[Math.floor(Math.random() * localGameWords.length)];
+            const word = getRandomPhrase();
             showNewWordLocalMode(word);
         }
 
@@ -3584,7 +3704,7 @@
                 if (partialWordReveal) {
                     pattern = currentWords.map((w, i) => {
                         if (isLocalMode && revealedWords && revealedWords[i]) {
-                            return `<span style="color: #4ecdc4;">${w}</span>`;
+                            return `<span style="color: #4ecdc4;">${escapeHtml(w)}</span>`;
                         }
                         return '#'.repeat(w.length);
                     }).join(' ');
