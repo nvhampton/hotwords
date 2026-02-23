@@ -4,11 +4,11 @@
 
 set -e
 
-EC2_HOST="${1:-184.32.87.58}"
-SSH_KEY="${2:-$HOME/Downloads/mysecurekeypair.pem}"
+EC2_HOST="${1:?Usage: $0 <EC2_HOST> [SSH_KEY]}"
+SSH_KEY="${2:-${HOTWORDS_SSH_KEY:?Set HOTWORDS_SSH_KEY or pass SSH key path as second argument}}"
 EC2_USER="ec2-user"
 REMOTE_DIR="~/hotwords/hotwords/deploy"
-SSH_OPTS="-i $SSH_KEY -o StrictHostKeyChecking=no -o ConnectTimeout=10"
+SSH_OPTS="-i $SSH_KEY -o ConnectTimeout=10"
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"

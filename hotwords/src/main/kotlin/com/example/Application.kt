@@ -147,6 +147,12 @@ fun Application.module() {
             val ttl24h = 24 * 60 * 60 * 1000L
             roundEntries.entries.removeIf { now - it.value.timestamp > ttl24h }
 
+            // Cap round entries at 50000 — evict oldest if exceeded
+            if (roundEntries.size > 50_000) {
+                val oldest = roundEntries.values.sortedBy { it.timestamp }.take(roundEntries.size - 50_000)
+                oldest.forEach { roundEntries.remove(it.id) }
+            }
+
             roomStates.forEach { (roomId, state) ->
                 val playersToRemove = state.players.filter { now - it.lastHeartbeat > ttlMs }
                 if (playersToRemove.isNotEmpty()) {
@@ -326,9 +332,15 @@ fun Application.module() {
         return if (roomThemes[roomId] == "rko") rkoWords.random() else gameWords.random()
     }
 
+    val appVersion = Application::class.java.`package`?.implementationVersion ?: "dev"
+
     routing {
         staticResources("/", "static") {
             default("index.html")
+        }
+
+        get("/health") {
+            call.respond(mapOf("status" to "ok", "version" to appVersion))
         }
 
         post("/api/scores") {

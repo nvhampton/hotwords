@@ -45,6 +45,7 @@ tasks.withType<KotlinCompile>().configureEach {
 }
 
 tasks.named<ProcessResources>("processResources") {
+    outputs.upToDateWhen { false }
     filesMatching("static/index.html") {
         filter { it.replace("@@VERSION@@", version.toString()) }
     }

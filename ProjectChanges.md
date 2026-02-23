@@ -82,8 +82,8 @@
 - t3.micro kept OOM'ing → upgraded to t3.small
 - `build-and-deploy.sh`: builds fat JAR locally with `./gradlew shadowJar`, SCPs to EC2, runs deploy.sh remotely
 - `deploy.sh`: installs Java 21 + Caddy if needed, systemd service, auto-starts
-- Caddyfile: `hotwords.xyz { reverse_proxy localhost:8080 }`
-- EC2 IP: 184.32.87.58, domain: hotwords.xyz (Cloudflare DNS)
+- Caddyfile: reverse proxy to localhost:8080 with auto HTTPS
+- Hosted on EC2, domain managed via Cloudflare DNS
 
 ### Timer Pause During Device Passing
 - Timer pauses on correct guess (`timerPaused = true`), resumes when next player reveals phrase (tilt or tap)

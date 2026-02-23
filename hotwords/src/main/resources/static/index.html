@@ -3002,7 +3002,25 @@
         }
 
         // Toggle listening
+        // Long-press listen button to toggle transcript peek
+        let listenPeekTimer = null;
+        let listenPeekWasToggled = false;
+        listenBtn.addEventListener('pointerdown', () => {
+            listenPeekWasToggled = false;
+            listenPeekTimer = setTimeout(() => {
+                listenPeekWasToggled = true;
+                listenPeek.classList.toggle('visible');
+            }, 300);
+        });
+        function cancelListenPeekTimer() {
+            if (listenPeekTimer) { clearTimeout(listenPeekTimer); listenPeekTimer = null; }
+        }
+        listenBtn.addEventListener('pointerup', cancelListenPeekTimer);
+        listenBtn.addEventListener('pointerleave', cancelListenPeekTimer);
+        listenBtn.addEventListener('pointercancel', cancelListenPeekTimer);
+
         listenBtn.addEventListener('click', async () => {
+            if (listenPeekWasToggled) return;
             if (!recognition) {
                 await ensureMicPermission();
                 initSpeechRecognition();

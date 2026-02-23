@@ -25,7 +25,7 @@ Version is defined in `build.gradle.kts` (`version = "0.9.0"`) as the single sou
 bash deploy/build-and-deploy.sh
 ```
 
-This builds the fat JAR, uploads it to EC2 (184.32.87.58), and runs `deploy.sh` remotely which restarts the systemd service and Caddy reverse proxy. Production URL: `https://hotwords.xyz`
+This builds the fat JAR, uploads it to EC2, and runs `deploy.sh` remotely which restarts the systemd service and Caddy reverse proxy. Requires the EC2 host IP as an argument (or set `HOTWORDS_SSH_KEY` env var for the key path). Production URL: `https://hotwords.xyz`
 
 ## Architecture
 
@@ -77,6 +77,10 @@ Room state is isolated per `roomId`. The server tracks: active players (with hea
 
 ### Server → Client
 `PLAYER_LIST`, `NEW_WORD`, `WORD_PROGRESS`, `ROUND_WON`, `WORD_SKIPPED`, `DESCRIBER_SLIPPED`, `DESCRIBER_FAILED`, `TIMER_SYNC`, `GAME_STARTED`
+
+## Branching
+
+Use feature branches for development. Only merge to `main` when ready to deploy. The deploy script builds from the current working directory, so only run it from `main`.
 
 ## Changelog
 

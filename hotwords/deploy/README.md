@@ -40,7 +40,7 @@ Deploy Hotwords to AWS EC2 with Docker and automatic HTTPS via Caddy.
 
 SSH into your instance:
 ```bash
-ssh -i ~/Downloads/mysecurekeypair.pem ec2-user@100.23.220.251
+ssh -i <your-ssh-key.pem> ec2-user@<your-ec2-ip>
 ```
 
 Clone the repo and run setup:
@@ -54,7 +54,7 @@ chmod +x setup.sh deploy.sh
 Log out and back in (for Docker permissions):
 ```bash
 exit
-ssh -i ~/Downloads/mysecurekeypair.pem ec2-user@100.23.220.251
+ssh -i <your-ssh-key.pem> ec2-user@<your-ec2-ip>
 ```
 
 ## Step 4: Configure and Deploy
