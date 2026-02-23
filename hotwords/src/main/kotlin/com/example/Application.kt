@@ -519,8 +519,9 @@ fun Application.module() {
                                 val playerName = rawName.replace(Regex("<[^>]*>"), "").ifEmpty { "Anonymous" }
 
                                 // Set room theme if provided
-                                if (received.theme != null) {
-                                    roomThemes[roomId] = received.theme!!
+                                val theme = received.theme
+                                if (theme != null) {
+                                    roomThemes[roomId] = theme
                                     // Re-pick word if game hasn't started yet
                                     if (state.gameStartTime == null) {
                                         val themedWord = getWordForRoom(roomId)
@@ -588,8 +589,9 @@ fun Application.module() {
 
                             "NEW_ROUND" -> {
                                 // Update theme if provided
-                                if (received.theme != null) {
-                                    roomThemes[roomId] = received.theme!!
+                                val roundTheme = received.theme
+                                if (roundTheme != null) {
+                                    roomThemes[roomId] = roundTheme
                                 }
                                 // Start a new round - reset timer and score, get new word
                                 state.gameStartTime = System.currentTimeMillis()

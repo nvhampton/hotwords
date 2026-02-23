@@ -336,6 +336,22 @@
             left: 110px;
             z-index: 100;
             margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .listen-peek {
+            font-size: 0.65rem;
+            color: rgba(255, 255, 255, 0.3);
+            max-width: 180px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            display: none;
+            pointer-events: none;
+        }
+        .listen-peek.visible {
+            display: block;
         }
         .listen-btn {
             background: rgba(255, 255, 255, 0.1);
@@ -1416,6 +1432,7 @@
         </div>
         <div class="listen-row">
             <button class="listen-btn" id="listenBtn" disabled>🎤 Start Listening</button>
+            <span class="listen-peek" id="listenPeek"></span>
         </div>
 
         <div class="transcript" id="transcriptBox">
@@ -1579,6 +1596,7 @@
         const gotItBtn = document.getElementById('gotItBtn');
         const playAgainBtn = document.getElementById('playAgainBtn');
         const transcriptEl = document.getElementById('transcript');
+        const listenPeek = document.getElementById('listenPeek');
         const similarityEl = document.getElementById('similarity');
         const playerNameInput = document.getElementById('playerName');
         const onlineNameInput = document.getElementById('onlineNameInput');
@@ -2886,6 +2904,7 @@
                     transcript += event.results[i][0].transcript;
                 }
                 transcriptEl.textContent = transcript || '-';
+                listenPeek.textContent = transcript || '';
 
                 // In local mode, check for individual word reveals
                 if (partialWordReveal && isLocalMode && gameActive && !hasClaimedVictory) {
