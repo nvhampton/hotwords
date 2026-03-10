@@ -1214,7 +1214,7 @@
             position: absolute;
             top: -10px;
             right: -10px;
-            width: 64px;
+            width: 96px;
             cursor: pointer;
             user-select: none;
             -webkit-user-select: none;
@@ -1226,24 +1226,24 @@
             background: rgba(255, 255, 255, 0.08);
             border: 2px solid rgba(255, 255, 255, 0.15);
             border-radius: 6px 6px 0 0;
-            padding: 10px 8px 14px;
+            padding: 15px 12px 21px;
             text-align: center;
             clip-path: polygon(0 0, 100% 0, 100% 85%, 50% 100%, 0 85%);
             transition: all 0.3s ease;
         }
         .rko-label {
             display: block;
-            font-size: 0.9rem;
+            font-size: 1.35rem;
             font-weight: 900;
-            letter-spacing: 2px;
+            letter-spacing: 3px;
             color: rgba(255, 255, 255, 0.3);
             transition: all 0.3s ease;
         }
         .rko-sublabel {
             display: block;
-            font-size: 0.5rem;
+            font-size: 0.75rem;
             text-transform: uppercase;
-            letter-spacing: 1px;
+            letter-spacing: 1.5px;
             color: rgba(255, 255, 255, 0.2);
             margin-top: 2px;
             transition: all 0.3s ease;
@@ -2080,65 +2080,120 @@
         const GAME_DURATION = 60; // 60 seconds
 
         // Local word list (same as server)
-        // Original adult phrases saved in phrases/original-phrases.txt
+        // Kid-friendly phrases saved in phrases/kid-phrases.txt
         const localGameWords = [
-            // Animals & Creatures
-            "Baby shark", "Grumpy cat", "Flying squirrel", "Hungry hippo",
-            "Silly goose", "Lazy sloth", "Sneaky snake", "Crazy monkey",
-            "Dancing penguin", "Barking dog", "Fuzzy bunny", "Angry bird",
-            "Spider web", "Dinosaur egg", "Dragon fire", "Unicorn horn",
+            // Activities & Lifestyle
+            "Running late", "Couch potato", "Road trip", "Window shopping",
+            "People watching", "Channel surfing", "Binge watching", "Party pooper",
+            "Night owl", "Early bird", "Backseat driver", "Joy ride",
+            "Happy hour", "Beauty sleep", "Power nap", "All nighter",
+            "Gym rat", "Beach bum", "Movie buff", "Sunday scaries",
 
-            // Food & Yummy Stuff
-            "Pizza party", "Ice cream cone", "Chocolate cake", "Candy bar",
-            "Popcorn bucket", "Banana split", "Jelly bean", "Hot dog",
-            "French fries", "Bubble gum", "Cotton candy", "Apple juice",
-            "Peanut butter", "Mac and cheese", "Taco Tuesday", "Pancake stack",
+            // Food & Drink
+            "Piece of cake", "Spill the beans", "Hot potato", "Cool beans",
+            "Bad apple", "Bread winner", "Smart cookie", "Tough cookie",
+            "Big cheese", "Top banana", "Sour grapes", "Easy as pie",
+            "Cream of the crop", "Best thing since sliced bread", "Butter fingers",
+            "Egg on your face", "Small potatoes", "In a pickle", "Full plate",
+            "Food coma", "Brain freeze", "Bite off more than you can chew",
 
-            // Silly Actions
-            "Belly flop", "Cannonball splash", "Pillow fight", "Food fight",
-            "Dance battle", "Thumb war", "Snow angel", "Belly laugh",
-            "High five", "Fist bump", "Happy dance", "Silly walk",
-            "Jumping jacks", "Cartwheel", "Belly button", "Funny face",
+            // Animals
+            "Cat nap", "Dog days", "Fish out of water", "Wild goose chase",
+            "Dark horse", "Eager beaver", "Busy bee", "Social butterfly",
+            "Party animal", "Loan shark", "Scaredy cat", "Cat got your tongue",
+            "Puppy love", "Top dog", "Let sleeping dogs lie", "Monkey business",
+            "Monkey see monkey do", "Hold your horses", "One trick pony",
+            "Bull in a china shop", "Cash cow", "Holy cow", "Pig out",
+            "Guinea pig", "Chicken out", "Sitting duck", "Cold turkey",
+            "Free as a bird", "Bird brain", "When pigs fly",
+            "Straight from the horse's mouth", "Elephant in the room",
 
-            // Movies & Shows
-            "Toy Story", "Finding Nemo", "Lion King", "Frozen",
-            "Spider Man", "Super Mario", "Harry Potter", "Star Wars",
-            "Jurassic Park", "Inside Out", "Kung Fu Panda", "Shrek",
-            "Moana", "Encanto", "Minecraft", "Pokemon",
+            // Weather & Nature
+            "Under the weather", "Rain check", "Storm is brewing", "Cloud nine",
+            "Lightning fast", "Right as rain", "Come rain or shine",
+            "Steal your thunder", "Perfect storm", "Calm before the storm",
+            "Head in the clouds", "Ray of sunshine", "Walking on sunshine",
+            "Chasing rainbows", "Silver lining", "Tip of the iceberg",
+            "Break the ice", "Snowball effect",
 
-            // School & Play
-            "Recess time", "Show and tell", "Field trip", "Snow day",
-            "Summer break", "Lunch box", "Back pack", "Playground slide",
-            "Dodgeball", "Hide and seek", "Tag you're it", "Capture the flag",
-            "Treasure hunt", "Water balloon", "Nerf gun", "Lego tower",
+            // Sports & Competition
+            "Home run", "Slam dunk", "Hole in one", "Drop the ball",
+            "On the ball", "Game face", "Fair game", "Hail Mary",
+            "Moving the goalposts", "Par for the course", "Behind the eight ball",
+            "Knock it out of the park", "Down to the wire", "Jump through hoops",
+            "Raise the bar", "Threw a curveball", "Photo finish",
+            "Front runner", "Goal line stand",
 
-            // Space & Adventure
-            "Rocket ship", "Shooting star", "Black hole", "Alien invasion",
-            "Moon landing", "Time travel", "Treasure map", "Pirate ship",
-            "Magic wand", "Secret door", "Haunted house", "Roller coaster",
-            "Water slide", "Zip line", "Bungee jump", "Hot air balloon",
+            // Pop Culture & Modern
+            "Mic drop", "Plot twist", "Game changer", "Power move",
+            "Main character energy", "Hot take", "Living rent free",
+            "Caught in 4K", "Reality check", "Plot armor", "Origin story",
+            "Redemption arc", "Side quest", "Doom scrolling", "Touch grass",
+            "Glow up", "Vibe check", "Read the room", "Left on read",
+            "Hits different", "Built different", "It's giving", "Say less",
+            "Rent free", "Understood the assignment",
 
-            // Sounds & Expressions
-            "Plot twist", "Mind blown", "Game over", "Level up",
-            "Power up", "Mic drop", "Brain freeze", "Oops",
-            "No way", "So cool", "Super gross", "Epic fail",
-            "Piece of cake", "Easy peasy", "Oh snap", "Yolo",
+            // Famous Phrases & Sayings
+            "Actions speak louder than words", "Barking up the wrong tree",
+            "Burning bridges", "Caught red handed", "Cost an arm and a leg",
+            "Cry over spilled milk", "Curiosity killed the cat", "Devil's advocate",
+            "Every cloud has a silver lining", "Hit the nail on the head",
+            "Jump on the bandwagon", "Keep your eyes peeled",
+            "Kill two birds with one stone", "Let the cat out of the bag",
+            "Method to the madness", "Miss the boat", "Speak of the devil",
+            "Steal the spotlight", "Take it with a grain of salt",
+            "The ball is in your court", "The best of both worlds",
+            "Under the radar", "Up in the air", "Wouldn't hurt a fly",
+            "You can say that again",
 
-            // Sports & Games
-            "Slam dunk", "Home run", "Hole in one", "Touchdown",
-            "Belly slide", "Cannonball", "Marco Polo", "Red rover",
-            "King of the hill", "Musical chairs", "Simon says", "Freeze tag",
-            "Rock paper scissors", "Thumb wrestling", "Arm wrestling", "Tug of war",
+            // Common Expressions
+            "Break a leg", "Hit the road", "Call it a day", "Piece of work",
+            "Long shot", "Big picture", "Last straw", "Wild card",
+            "Green thumb", "Cold feet", "Gut feeling", "No brainer",
+            "Train of thought", "Food for thought", "Penny for your thoughts",
+            "Bottom line", "Fine print", "Red flag", "Green light",
+            "Gray area", "Golden rule", "Magic touch", "Sixth sense",
+            "Sweet spot", "Comfort zone", "Done deal", "No dice",
+            "In the bag", "Bag of tricks",
 
-            // Nature & Weather
-            "Rainbow", "Thunderstorm", "Snowball fight", "Sand castle",
-            "Mud puddle", "Volcano eruption", "Earthquake", "Tornado",
-            "Tidal wave", "Northern lights", "Shooting star", "Lightning bolt",
+            // Work & Hustle
+            "Heavy hitter", "Big shot", "Glass ceiling", "Rat race",
+            "Fast track", "Paper trail", "Think outside the box",
+            "Back to the drawing board", "Get the ball rolling",
+            "Low hanging fruit", "Burning the candle at both ends",
+            "Cut corners", "Go the extra mile", "Learn the ropes", "Up to speed",
 
-            // Weird & Wacky
-            "Stinky cheese", "Slime monster", "Booger flick", "Burp contest",
-            "Fart noise", "Wet willy", "Rubber duck", "Whoopee cushion",
-            "Tickle monster", "Stink bug", "Snot rocket", "Armpit fart"
+            // Time
+            "Around the clock", "Against the clock", "Beat the clock",
+            "Crunch time", "Prime time", "Time flies", "In the nick of time",
+            "Once in a blue moon", "At the drop of a hat", "Better late than never",
+            "Burning the midnight oil", "Rise and shine", "Ship has sailed",
+            "Time is money", "Back to square one",
+
+            // Emotions & States
+            "Over the moon", "On top of the world", "Walking on air",
+            "Head over heels", "Butterflies in your stomach", "Heart of gold",
+            "Broken heart", "Change of heart", "Thick skinned",
+            "Gets under your skin", "Skin deep", "Keep it together",
+            "Get a grip", "Hang in there", "Losing your marbles",
+            "Scared to death", "Bored to tears", "Tickled pink", "Green with envy",
+
+            // Actions & Movement
+            "Hit the ground running", "Jump the gun", "Bite the bullet",
+            "Dodge a bullet", "Cross the line", "Draw the line",
+            "Read between the lines", "Push the envelope", "Push your luck",
+            "Pull some strings", "Throw in the towel", "Throw shade",
+            "Throw caution to the wind", "Kick the bucket", "Kick it up a notch",
+            "Go with the flow", "Roll with the punches", "Shake things up",
+            "Stir the pot", "Rock the boat", "Blow off steam", "Cut to the chase",
+
+            // Relationships & People
+            "Tied the knot", "Pop the question", "Match made in heaven",
+            "Two peas in a pod", "Better half", "Partner in crime",
+            "Thick as thieves", "Birds of a feather", "Joined at the hip",
+            "Heart to heart", "Eye to eye", "Neck and neck", "Sparks fly",
+            "Love at first sight", "Life of the party", "Old soul",
+            "Trouble maker", "Apple of my eye", "Takes one to know one"
         ];
 
         // RKO Company Culture phrases
@@ -2231,7 +2286,7 @@
         ];
 
         // Theme state
-        let rkoTakeoverActive = localStorage.getItem('hotwords_rko_takeover') === 'true';
+        let rkoTakeoverActive = localStorage.getItem('hotwords_rko_takeover') !== 'false';
 
         // Topic phrase system
         let activeTopic = null; // null = default (built-in), or topic id string
@@ -4005,11 +4060,15 @@
             // Reset topic selection and reload picker for the new mode
             activeTopic = null;
             topicPhrases = null;
-            loadTopicPicker();
+            loadTopicPicker().then(() => {
+                if (rkoTakeoverActive) selectTopic('company_jargon');
+            });
         });
 
-        // Load topic picker
-        loadTopicPicker();
+        // Load topic picker, default to Company Jargon in RKO mode
+        loadTopicPicker().then(() => {
+            if (rkoTakeoverActive) selectTopic('company_jargon');
+        });
 
         // Local Mode button
         localModeBtn.addEventListener('click', () => selectMode('local'));
