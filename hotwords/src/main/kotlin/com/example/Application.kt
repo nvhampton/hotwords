@@ -898,11 +898,24 @@ fun Application.module() {
                                         if (state.players.size >= 2 && state.players.all { it.ready }) {
                                             state.gameStartTime = System.currentTimeMillis()
                                             state.players.forEach { it.ready = false }
+
+                                            // Pick a fresh word so all players start with the same phrase
+                                            val startWord = getWordForRoom(roomId)
+                                            roomWords[roomId] = startWord
+                                            state.currentWord = startWord
+                                            state.revealedWords = startWord.split(" ").map { false }.toMutableList()
+
+                                            val startWordMsg = GameMessage(
+                                                type = "NEW_WORD",
+                                                word = startWord,
+                                                revealed = state.revealedWords.toList()
+                                            )
                                             room.forEach { session ->
                                                 session.sendSerialized(GameMessage(
                                                     type = "GAME_STARTED",
                                                     timeRemaining = 60
                                                 ))
+                                                session.sendSerialized(startWordMsg)
                                             }
                                         }
                                     }

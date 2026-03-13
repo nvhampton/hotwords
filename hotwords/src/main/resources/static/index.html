@@ -398,6 +398,7 @@
             font-size: 0.9rem;
             color: #888;
             min-height: 50px;
+            display: none;
         }
         .transcript span {
             color: #4ecdc4;
@@ -1087,6 +1088,27 @@
         .ready-player-name {
             color: #ddd;
         }
+        .ready-player-name.editable {
+            cursor: pointer;
+            border-bottom: 1px dashed rgba(78, 205, 196, 0.4);
+            padding-bottom: 1px;
+        }
+        .ready-player-name.editable:hover {
+            color: #4ecdc4;
+        }
+        .ready-player-name-input {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(78, 205, 196, 0.5);
+            border-radius: 6px;
+            color: #fff;
+            font-size: 0.95rem;
+            padding: 2px 8px;
+            width: 140px;
+            outline: none;
+        }
+        .ready-player-name-input:focus {
+            border-color: #4ecdc4;
+        }
         .ready-player-check {
             color: #4ecdc4;
             font-weight: bold;
@@ -1433,9 +1455,6 @@
         }
 
         /* Hide elements in local mode */
-        .local-mode .transcript {
-            display: none;
-        }
         .local-mode .orientation-indicator {
             display: none !important;
         }
@@ -3161,9 +3180,47 @@
                 const item = document.createElement('div');
                 item.className = 'ready-player-item' + (isMe ? ' is-me' : '');
                 item.innerHTML = `
-                    <span class="ready-player-name">${escapeHtml(player.name)}${isMe ? ' (you)' : ''}</span>
+                    <span class="ready-player-name${isMe && !gameActive ? ' editable' : ''}">${escapeHtml(player.name)}${isMe ? ' (you)' : ''}</span>
                     <span class="ready-player-check ${player.ready ? 'visible' : ''}">&#10003;</span>
                 `;
+                // Let the player click their own name to rename (only in lobby/ready phase)
+                if (isMe && !gameActive) {
+                    const nameSpan = item.querySelector('.ready-player-name');
+                    nameSpan.addEventListener('click', () => {
+                        // Don't open another input if already editing
+                        if (item.querySelector('.ready-player-name-input')) return;
+                        const currentName = player.name;
+                        const input = document.createElement('input');
+                        input.type = 'text';
+                        input.className = 'ready-player-name-input';
+                        input.value = currentName;
+                        input.maxLength = 20;
+                        nameSpan.replaceWith(input);
+                        input.focus();
+                        input.select();
+
+                        function commitRename() {
+                            const newName = input.value.trim() || 'Anonymous';
+                            // Update local inputs so reconnects use the new name
+                            playerNameInput.value = newName;
+                            onlineNameInput.value = newName;
+                            localStorage.setItem('hotwords_online_name', newName);
+                            // Send SET_NAME to server — triggers PLAYER_LIST broadcast
+                            if (ws && ws.readyState === WebSocket.OPEN) {
+                                ws.send(JSON.stringify({
+                                    type: 'SET_NAME',
+                                    player: newName,
+                                    playerId: myPlayerId
+                                }));
+                            }
+                        }
+                        input.addEventListener('keydown', (e) => {
+                            if (e.key === 'Enter') { e.preventDefault(); commitRename(); }
+                            if (e.key === 'Escape') { input.blur(); }
+                        });
+                        input.addEventListener('blur', () => { commitRename(); });
+                    });
+                }
                 playersList.appendChild(item);
             });
 
@@ -3387,7 +3444,7 @@
                 if (msg.type === 'PLAYER_LIST') {
                     // Update player list
                     onlinePlayers = msg.players || [];
-                    onlineHotPlayerIndex = msg.hotPlayerIndex || 0;
+                    onlineHotPlayerIndex = msg.hotPlayerIndex ?? 0;
                     updatePlayerListUI();
 
                     // Enable game controls when 2+ players arrive
@@ -3408,8 +3465,9 @@
                         hideReadyOverlay();
                         wordDisplay.textContent = 'Waiting for players...';
                         showShareInvite();
-                    } else if (currentWord) {
+                    } else if (currentWord && !isCelebrating) {
                         // Game active with 2+ players — refresh word display based on role
+                        // Skip during celebration to avoid flashing stale word before NEW_WORD arrives
                         showNewWordOnline(currentWord, onlineRevealedWords);
                     }
                 } else if (msg.type === 'WORD_PROGRESS') {
@@ -3761,6 +3819,13 @@
             recognition.onerror = (event) => {
                 if (event.error === 'not-allowed') {
                     errorEl.textContent = 'Microphone access denied. Please allow microphone access and refresh.';
+                    // Reset listen button state since mic never started
+                    isListening = false;
+                    listenBtn.textContent = '🎤 Start Listening';
+                    listenBtn.classList.remove('active');
+                    listenBtn.disabled = false;
+                    statusEl.classList.remove('listening');
+                    transcriptBox.classList.remove('listening');
                 } else if (event.error !== 'aborted') {
                     console.log('Speech recognition error:', event.error);
                 }
