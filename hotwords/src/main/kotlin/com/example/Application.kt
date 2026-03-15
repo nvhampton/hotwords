@@ -990,7 +990,7 @@ Rules:
                                             room.forEach { session ->
                                                 session.sendSerialized(GameMessage(
                                                     type = "GAME_STARTED",
-                                                    timeRemaining = 45
+                                                    timeRemaining = 30
                                                 ))
                                                 session.sendSerialized(startWordMsg)
                                             }
@@ -1018,7 +1018,7 @@ Rules:
                                 // Broadcast NEW_ROUND (tells clients to show ready overlay)
                                 val newRoundMsg = GameMessage(
                                     type = "NEW_ROUND",
-                                    timeRemaining = 45
+                                    timeRemaining = 30
                                 )
                                 // Send updated player list (all unready) so ready overlay shows correctly
                                 val playerInfoList = state.players.map { PlayerInfo(it.id, it.name, it.ready) }

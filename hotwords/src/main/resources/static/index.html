@@ -1902,7 +1902,7 @@
         </div>
 
         <div class="timer-display" id="timerDisplay">
-            <span id="timerCount">45</span>s
+            <span id="timerCount">30</span>s
         </div>
 
         <div class="status" id="status">Click the button to start listening</div>
@@ -1974,9 +1974,9 @@
     <div class="onboard-overlay" id="onboardRules">
         <div class="onboard-card">
             <div class="onboard-emoji">🔥</div>
-            <div class="onboard-title">You have 45 seconds to get as many of the hot words as you can.</div>
+            <div class="onboard-title">You have 30 seconds to get as many of the hot words as you can.</div>
             <div class="onboard-hint">Timer starts when you reveal the first clue.</div>
-            <button class="onboard-btn play" id="onboardRulesBtn">Play</button>
+            <button class="onboard-btn play" id="onboardRulesBtn">Got it!</button>
         </div>
         <button class="onboard-back" id="onboardRulesBack">&larr; Back</button>
     </div>
@@ -2331,7 +2331,7 @@
         }
 
         const CELEBRATION_DELAY = 1200; // 1.2s
-        const GAME_DURATION = 45; // 45 seconds
+        const GAME_DURATION = 30; // 30 seconds
 
         // Local word list (same as server)
         // Kid-friendly phrases saved in phrases/kid-phrases.txt
@@ -4649,8 +4649,9 @@
         document.getElementById('onboardRulesBack').addEventListener('click', () => {
             hideOnboardRules();
         });
-        document.getElementById('onboardRulesBtn').addEventListener('click', async () => {
+        async function proceedFromRules() {
             hideOnboardRules();
+            localStorage.setItem('hotwords_rules_seen', Date.now().toString());
 
             // Set up local mode state
             localModePlayers = Array.from({ length: playerCount }, (_, i) => `Player ${i + 1}`);
@@ -4669,7 +4670,9 @@
 
             // Show the ready screen on top
             showOnboardReady();
-        });
+        }
+
+        document.getElementById('onboardRulesBtn').addEventListener('click', () => proceedFromRules());
         document.getElementById('onboardReadyBack').addEventListener('click', () => {
             hideOnboardReady();
             showLobby();
@@ -4677,7 +4680,14 @@
 
         // Start Local Game (called from onboarding flow)
         function startLocalGame() {
-            showOnboardRules();
+            const lastSeen = parseInt(localStorage.getItem('hotwords_rules_seen') || '0');
+            const oneHour = 60 * 60 * 1000;
+            if (Date.now() - lastSeen < oneHour) {
+                // Skip rules, go straight through
+                proceedFromRules();
+            } else {
+                showOnboardRules();
+            }
         }
 
         function launchLocalGame() {
