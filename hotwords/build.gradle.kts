@@ -10,7 +10,7 @@ plugins {
 }
 
 group = "com.example"
-version = "0.11.21"
+version = "0.11.22"
 
 // This is what the Shadow plugin was looking for
 application {
