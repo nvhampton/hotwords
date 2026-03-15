@@ -1568,6 +1568,15 @@
         }
         .mode-section.selected .mode-btn {
             opacity: 1;
+            font-size: 1rem;
+            padding: 12px 24px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: none;
+        }
+        .mode-section.selected .mode-btn:hover {
+            transform: none;
+            box-shadow: none;
         }
         .back-btn {
             position: fixed;
@@ -4372,9 +4381,11 @@
             return raw.split(',').map(s => s.trim()).filter(s => s.length > 0);
         }
 
+        let customPhraseSource = ''; // 'ai' or 'fallback' — for UI feedback
+
         async function buildCustomPhraseList(userPhrases) {
             if (userPhrases.length === 0) return null;
-            if (userPhrases.length >= 70) return userPhrases;
+            if (userPhrases.length >= 70) { customPhraseSource = 'custom'; return userPhrases; }
 
             const needed = 70 - userPhrases.length;
 
@@ -4389,6 +4400,7 @@
                     const data = await res.json();
                     if (data.phrases && data.phrases.length > 0) {
                         const generated = data.phrases.filter(p => !userPhrases.includes(p));
+                        customPhraseSource = 'ai';
                         return [...userPhrases, ...generated.slice(0, needed)];
                     }
                 }
@@ -4397,6 +4409,7 @@
             }
 
             // Fallback: pad with random built-in phrases
+            customPhraseSource = 'fallback';
             const padded = [...userPhrases];
             const shuffled = [...localGameWords].sort(() => Math.random() - 0.5);
             for (const phrase of shuffled) {
@@ -4411,16 +4424,25 @@
             const existingBanner = document.querySelector('.custom-active-banner');
             if (customPhrases && customPhrases.length > 0) {
                 const userCount = parseCustomPhrases(customPhrasesRaw).length;
+                const totalCount = customPhrases.length;
+                const genCount = totalCount - userCount;
+                let sourceLabel = '';
+                if (genCount > 0) {
+                    sourceLabel = customPhraseSource === 'ai'
+                        ? ` + ${genCount} AI-generated`
+                        : ` + ${genCount} random`;
+                }
                 // Hide topic picker, show banner
                 picker.style.display = 'none';
                 if (existingBanner) {
-                    existingBanner.querySelector('.custom-active-count').textContent = userCount;
+                    existingBanner.querySelector('.custom-active-text').innerHTML =
+                        `Custom mode &mdash; <span class="custom-active-count">${userCount}</span> phrases${sourceLabel}`;
                 } else {
                     const banner = document.createElement('div');
                     banner.className = 'custom-active-banner';
                     banner.innerHTML = `
                         <span class="custom-active-dot"></span>
-                        <span class="custom-active-text">Custom mode &mdash; <span class="custom-active-count">${userCount}</span> phrases</span>
+                        <span class="custom-active-text">Custom mode &mdash; <span class="custom-active-count">${userCount}</span> phrases${sourceLabel}</span>
                         <button class="custom-active-edit" id="customActiveEdit">Edit</button>
                     `;
                     picker.parentNode.insertBefore(banner, picker);
