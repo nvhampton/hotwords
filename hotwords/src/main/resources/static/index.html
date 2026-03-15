@@ -2531,6 +2531,11 @@
         ];
 
         // Theme state
+        // One-time migration: clear old RKO default-on state (v0.11.24 and earlier)
+        if (!localStorage.getItem('hotwords_rko_migrated')) {
+            localStorage.removeItem('hotwords_rko_takeover');
+            localStorage.setItem('hotwords_rko_migrated', '1');
+        }
         let rkoTakeoverActive = localStorage.getItem('hotwords_rko_takeover') === 'true';
 
         // Custom phrases
