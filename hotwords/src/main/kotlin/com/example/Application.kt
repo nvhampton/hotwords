@@ -913,7 +913,7 @@ fun Application.module() {
                                             room.forEach { session ->
                                                 session.sendSerialized(GameMessage(
                                                     type = "GAME_STARTED",
-                                                    timeRemaining = 60
+                                                    timeRemaining = 45
                                                 ))
                                                 session.sendSerialized(startWordMsg)
                                             }
@@ -928,8 +928,7 @@ fun Application.module() {
                                 if (roundTheme != null) {
                                     roomThemes[roomId] = roundTheme
                                 }
-                                // Start a new round - reset timer and score, get new word
-                                state.gameStartTime = System.currentTimeMillis()
+                                // Reset state for new round
                                 state.players.forEach { it.ready = false }
                                 roomScores[roomId] = 0
 
@@ -939,10 +938,17 @@ fun Application.module() {
                                 state.currentWord = newWord
                                 state.revealedWords = newWord.split(" ").map { false }.toMutableList()
 
-                                // Broadcast new round to all players
+                                // Broadcast NEW_ROUND (tells clients to show ready overlay)
                                 val newRoundMsg = GameMessage(
                                     type = "NEW_ROUND",
-                                    timeRemaining = 60
+                                    timeRemaining = 45
+                                )
+                                // Send updated player list (all unready) so ready overlay shows correctly
+                                val playerInfoList = state.players.map { PlayerInfo(it.id, it.name, it.ready) }
+                                val playerListMsg = GameMessage(
+                                    type = "PLAYER_LIST",
+                                    players = playerInfoList,
+                                    hotPlayerIndex = state.currentHotPlayerIndex
                                 )
                                 val newWordMsg = GameMessage(
                                     type = "NEW_WORD",
@@ -952,6 +958,7 @@ fun Application.module() {
 
                                 room.forEach { session ->
                                     session.sendSerialized(newRoundMsg)
+                                    session.sendSerialized(playerListMsg)
                                     session.sendSerialized(newWordMsg)
                                 }
                             }

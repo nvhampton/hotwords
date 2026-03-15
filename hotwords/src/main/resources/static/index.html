@@ -1022,6 +1022,81 @@
             box-shadow: 0 8px 25px rgba(249, 202, 36, 0.4);
         }
 
+        /* Local onboarding overlays */
+        .onboard-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0, 0, 0, 0.92);
+            z-index: 1060;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+        }
+        .onboard-overlay.active {
+            display: flex;
+        }
+        .onboard-card {
+            background: linear-gradient(135deg, #1e1e3a 0%, #2a2a4a 100%);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 24px;
+            padding: 40px 30px;
+            max-width: 380px;
+            width: 90%;
+            text-align: center;
+        }
+        .onboard-emoji {
+            font-size: 3rem;
+            margin-bottom: 16px;
+        }
+        .onboard-title {
+            font-size: 1.4rem;
+            font-weight: bold;
+            color: #fff;
+            margin-bottom: 12px;
+            line-height: 1.4;
+        }
+        .onboard-hint {
+            font-size: 0.95rem;
+            color: #aaa;
+            margin-bottom: 28px;
+            line-height: 1.5;
+        }
+        .onboard-btn {
+            width: 100%;
+            padding: 18px;
+            font-size: 1.3rem;
+            font-weight: bold;
+            border: none;
+            border-radius: 16px;
+            cursor: pointer;
+            color: #fff;
+            transition: all 0.3s ease;
+        }
+        .onboard-btn:hover {
+            transform: translateY(-2px);
+        }
+        .onboard-btn.play {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+            box-shadow: 0 6px 20px rgba(238, 90, 36, 0.4);
+        }
+        .onboard-btn.reveal {
+            background: linear-gradient(135deg, #4ecdc4 0%, #44a08d 100%);
+            box-shadow: 0 6px 20px rgba(78, 205, 196, 0.4);
+        }
+        .onboard-back {
+            margin-top: 20px;
+            font-size: 0.85rem;
+            color: #888;
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 8px 16px;
+        }
+        .onboard-back:hover {
+            color: #fff;
+        }
+
         /* Ready overlay */
         .ready-overlay {
             display: none;
@@ -1688,7 +1763,7 @@
         </div>
 
         <div class="timer-display" id="timerDisplay">
-            <span id="timerCount">60</span>s
+            <span id="timerCount">45</span>s
         </div>
 
         <div class="status" id="status">Click the button to start listening</div>
@@ -1754,6 +1829,27 @@
             </div>
             <button class="mic-dialog-btn" id="micDialogBtn">Got it, let's go!</button>
         </div>
+    </div>
+
+    <!-- Local Onboarding: Step 1 - Rules -->
+    <div class="onboard-overlay" id="onboardRules">
+        <div class="onboard-card">
+            <div class="onboard-emoji">🔥</div>
+            <div class="onboard-title">You have 45 seconds to get as many of the hot words as you can.</div>
+            <div class="onboard-hint">Timer starts when you reveal the first clue.</div>
+            <button class="onboard-btn play" id="onboardRulesBtn">Play</button>
+        </div>
+        <button class="onboard-back" id="onboardRulesBack">&larr; Back</button>
+    </div>
+
+    <!-- Local Onboarding: Step 2 - Ready -->
+    <div class="onboard-overlay" id="onboardReady">
+        <div class="onboard-card">
+            <div class="onboard-emoji">🤳</div>
+            <div class="onboard-title">Ready for you.</div>
+            <div class="onboard-hint">Hold your phone upright to see words.</div>
+        </div>
+        <button class="onboard-back" id="onboardReadyBack">&larr; Back</button>
     </div>
 
     <!-- Ready overlay -->
@@ -2096,7 +2192,7 @@
         }
 
         const CELEBRATION_DELAY = 1200; // 1.2s
-        const GAME_DURATION = 60; // 60 seconds
+        const GAME_DURATION = 45; // 45 seconds
 
         // Local word list (same as server)
         // Kid-friendly phrases saved in phrases/kid-phrases.txt
@@ -3587,30 +3683,26 @@
                         }
                     }
                 } else if (msg.type === 'NEW_ROUND') {
-                    // New round started - reset and start fresh (only if 2+ players)
-                    if (onlinePlayers.length >= 2) {
-                    hideReadyOverlay();
+                    // New round requested - reset state and show ready overlay
                     dismissGameSummary();
                     dismissLeaderboard();
                     phraseHistory = [];
                     localScore = 0;
                     updateScoreDisplay(0);
                     hasClaimedVictory = false;
+                    gameActive = false;
+                    if (gameTimer) { clearInterval(gameTimer); gameTimer = null; }
+                    timerDisplayEl.classList.remove('active', 'warning', 'danger');
+                    document.body.classList.remove('countdown-danger');
 
                     // Hide play again, show normal buttons
                     playAgainBtn.style.display = 'none';
                     updateOnlineModeButtons();
 
-                    // Start fresh game timer
-                    startGameTimer();
-
-                    // Restart mic if it was previously active
-                    if (isListening) {
-                        if (!recognition) initSpeechRecognition();
-                        silentStart();
-                    }
-
-                    // The NEW_WORD message will follow with the new phrase
+                    // Show ready overlay — PLAYER_LIST will follow to update it
+                    // The GAME_STARTED flow handles timer + mic when all ready
+                    if (onlinePlayers.length >= 2) {
+                        showReadyOverlay();
                     }
                 } else if (msg.type === 'SCORE_UPDATE') {
                     // Only update if game not active (initial load)
@@ -3950,7 +4042,6 @@
                 skipBtn.disabled = false;
                 gotItBtn.disabled = false;
                 await enableOrientationDetection();
-                startGameTimer();
                 if (!recognition) {
                     initSpeechRecognition();
                 }
@@ -3960,6 +4051,10 @@
                 listenBtn.classList.add('active');
                 const word = getRandomPhrase();
                 showNewWordLocalMode(word);
+                // Defer timer until first reveal
+                waitingForFirstReveal = true;
+                timerDisplayEl.classList.add('active');
+                timerCountEl.textContent = GAME_DURATION;
             } else if (ws && ws.readyState === WebSocket.OPEN) {
                 ws.send(JSON.stringify({ type: 'NEW_ROUND', theme: getActiveThemeForServer() }));
             }
@@ -4045,6 +4140,9 @@
             dismissLeaderboard();
             dismissGameSummary();
             hideReadyOverlay();
+            hideOnboardRules();
+            hideOnboardReady();
+            waitingForFirstReveal = false;
             // Stop any active game
             if (gameActive) {
                 endGame();
@@ -4167,18 +4265,58 @@
             diffDesc.textContent = 'Must say the full phrase to score';
         });
 
-        // Start Local Game
-        async function startLocalGame() {
-            // Create player list from count
-            localModePlayers = Array.from({ length: playerCount }, (_, i) => `Player ${i + 1}`);
+        // Local onboarding flow
+        let waitingForFirstReveal = false;
 
-            // Set up local mode
+        function showOnboardRules() {
+            document.getElementById('onboardRules').classList.add('active');
+        }
+        function hideOnboardRules() {
+            document.getElementById('onboardRules').classList.remove('active');
+        }
+        function showOnboardReady() {
+            document.getElementById('onboardReady').classList.add('active');
+        }
+        function hideOnboardReady() {
+            document.getElementById('onboardReady').classList.remove('active');
+        }
+
+        // Wire up onboarding buttons
+        document.getElementById('onboardRulesBack').addEventListener('click', () => {
+            hideOnboardRules();
+        });
+        document.getElementById('onboardRulesBtn').addEventListener('click', async () => {
+            hideOnboardRules();
+
+            // Set up local mode state
+            localModePlayers = Array.from({ length: playerCount }, (_, i) => `Player ${i + 1}`);
             isLocalMode = true;
             currentPlayerIndex = 0;
             localScore = 0;
             phraseHistory = [];
             currentRoomId = getRandomRoomName();
 
+            // Request permissions on this user gesture (needed for iOS)
+            await enableOrientationDetection();
+            await ensureMicPermission();
+
+            // Set up the game behind the overlay so first reveal dismisses it
+            launchLocalGame();
+
+            // Show the ready screen on top
+            showOnboardReady();
+        });
+        document.getElementById('onboardReadyBack').addEventListener('click', () => {
+            hideOnboardReady();
+            showLobby();
+        });
+
+        // Start Local Game (called from onboarding flow)
+        function startLocalGame() {
+            showOnboardRules();
+        }
+
+        function launchLocalGame() {
             // Show game screen
             showGameScreen();
             gameScreen.classList.add('local-mode');
@@ -4186,15 +4324,6 @@
             // Initialize UI
             updateScoreDisplay(0);
             wordDisplay.textContent = 'Get Ready!';
-
-            // Enable orientation/tap detection first (needs user gesture on iOS)
-            await enableOrientationDetection();
-
-            // Request mic permission (after orientation, since that needs the user gesture context)
-            await ensureMicPermission();
-
-            // Start the timer
-            startGameTimer();
 
             // Start listening automatically
             if (!recognition) {
@@ -4207,13 +4336,18 @@
             listenBtn.disabled = false;
             skipBtn.disabled = false;
             gotItBtn.disabled = false;
-            statusEl.textContent = 'Listening... Say the phrase!';
+            statusEl.textContent = 'Hold upright to reveal!';
             statusEl.classList.add('listening');
             transcriptBox.classList.add('listening');
 
             // Pick the first word (after orientation is set up so hiding works)
             const word = getRandomPhrase();
             showNewWordLocalMode(word);
+
+            // Don't start the timer yet — wait for first reveal
+            waitingForFirstReveal = true;
+            timerDisplayEl.classList.add('active');
+            timerCountEl.textContent = GAME_DURATION;
         }
 
         // Start Online Game
@@ -4511,6 +4645,11 @@
                         if (deviceIsFlat) {
                             deviceIsFlat = false;
                             updateWordVisibilityByOrientation();
+                            if (waitingForFirstReveal) {
+                                waitingForFirstReveal = false;
+                                hideOnboardReady();
+                                startGameTimer();
+                            }
                             if (timerPaused) {
                                 timerPaused = false;
                                 timerDisplayEl.classList.remove('paused');
@@ -4581,10 +4720,15 @@
         }
 
         function startReveal(e) {
-            if (!isLocalMode || !gameActive) return;
+            if (!isLocalMode || (!gameActive && !waitingForFirstReveal)) return;
             pressRevealing = true;
             deviceIsFlat = false;  // Not flat = upright = revealed
             wordContainer.classList.remove('orientation-hidden');
+            if (waitingForFirstReveal) {
+                waitingForFirstReveal = false;
+                hideOnboardReady();
+                startGameTimer();
+            }
             if (timerPaused) {
                 timerPaused = false;
                 timerDisplayEl.classList.remove('paused');
