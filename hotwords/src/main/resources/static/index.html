@@ -1481,26 +1481,13 @@
             color: #fff;
         }
 
-        /* RKO Takeover toggle (hidden in corner) */
-        .rko-toggle {
-            position: absolute;
-            bottom: 10px;
-            right: 10px;
-            cursor: pointer;
-            user-select: none;
-            -webkit-user-select: none;
-            z-index: 10;
-            opacity: 0.3;
-            font-size: 0.6rem;
-            color: rgba(255, 255, 255, 0.3);
-            transition: all 0.3s ease;
+        /* RKO mode active indicator on fire icon */
+        .preset-fire.rko-active {
+            animation: rko-flame 0.6s ease-in-out 3;
         }
-        .rko-toggle:hover {
-            opacity: 0.7;
-        }
-        .rko-toggle.active {
-            opacity: 0.8;
-            color: #e74c3c;
+        @keyframes rko-flame {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.4); filter: drop-shadow(0 0 12px rgba(231, 76, 60, 0.9)); }
         }
         .mode-buttons {
             display: flex;
@@ -1863,7 +1850,6 @@
         </div>
 
         <div class="version">v@@VERSION@@</div>
-        <div class="rko-toggle" id="rkoToggle" title="RKO Takeover mode">RKO</div>
     </div>
 
     <!-- Customize Phrases Overlay -->
@@ -4365,20 +4351,9 @@
             }
         }
 
-        // RKO Takeover toggle (subtle, bottom-right)
-        const rkoToggle = document.getElementById('rkoToggle');
-        if (rkoTakeoverActive) rkoToggle.classList.add('active');
-        rkoToggle.addEventListener('click', () => {
-            rkoTakeoverActive = !rkoTakeoverActive;
-            localStorage.setItem('hotwords_rko_takeover', rkoTakeoverActive.toString());
-            rkoToggle.classList.toggle('active', rkoTakeoverActive);
-            // Reset topic selection and reload picker for the new mode
-            activeTopic = null;
-            topicPhrases = null;
-            loadTopicPicker().then(() => {
-                if (rkoTakeoverActive) selectTopic('company_jargon');
-            });
-        });
+        // RKO easter egg — long-press 🔥 for 1.5s to toggle
+        let rkoLongPressTimer = null;
+        let rkoLongPressTriggered = false;
 
         // Customize phrases (💬 balloon)
         const customizeBalloon = document.getElementById('customizeBalloon');
@@ -4459,13 +4434,50 @@
             }
         }
 
-        // Preset fire (🔥) — clears custom phrases and uses built-in defaults
+        // Preset fire (🔥) — tap to use built-in defaults, long-press for RKO easter egg
         const presetFire = document.getElementById('presetFire');
         if (!customPhrases) presetFire.classList.add('active');
 
+        presetFire.addEventListener('pointerdown', (e) => {
+            rkoLongPressTriggered = false;
+            rkoLongPressTimer = setTimeout(() => {
+                rkoLongPressTriggered = true;
+                // Toggle RKO mode
+                rkoTakeoverActive = !rkoTakeoverActive;
+                localStorage.setItem('hotwords_rko_takeover', rkoTakeoverActive.toString());
+                // Visual feedback — flame burst animation
+                presetFire.classList.remove('rko-active');
+                void presetFire.offsetWidth; // force reflow
+                presetFire.classList.add('rko-active');
+                setTimeout(() => presetFire.classList.remove('rko-active'), 2000);
+                // Reset topic selection and reload picker for the new mode
+                activeTopic = null;
+                topicPhrases = null;
+                // Clear custom phrases when switching to RKO
+                if (rkoTakeoverActive) {
+                    customizeInput.value = '';
+                    localStorage.removeItem('hotwords_custom_phrases');
+                    customPhrasesRaw = '';
+                    customPhrases = null;
+                    customizeBalloon.classList.remove('has-custom');
+                    updateCustomActiveUI();
+                }
+                loadTopicPicker().then(() => {
+                    if (rkoTakeoverActive) selectTopic('company_jargon');
+                });
+            }, 1500);
+        });
+        function cancelRkoLongPress() {
+            if (rkoLongPressTimer) { clearTimeout(rkoLongPressTimer); rkoLongPressTimer = null; }
+        }
+        presetFire.addEventListener('pointerup', cancelRkoLongPress);
+        presetFire.addEventListener('pointerleave', cancelRkoLongPress);
+        presetFire.addEventListener('pointercancel', cancelRkoLongPress);
+
         presetFire.addEventListener('click', (e) => {
             e.stopPropagation();
-            // Clear custom phrases
+            if (rkoLongPressTriggered) return; // Long-press already handled
+            // Clear custom phrases and use built-in defaults
             customizeInput.value = '';
             localStorage.removeItem('hotwords_custom_phrases');
             customPhrasesRaw = '';
