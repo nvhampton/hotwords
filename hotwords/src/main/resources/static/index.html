@@ -1306,66 +1306,137 @@
             color: #ff6b6b;
         }
 
-        /* RKO Takeover bookmark toggle */
+        /* Customize balloon (💬 in title) */
+        .customize-balloon {
+            cursor: pointer;
+            display: inline-block;
+            transition: transform 0.2s ease;
+            animation: balloon-hint 3s ease-in-out 2s 2;
+        }
+        .customize-balloon:hover {
+            transform: scale(1.3);
+        }
+        .customize-balloon.has-custom {
+            filter: drop-shadow(0 0 8px rgba(102, 126, 234, 0.8));
+        }
+        @keyframes balloon-hint {
+            0%, 100% { transform: rotate(0deg); }
+            15% { transform: rotate(-12deg) scale(1.15); }
+            30% { transform: rotate(10deg) scale(1.15); }
+            45% { transform: rotate(-8deg); }
+            60% { transform: rotate(0deg); }
+        }
+
+        /* Customize overlay */
+        .customize-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0, 0, 0, 0.85);
+            z-index: 1060;
+            align-items: center;
+            justify-content: center;
+        }
+        .customize-overlay.active {
+            display: flex;
+        }
+        .customize-dialog {
+            background: linear-gradient(135deg, #1e1e3a 0%, #2a2a4a 100%);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 20px;
+            padding: 30px;
+            max-width: 440px;
+            width: 90%;
+            text-align: center;
+        }
+        .customize-dialog h2 {
+            font-size: 1.4rem;
+            margin: 0 0 8px;
+            color: #fff;
+        }
+        .customize-dialog .customize-desc {
+            font-size: 0.85rem;
+            color: #aaa;
+            margin-bottom: 16px;
+            line-height: 1.4;
+        }
+        .customize-dialog textarea {
+            width: 100%;
+            min-height: 140px;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            color: #fff;
+            font-size: 0.9rem;
+            padding: 12px;
+            resize: vertical;
+            font-family: inherit;
+            box-sizing: border-box;
+        }
+        .customize-dialog textarea::placeholder {
+            color: rgba(255, 255, 255, 0.3);
+        }
+        .customize-dialog textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        .customize-count {
+            font-size: 0.8rem;
+            color: #888;
+            margin: 8px 0 16px;
+            text-align: right;
+        }
+        .customize-buttons {
+            display: flex;
+            gap: 10px;
+        }
+        .customize-btn {
+            flex: 1;
+            padding: 14px;
+            font-size: 1rem;
+            font-weight: bold;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .customize-btn.save {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #fff;
+        }
+        .customize-btn.save:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+        .customize-btn.clear {
+            background: rgba(255, 255, 255, 0.1);
+            color: #aaa;
+        }
+        .customize-btn.clear:hover {
+            background: rgba(255, 255, 255, 0.15);
+            color: #fff;
+        }
+
+        /* RKO Takeover toggle (hidden in corner) */
         .rko-toggle {
             position: absolute;
-            top: -10px;
-            right: -10px;
-            width: 96px;
+            bottom: 10px;
+            right: 10px;
             cursor: pointer;
             user-select: none;
             -webkit-user-select: none;
             z-index: 10;
-            transition: all 0.3s ease;
-            transform: rotate(8deg);
-        }
-        .rko-toggle-inner {
-            background: rgba(255, 255, 255, 0.08);
-            border: 2px solid rgba(255, 255, 255, 0.15);
-            border-radius: 6px 6px 0 0;
-            padding: 15px 12px 21px;
-            text-align: center;
-            clip-path: polygon(0 0, 100% 0, 100% 85%, 50% 100%, 0 85%);
-            transition: all 0.3s ease;
-        }
-        .rko-label {
-            display: block;
-            font-size: 1.35rem;
-            font-weight: 900;
-            letter-spacing: 3px;
+            opacity: 0.3;
+            font-size: 0.6rem;
             color: rgba(255, 255, 255, 0.3);
             transition: all 0.3s ease;
         }
-        .rko-sublabel {
-            display: block;
-            font-size: 0.75rem;
-            text-transform: uppercase;
-            letter-spacing: 1.5px;
-            color: rgba(255, 255, 255, 0.2);
-            margin-top: 2px;
-            transition: all 0.3s ease;
-        }
-        .rko-toggle.active .rko-toggle-inner {
-            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
-            border-color: #e74c3c;
-            box-shadow: 0 0 20px rgba(231, 76, 60, 0.5), 0 0 40px rgba(231, 76, 60, 0.2);
-        }
-        .rko-toggle.active .rko-label {
-            color: #fff;
-            text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
-        }
-        .rko-toggle.active .rko-sublabel {
-            color: rgba(255, 255, 255, 0.8);
-        }
         .rko-toggle:hover {
-            transform: rotate(8deg) scale(1.1);
+            opacity: 0.7;
         }
-        .rko-toggle:hover:not(.active) .rko-toggle-inner {
-            border-color: rgba(231, 76, 60, 0.4);
-            background: rgba(231, 76, 60, 0.15);
-        }
-        .rko-toggle:hover:not(.active) .rko-label {
-            color: rgba(255, 255, 255, 0.6);
+        .rko-toggle.active {
+            opacity: 0.8;
+            color: #e74c3c;
         }
         .mode-buttons {
             display: flex;
@@ -1686,13 +1757,7 @@
 
     <!-- Lobby Screen -->
     <div class="lobby" id="lobbyScreen">
-        <div class="rko-toggle" id="rkoToggle" title="RKO Takeover mode">
-            <div class="rko-toggle-inner">
-                <span class="rko-label">RKO</span>
-                <span class="rko-sublabel">takeover</span>
-            </div>
-        </div>
-        <h1>🔥 Hotwords 💬</h1>
+        <h1>🔥 Hotwords <span class="customize-balloon" id="customizeBalloon" title="Custom phrases">💬</span></h1>
 
         <div class="topic-picker" id="topicPicker"></div>
 
@@ -1734,6 +1799,21 @@
         </div>
 
         <div class="version">v@@VERSION@@</div>
+        <div class="rko-toggle" id="rkoToggle" title="RKO Takeover mode">RKO</div>
+    </div>
+
+    <!-- Customize Phrases Overlay -->
+    <div class="customize-overlay" id="customizeOverlay">
+        <div class="customize-dialog">
+            <h2>Custom Phrases</h2>
+            <div class="customize-desc">Enter your own phrases, separated by commas. If you add fewer than 70, the rest will be filled with similar ones.</div>
+            <textarea id="customizeInput" placeholder="e.g. Machine learning, Neural network, Gradient descent, Overfitting..."></textarea>
+            <div class="customize-count" id="customizeCount">0 phrases</div>
+            <div class="customize-buttons">
+                <button class="customize-btn clear" id="customizeClear">Clear</button>
+                <button class="customize-btn save" id="customizeSave">Save</button>
+            </div>
+        </div>
     </div>
 
     <!-- Game Screen -->
@@ -2401,13 +2481,21 @@
         ];
 
         // Theme state
-        let rkoTakeoverActive = localStorage.getItem('hotwords_rko_takeover') !== 'false';
+        let rkoTakeoverActive = localStorage.getItem('hotwords_rko_takeover') === 'true';
+
+        // Custom phrases
+        let customPhrases = null; // array when active, null when not
+        let customPhrasesRaw = localStorage.getItem('hotwords_custom_phrases') || '';
 
         // Topic phrase system
         let activeTopic = null; // null = default (built-in), or topic id string
         let topicPhrases = null; // loaded phrases array for active topic
 
         function getRandomPhrase() {
+            // Custom phrases take priority
+            if (customPhrases && customPhrases.length > 0) {
+                return customPhrases[Math.floor(Math.random() * customPhrases.length)];
+            }
             // If a specific topic is loaded (RKO or normal), use it
             if (topicPhrases && topicPhrases.length > 0) {
                 return topicPhrases[Math.floor(Math.random() * topicPhrases.length)];
@@ -4213,7 +4301,7 @@
             }
         }
 
-        // RKO Takeover toggle
+        // RKO Takeover toggle (subtle, bottom-right)
         const rkoToggle = document.getElementById('rkoToggle');
         if (rkoTakeoverActive) rkoToggle.classList.add('active');
         rkoToggle.addEventListener('click', () => {
@@ -4226,6 +4314,94 @@
             loadTopicPicker().then(() => {
                 if (rkoTakeoverActive) selectTopic('company_jargon');
             });
+        });
+
+        // Customize phrases (💬 balloon)
+        const customizeBalloon = document.getElementById('customizeBalloon');
+        const customizeOverlay = document.getElementById('customizeOverlay');
+        const customizeInput = document.getElementById('customizeInput');
+        const customizeCount = document.getElementById('customizeCount');
+        const customizeSave = document.getElementById('customizeSave');
+        const customizeClear = document.getElementById('customizeClear');
+
+        function parseCustomPhrases(raw) {
+            return raw.split(',').map(s => s.trim()).filter(s => s.length > 0);
+        }
+
+        function buildCustomPhraseList(userPhrases) {
+            if (userPhrases.length === 0) return null;
+            if (userPhrases.length >= 70) return userPhrases;
+            // Pad with random defaults to reach 70
+            const padded = [...userPhrases];
+            const shuffled = [...localGameWords].sort(() => Math.random() - 0.5);
+            for (const phrase of shuffled) {
+                if (padded.length >= 70) break;
+                if (!padded.includes(phrase)) padded.push(phrase);
+            }
+            return padded;
+        }
+
+        function updateCustomizeCount() {
+            const phrases = parseCustomPhrases(customizeInput.value);
+            const n = phrases.length;
+            if (n === 0) {
+                customizeCount.textContent = '0 phrases';
+            } else if (n < 70) {
+                customizeCount.textContent = `${n} phrases (+ ${70 - n} auto-filled)`;
+            } else {
+                customizeCount.textContent = `${n} phrases`;
+            }
+        }
+
+        // Load saved custom phrases on startup
+        if (customPhrasesRaw) {
+            customizeInput.value = customPhrasesRaw;
+            const parsed = parseCustomPhrases(customPhrasesRaw);
+            if (parsed.length > 0) {
+                customPhrases = buildCustomPhraseList(parsed);
+                customizeBalloon.classList.add('has-custom');
+            }
+        }
+
+        customizeBalloon.addEventListener('click', (e) => {
+            e.stopPropagation();
+            customizeOverlay.classList.add('active');
+            updateCustomizeCount();
+            customizeInput.focus();
+        });
+
+        customizeInput.addEventListener('input', updateCustomizeCount);
+
+        customizeSave.addEventListener('click', () => {
+            const raw = customizeInput.value;
+            const parsed = parseCustomPhrases(raw);
+            localStorage.setItem('hotwords_custom_phrases', raw);
+            customPhrasesRaw = raw;
+            if (parsed.length > 0) {
+                customPhrases = buildCustomPhraseList(parsed);
+                customizeBalloon.classList.add('has-custom');
+            } else {
+                customPhrases = null;
+                customizeBalloon.classList.remove('has-custom');
+            }
+            customizeOverlay.classList.remove('active');
+        });
+
+        customizeClear.addEventListener('click', () => {
+            customizeInput.value = '';
+            localStorage.removeItem('hotwords_custom_phrases');
+            customPhrasesRaw = '';
+            customPhrases = null;
+            customizeBalloon.classList.remove('has-custom');
+            updateCustomizeCount();
+            customizeOverlay.classList.remove('active');
+        });
+
+        // Close overlay on background click
+        customizeOverlay.addEventListener('click', (e) => {
+            if (e.target === customizeOverlay) {
+                customizeOverlay.classList.remove('active');
+            }
         });
 
         // Load topic picker, default to Company Jargon in RKO mode
