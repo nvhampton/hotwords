@@ -1306,6 +1306,19 @@
             color: #ff6b6b;
         }
 
+        /* Preset fire (🔥 in title) */
+        .preset-fire {
+            cursor: pointer;
+            display: inline-block;
+            transition: transform 0.2s ease;
+        }
+        .preset-fire:hover {
+            transform: scale(1.3);
+        }
+        .preset-fire.active {
+            filter: drop-shadow(0 0 8px rgba(255, 107, 107, 0.8));
+        }
+
         /* Customize balloon (💬 in title) */
         .customize-balloon {
             cursor: pointer;
@@ -1318,6 +1331,57 @@
         }
         .customize-balloon.has-custom {
             filter: drop-shadow(0 0 8px rgba(102, 126, 234, 0.8));
+        }
+        /* Custom phrases active banner (replaces topic picker) */
+        .custom-active-banner {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.15) 0%, rgba(118, 75, 162, 0.15) 100%);
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            border-radius: 14px;
+            padding: 10px 18px;
+            margin-bottom: 20px;
+            animation: banner-appear 0.4s ease;
+        }
+        .custom-active-banner .custom-active-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #667eea;
+            box-shadow: 0 0 8px rgba(102, 126, 234, 0.6);
+            animation: dot-pulse 2s ease-in-out infinite;
+        }
+        .custom-active-banner .custom-active-text {
+            color: rgba(255, 255, 255, 0.85);
+            font-size: 0.9rem;
+        }
+        .custom-active-banner .custom-active-count {
+            color: #667eea;
+            font-weight: bold;
+        }
+        .custom-active-banner .custom-active-edit {
+            background: none;
+            border: 1px solid rgba(102, 126, 234, 0.4);
+            color: #667eea;
+            border-radius: 8px;
+            padding: 4px 12px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .custom-active-banner .custom-active-edit:hover {
+            background: rgba(102, 126, 234, 0.2);
+            border-color: #667eea;
+        }
+        @keyframes banner-appear {
+            from { opacity: 0; transform: translateY(-8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes dot-pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
         }
         @keyframes balloon-hint {
             0%, 100% { transform: rotate(0deg); }
@@ -1757,7 +1821,7 @@
 
     <!-- Lobby Screen -->
     <div class="lobby" id="lobbyScreen">
-        <h1>🔥 Hotwords <span class="customize-balloon" id="customizeBalloon" title="Custom phrases">💬</span></h1>
+        <h1><span class="preset-fire" id="presetFire" title="Hottest this week">🔥</span> Hotwords <span class="customize-balloon" id="customizeBalloon" title="Custom phrases">💬</span></h1>
 
         <div class="topic-picker" id="topicPicker"></div>
 
@@ -4341,6 +4405,37 @@
             return padded;
         }
 
+        function updateCustomActiveUI() {
+            const picker = document.getElementById('topicPicker');
+            const existingBanner = document.querySelector('.custom-active-banner');
+            if (customPhrases && customPhrases.length > 0) {
+                const userCount = parseCustomPhrases(customPhrasesRaw).length;
+                // Hide topic picker, show banner
+                picker.style.display = 'none';
+                if (existingBanner) {
+                    existingBanner.querySelector('.custom-active-count').textContent = userCount;
+                } else {
+                    const banner = document.createElement('div');
+                    banner.className = 'custom-active-banner';
+                    banner.innerHTML = `
+                        <span class="custom-active-dot"></span>
+                        <span class="custom-active-text">Custom mode &mdash; <span class="custom-active-count">${userCount}</span> phrases</span>
+                        <button class="custom-active-edit" id="customActiveEdit">Edit</button>
+                    `;
+                    picker.parentNode.insertBefore(banner, picker);
+                    banner.querySelector('#customActiveEdit').addEventListener('click', () => {
+                        customizeOverlay.classList.add('active');
+                        updateCustomizeCount();
+                        customizeInput.focus();
+                    });
+                }
+            } else {
+                // Show topic picker, remove banner
+                picker.style.display = '';
+                if (existingBanner) existingBanner.remove();
+            }
+        }
+
         function updateCustomizeCount() {
             const phrases = parseCustomPhrases(customizeInput.value);
             const n = phrases.length;
@@ -4360,8 +4455,27 @@
             if (parsed.length > 0) {
                 customPhrases = buildCustomPhraseList(parsed);
                 customizeBalloon.classList.add('has-custom');
+                updateCustomActiveUI();
             }
         }
+
+        // Preset fire (🔥) — clears custom phrases and uses built-in defaults
+        const presetFire = document.getElementById('presetFire');
+        if (!customPhrases) presetFire.classList.add('active');
+
+        presetFire.addEventListener('click', (e) => {
+            e.stopPropagation();
+            // Clear custom phrases
+            customizeInput.value = '';
+            localStorage.removeItem('hotwords_custom_phrases');
+            customPhrasesRaw = '';
+            customPhrases = null;
+            customizeBalloon.classList.remove('has-custom');
+            presetFire.classList.add('active');
+            updateCustomActiveUI();
+            // Select default topic
+            selectTopic('default');
+        });
 
         customizeBalloon.addEventListener('click', (e) => {
             e.stopPropagation();
@@ -4380,11 +4494,14 @@
             if (parsed.length > 0) {
                 customPhrases = buildCustomPhraseList(parsed);
                 customizeBalloon.classList.add('has-custom');
+                presetFire.classList.remove('active');
             } else {
                 customPhrases = null;
                 customizeBalloon.classList.remove('has-custom');
+                presetFire.classList.add('active');
             }
             customizeOverlay.classList.remove('active');
+            updateCustomActiveUI();
         });
 
         customizeClear.addEventListener('click', () => {
@@ -4393,8 +4510,10 @@
             customPhrasesRaw = '';
             customPhrases = null;
             customizeBalloon.classList.remove('has-custom');
+            presetFire.classList.add('active');
             updateCustomizeCount();
             customizeOverlay.classList.remove('active');
+            updateCustomActiveUI();
         });
 
         // Close overlay on background click
