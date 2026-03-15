@@ -2177,6 +2177,7 @@
         let orientationEnabled = false;
         let deviceIsFlat = false;
         let phraseHistory = [];
+        let usedPhrasesThisRound = new Set();
         let phraseStartTime = 0;
 
         // Game difficulty: true = individual words reveal as detected (easy), false = must match full phrase (hard)
@@ -2556,19 +2557,18 @@
         let topicPhrases = null; // loaded phrases array for active topic
 
         function getRandomPhrase() {
-            // Custom phrases take priority
-            if (customPhrases && customPhrases.length > 0) {
-                return customPhrases[Math.floor(Math.random() * customPhrases.length)];
-            }
-            // If a specific topic is loaded (RKO or normal), use it
-            if (topicPhrases && topicPhrases.length > 0) {
-                return topicPhrases[Math.floor(Math.random() * topicPhrases.length)];
-            }
-            // RKO mode with no specific topic = all RKO phrases
-            if (rkoTakeoverActive) {
-                return rkoGameWords[Math.floor(Math.random() * rkoGameWords.length)];
-            }
-            return localGameWords[Math.floor(Math.random() * localGameWords.length)];
+            const pool = customPhrases && customPhrases.length > 0 ? customPhrases
+                : topicPhrases && topicPhrases.length > 0 ? topicPhrases
+                : rkoTakeoverActive ? rkoGameWords
+                : localGameWords;
+
+            // Filter out already-used phrases this round
+            const available = pool.filter(p => !usedPhrasesThisRound.has(p));
+            // If exhausted, reset (unlikely in 30s but just in case)
+            const source = available.length > 0 ? available : pool;
+            const phrase = source[Math.floor(Math.random() * source.length)];
+            usedPhrasesThisRound.add(phrase);
+            return phrase;
         }
 
         function getActiveThemeForServer() {
@@ -3839,6 +3839,7 @@
                     dismissGameSummary();
                     dismissLeaderboard();
                     phraseHistory = [];
+            usedPhrasesThisRound.clear();
                     localScore = 0;
                     updateScoreDisplay(0);
                     hasClaimedVictory = false;
@@ -4188,6 +4189,7 @@
                 currentPlayerIndex = 0;
                 localScore = 0;
                 phraseHistory = [];
+            usedPhrasesThisRound.clear();
                 updateScoreDisplay(0);
                 wordDisplay.textContent = 'Get Ready!';
                 listenBtn.disabled = false;
@@ -4659,6 +4661,7 @@
             currentPlayerIndex = 0;
             localScore = 0;
             phraseHistory = [];
+            usedPhrasesThisRound.clear();
             currentRoomId = getRandomRoomName();
 
             // Request permissions on this user gesture (needed for iOS)
