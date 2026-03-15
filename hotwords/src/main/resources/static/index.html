@@ -4372,10 +4372,31 @@
             return raw.split(',').map(s => s.trim()).filter(s => s.length > 0);
         }
 
-        function buildCustomPhraseList(userPhrases) {
+        async function buildCustomPhraseList(userPhrases) {
             if (userPhrases.length === 0) return null;
             if (userPhrases.length >= 70) return userPhrases;
-            // Pad with random defaults to reach 70
+
+            const needed = 70 - userPhrases.length;
+
+            // Try API-generated similar phrases first
+            try {
+                const res = await fetch('/api/generate-phrases', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ phrases: userPhrases, count: needed })
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.phrases && data.phrases.length > 0) {
+                        const generated = data.phrases.filter(p => !userPhrases.includes(p));
+                        return [...userPhrases, ...generated.slice(0, needed)];
+                    }
+                }
+            } catch (e) {
+                // Fall through to default padding
+            }
+
+            // Fallback: pad with random built-in phrases
             const padded = [...userPhrases];
             const shuffled = [...localGameWords].sort(() => Math.random() - 0.5);
             for (const phrase of shuffled) {
@@ -4422,7 +4443,7 @@
             if (n === 0) {
                 customizeCount.textContent = '0 phrases';
             } else if (n < 70) {
-                customizeCount.textContent = `${n} phrases (+ ${70 - n} auto-filled)`;
+                customizeCount.textContent = `${n} phrases (+ ${70 - n} similar will be generated)`;
             } else {
                 customizeCount.textContent = `${n} phrases`;
             }
@@ -4433,9 +4454,13 @@
             customizeInput.value = customPhrasesRaw;
             const parsed = parseCustomPhrases(customPhrasesRaw);
             if (parsed.length > 0) {
-                customPhrases = buildCustomPhraseList(parsed);
+                // Use user phrases immediately, generate similar ones in background
+                customPhrases = [...parsed];
                 customizeBalloon.classList.add('has-custom');
                 updateCustomActiveUI();
+                buildCustomPhraseList(parsed).then(full => {
+                    customPhrases = full;
+                });
             }
         }
 
@@ -4503,13 +4528,18 @@
 
         customizeInput.addEventListener('input', updateCustomizeCount);
 
-        customizeSave.addEventListener('click', () => {
+        customizeSave.addEventListener('click', async () => {
             const raw = customizeInput.value;
             const parsed = parseCustomPhrases(raw);
             localStorage.setItem('hotwords_custom_phrases', raw);
             customPhrasesRaw = raw;
             if (parsed.length > 0) {
-                customPhrases = buildCustomPhraseList(parsed);
+                // Show generating state
+                customizeSave.textContent = 'Generating...';
+                customizeSave.disabled = true;
+                customPhrases = await buildCustomPhraseList(parsed);
+                customizeSave.textContent = 'Save';
+                customizeSave.disabled = false;
                 customizeBalloon.classList.add('has-custom');
                 presetFire.classList.remove('active');
             } else {

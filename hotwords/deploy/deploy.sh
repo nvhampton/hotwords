@@ -93,6 +93,7 @@ After=network.target
 [Service]
 Type=simple
 User=hotwords
+EnvironmentFile=-/opt/hotwords/.env
 ExecStart=/usr/bin/java -jar /opt/hotwords/game-server.jar
 WorkingDirectory=/opt/hotwords
 Restart=always

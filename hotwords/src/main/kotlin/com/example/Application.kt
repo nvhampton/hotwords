@@ -11,9 +11,14 @@ import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import io.ktor.server.websocket.*
 import io.ktor.websocket.*
+import io.ktor.client.*
+import io.ktor.client.engine.cio.*
+import io.ktor.client.request.*
+import io.ktor.client.statement.*
+import io.ktor.client.plugins.contentnegotiation.ContentNegotiation as ClientContentNegotiation
 import kotlinx.coroutines.*
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.*
 import java.io.File
 import java.security.MessageDigest
 import java.time.Duration
@@ -743,6 +748,78 @@ fun Application.module() {
                 ))
             } catch (e: Exception) {
                 call.respond(HttpStatusCode.InternalServerError, mapOf("error" to (e.message ?: "Unknown error")))
+            }
+        }
+
+        // Generate similar phrases using Claude API
+        val claudeApiKey = System.getenv("ANTHROPIC_API_KEY") ?: ""
+        val claudeClient = HttpClient(CIO) {
+            install(ClientContentNegotiation) {
+                json(Json { ignoreUnknownKeys = true })
+            }
+        }
+
+        post("/api/generate-phrases") {
+            if (claudeApiKey.isBlank()) {
+                call.respond(HttpStatusCode.ServiceUnavailable, mapOf("error" to "API key not configured"))
+                return@post
+            }
+
+            val body = call.receiveText()
+            val request = jsonLenient.decodeFromString(JsonObject.serializer(), body)
+            val phrases = request["phrases"]?.jsonArray?.map { it.jsonPrimitive.content } ?: emptyList()
+            val count = request["count"]?.jsonPrimitive?.intOrNull ?: 50
+
+            if (phrases.isEmpty()) {
+                call.respond(mapOf("phrases" to emptyList<String>()))
+                return@post
+            }
+
+            val safeCount = count.coerceIn(1, 100)
+            val exampleList = phrases.take(20).joinToString(", ") { "\"$it\"" }
+
+            val prompt = """Generate exactly $safeCount short phrases or expressions that are thematically similar to these examples: $exampleList
+
+Rules:
+- Each phrase should be 1-5 words
+- Match the style, theme, and difficulty of the examples
+- Don't repeat any of the example phrases
+- Return ONLY a JSON array of strings, no other text
+- Example format: ["phrase one", "phrase two", "phrase three"]"""
+
+            try {
+                val response = claudeClient.post("https://api.anthropic.com/v1/messages") {
+                    header("x-api-key", claudeApiKey)
+                    header("anthropic-version", "2023-06-01")
+                    contentType(ContentType.Application.Json)
+                    setBody(buildJsonObject {
+                        put("model", "claude-haiku-4-5-20251001")
+                        put("max_tokens", 1024)
+                        putJsonArray("messages") {
+                            addJsonObject {
+                                put("role", "user")
+                                put("content", prompt)
+                            }
+                        }
+                    }.toString())
+                }
+
+                val responseBody = response.bodyAsText()
+                val responseJson = jsonLenient.decodeFromString(JsonObject.serializer(), responseBody)
+
+                // Extract text from Claude's response
+                val content = responseJson["content"]?.jsonArray?.firstOrNull()?.jsonObject?.get("text")?.jsonPrimitive?.content ?: "[]"
+
+                // Parse the JSON array from Claude's response (may have markdown wrapping)
+                val cleanJson = content.replace(Regex("```json\\s*"), "").replace(Regex("```\\s*"), "").trim()
+                val generatedPhrases = jsonLenient.decodeFromString(JsonArray.serializer(), cleanJson)
+                    .map { it.jsonPrimitive.content }
+                    .filter { it.isNotBlank() }
+                    .take(safeCount)
+
+                call.respond(mapOf("phrases" to generatedPhrases))
+            } catch (e: Exception) {
+                call.respond(HttpStatusCode.InternalServerError, mapOf("error" to (e.message ?: "Generation failed")))
             }
         }
 

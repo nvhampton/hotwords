@@ -31,6 +31,11 @@ dependencies {
     implementation("io.ktor:ktor-server-content-negotiation-jvm")
     implementation("io.ktor:ktor-server-websockets-jvm") // Ensure this is present
     implementation("io.ktor:ktor-server-host-common-jvm")
+
+    // HTTP client for Claude API calls
+    implementation("io.ktor:ktor-client-core-jvm")
+    implementation("io.ktor:ktor-client-cio-jvm")
+    implementation("io.ktor:ktor-client-content-negotiation-jvm")
 }
 
 java {
