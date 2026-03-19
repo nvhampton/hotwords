@@ -4055,13 +4055,18 @@
                         }
                     }
                 } else if (msg.type === 'GAME_IN_PROGRESS') {
-                    // Joined mid-game — spectate until next round
+                    // Joined mid-game — spectate until next round (not in active roster)
                     isSpectating = true;
                     hideReadyOverlay();
                     listenBtn.style.display = 'none';
                     gotItBtn.style.display = 'none';
                     skipBtn.style.display = 'none';
-                    wordDisplay.innerHTML = '<div style="font-size: 1.2rem; color: #888;">Round in progress<br><span style="font-size: 0.95rem;">You\'ll join the next round</span></div>';
+                    // Show host name if available
+                    const hostName = msg.hostPlayerId && onlinePlayers.length > 0
+                        ? (onlinePlayers.find(p => p.id === msg.hostPlayerId) || {}).name || 'Host'
+                        : null;
+                    const hostLine = hostName ? `<br><span style="font-size: 0.95rem; color: #aaa;">👑 ${escapeHtml(hostName)}'s room</span>` : '';
+                    wordDisplay.innerHTML = `<div style="font-size: 1.2rem; color: #888;">Round in progress${hostLine}<br><span style="font-size: 0.95rem;">You'll join the next round</span></div>`;
                     // Show a spectator countdown
                     if (msg.timeRemaining !== undefined && msg.timeRemaining > 0) {
                         timeRemaining = msg.timeRemaining;

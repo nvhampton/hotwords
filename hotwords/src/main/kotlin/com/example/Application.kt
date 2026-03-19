@@ -75,6 +75,7 @@ data class Player(
 
 data class RoomState(
     val players: MutableList<Player> = mutableListOf(),
+    val pendingPlayers: MutableList<Player> = mutableListOf(),  // Joined mid-game, waiting for next round
     var currentHotPlayerIndex: Int = 0,
     var currentWord: String = "",
     var revealedWords: MutableList<Boolean> = mutableListOf(),
@@ -268,6 +269,13 @@ fun Application.module() {
             }
 
             roomStates.forEach { (roomId, state) ->
+                // Clean up stale pending players
+                val pendingToRemove = state.pendingPlayers.filter { now - it.lastHeartbeat > ttlMs }
+                pendingToRemove.forEach { player ->
+                    state.pendingPlayers.remove(player)
+                    sessionToPlayerId.remove(player.session)
+                }
+
                 val playersToRemove = state.players.filter { now - it.lastHeartbeat > ttlMs }
                 if (playersToRemove.isNotEmpty()) {
                     val removedIds = playersToRemove.map { it.id }.toSet()
@@ -309,7 +317,7 @@ fun Application.module() {
 
                 // Track empty rooms for cleanup
                 val roomSessions = rooms[roomId]
-                if (state.players.isEmpty() && (roomSessions == null || roomSessions.isEmpty())) {
+                if (state.players.isEmpty() && state.pendingPlayers.isEmpty() && (roomSessions == null || roomSessions.isEmpty())) {
                     roomEmptySince.putIfAbsent(roomId, now)
                 } else {
                     roomEmptySince.remove(roomId)
@@ -905,6 +913,9 @@ Rules:
 - Each phrase should be 1-5 words
 - Phrases should be fun, recognizable things within this category that would work well in a word-guessing party game
 - Vary the difficulty — mix easy and tricky ones
+- NO acronyms or abbreviations — write them out as full words
+- NO hyphens, apostrophes, or special punctuation — only plain letters and spaces (e.g. "product market fit" not "product-market fit")
+- All words must be correctly spelled — no slang spellings or dropped letters (e.g. "believing" not "believin")
 - Return ONLY a JSON array of strings, no other text
 - Example format: ["phrase one", "phrase two", "phrase three"]"""
             } else {
@@ -916,6 +927,9 @@ Rules:
 - Each phrase should be 1-5 words
 - Match the style, theme, and difficulty of the examples
 - Don't repeat any of the example phrases
+- NO acronyms or abbreviations — write them out as full words
+- NO hyphens, apostrophes, or special punctuation — only plain letters and spaces (e.g. "product market fit" not "product-market fit")
+- All words must be correctly spelled — no slang spellings or dropped letters (e.g. "believing" not "believin")
 - Return ONLY a JSON array of strings, no other text
 - Example format: ["phrase one", "phrase two", "phrase three"]"""
             }
@@ -1046,58 +1060,74 @@ Rules:
 
                                 // Check if this player already exists (reconnect/rename)
                                 val existingPlayer = state.players.find { it.id == playerId }
-                                val isNewPlayer = existingPlayer == null
+                                val existingPending = state.pendingPlayers.find { it.id == playerId }
+                                val isNewPlayer = existingPlayer == null && existingPending == null
                                 if (existingPlayer != null) {
-                                    // Update session and heartbeat
                                     state.players.remove(existingPlayer)
                                     sessionToPlayerId.remove(existingPlayer.session)
                                 }
+                                if (existingPending != null) {
+                                    state.pendingPlayers.remove(existingPending)
+                                    sessionToPlayerId.remove(existingPending.session)
+                                }
 
-                                // Add/update player
                                 val player = Player(playerId, playerName, System.currentTimeMillis(), this)
-                                state.players.add(player)
                                 sessionToPlayerId[this] = playerId
 
-                                // Assign host if none exists
-                                if (state.hostPlayerId == null || state.players.none { it.id == state.hostPlayerId }) {
-                                    state.hostPlayerId = playerId
-                                }
+                                // Mid-game new joiners go to pending list — not added to active roster
+                                if (isNewPlayer && state.gameStartTime != null) {
+                                    state.pendingPlayers.add(player)
 
-                                // Reset all ready states only when a genuinely new player joins (not renames)
-                                if (isNewPlayer && state.gameStartTime == null) {
-                                    state.players.forEach { it.ready = false }
-                                }
+                                    // Send room category
+                                    val roomCat = roomCategories[roomId]
+                                    if (roomCat != null) {
+                                        sendSerialized(GameMessage(type = "CATEGORY", category = roomCat))
+                                    }
 
-                                // Broadcast player list to all
-                                val playerInfoList = state.players.map { PlayerInfo(it.id, it.name, it.ready) }
-                                val playerListMsg = GameMessage(
-                                    type = "PLAYER_LIST",
-                                    players = playerInfoList,
-                                    hotPlayerIndex = state.currentHotPlayerIndex,
-                                    hostPlayerId = state.hostPlayerId
-                                )
-                                room.forEach { session ->
-                                    session.sendSerialized(playerListMsg)
-                                }
-
-                                // Send room category so all players know it
-                                val roomCat = roomCategories[roomId]
-                                if (roomCat != null) {
-                                    sendSerialized(GameMessage(type = "CATEGORY", category = roomCat))
-                                }
-
-                                // If game is in progress, tell new joiners to spectate (don't send TIMER_SYNC)
-                                // Reconnecting players (existingPlayer != null) get TIMER_SYNC + current word to rejoin
-                                if (state.gameStartTime != null && state.players.size >= 2) {
+                                    // Tell them a game is in progress
                                     val elapsed = (System.currentTimeMillis() - state.gameStartTime!!) / 1000
                                     val remaining = maxOf(0, state.roundDuration - elapsed.toInt())
-                                    if (isNewPlayer) {
-                                        // Don't send NEW_WORD — spectators shouldn't see the phrase
-                                        sendSerialized(GameMessage(
-                                            type = "GAME_IN_PROGRESS",
-                                            timeRemaining = remaining
-                                        ))
-                                    } else {
+                                    sendSerialized(GameMessage(
+                                        type = "GAME_IN_PROGRESS",
+                                        timeRemaining = remaining,
+                                        hostPlayerId = state.hostPlayerId
+                                    ))
+                                } else {
+                                    // Normal join: add to active roster
+                                    state.players.add(player)
+
+                                    // Assign host if none exists
+                                    if (state.hostPlayerId == null || state.players.none { it.id == state.hostPlayerId }) {
+                                        state.hostPlayerId = playerId
+                                    }
+
+                                    // Reset all ready states only when a genuinely new player joins (not renames)
+                                    if (isNewPlayer && state.gameStartTime == null) {
+                                        state.players.forEach { it.ready = false }
+                                    }
+
+                                    // Broadcast player list to all active players
+                                    val playerInfoList = state.players.map { PlayerInfo(it.id, it.name, it.ready) }
+                                    val playerListMsg = GameMessage(
+                                        type = "PLAYER_LIST",
+                                        players = playerInfoList,
+                                        hotPlayerIndex = state.currentHotPlayerIndex,
+                                        hostPlayerId = state.hostPlayerId
+                                    )
+                                    room.forEach { session ->
+                                        session.sendSerialized(playerListMsg)
+                                    }
+
+                                    // Send room category
+                                    val roomCat = roomCategories[roomId]
+                                    if (roomCat != null) {
+                                        sendSerialized(GameMessage(type = "CATEGORY", category = roomCat))
+                                    }
+
+                                    // Reconnecting player mid-game: send current word + timer sync
+                                    if (state.gameStartTime != null && state.players.size >= 2) {
+                                        val elapsed = (System.currentTimeMillis() - state.gameStartTime!!) / 1000
+                                        val remaining = maxOf(0, state.roundDuration - elapsed.toInt())
                                         sendSerialized(GameMessage(
                                             type = "NEW_WORD",
                                             word = state.currentWord,
@@ -1107,14 +1137,14 @@ Rules:
                                             type = "TIMER_SYNC",
                                             timeRemaining = remaining
                                         ))
+                                    } else {
+                                        // Game not in progress — send current word/progress
+                                        sendSerialized(GameMessage(
+                                            type = "NEW_WORD",
+                                            word = state.currentWord,
+                                            revealed = state.revealedWords
+                                        ))
                                     }
-                                } else {
-                                    // Game not in progress — send current word/progress
-                                    sendSerialized(GameMessage(
-                                        type = "NEW_WORD",
-                                        word = state.currentWord,
-                                        revealed = state.revealedWords
-                                    ))
                                 }
                             }
 
@@ -1222,9 +1252,18 @@ Rules:
                                     roomThemes[roomId] = roundTheme
                                 }
                                 // Reset state for new round
-                                state.players.forEach { it.ready = false }
                                 state.gameStartTime = null
                                 roomScores[roomId] = 0
+
+                                // Fold pending players into active roster
+                                state.pendingPlayers.forEach { pending ->
+                                    if (state.players.none { it.id == pending.id }) {
+                                        state.players.add(pending)
+                                    }
+                                }
+                                state.pendingPlayers.clear()
+
+                                state.players.forEach { it.ready = false }
 
                                 // Get a new word
                                 val newWord = getWordForRoom(roomId)
@@ -1260,7 +1299,9 @@ Rules:
                             "HEARTBEAT" -> {
                                 val playerId = sessionToPlayerId[this]
                                 if (playerId != null) {
-                                    state.players.find { it.id == playerId }?.lastHeartbeat = System.currentTimeMillis()
+                                    val ts = System.currentTimeMillis()
+                                    state.players.find { it.id == playerId }?.lastHeartbeat = ts
+                                    state.pendingPlayers.find { it.id == playerId }?.lastHeartbeat = ts
                                 }
                             }
 
@@ -1500,10 +1541,11 @@ Rules:
             } finally {
                 room.remove(this)
                 wsMessageTimestamps.remove(this)
-                // Remove player from state
+                // Remove player from state (active or pending)
                 val playerId = sessionToPlayerId.remove(this)
                 if (playerId != null) {
                     state.players.removeIf { it.id == playerId }
+                    state.pendingPlayers.removeIf { it.id == playerId }
                     // Adjust hot player index if needed
                     if (state.players.isNotEmpty()) {
                         state.currentHotPlayerIndex = state.currentHotPlayerIndex % state.players.size
