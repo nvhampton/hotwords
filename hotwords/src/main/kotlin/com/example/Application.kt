@@ -315,6 +315,57 @@ fun Application.module() {
                     }
                 }
 
+                // Server-side round expiry: end stale games when timer has elapsed
+                // or all active players have left, so pending players aren't stuck forever
+                if (state.gameStartTime != null) {
+                    val elapsed = (now - state.gameStartTime!!) / 1000
+                    val expired = elapsed > state.roundDuration + 10 // 10s grace period
+                    val noActivePlayers = state.players.isEmpty()
+
+                    if (expired || noActivePlayers) {
+                        state.gameStartTime = null
+                        roomScores[roomId] = 0
+
+                        // Fold pending players into active roster
+                        state.pendingPlayers.forEach { pending ->
+                            if (state.players.none { it.id == pending.id }) {
+                                state.players.add(pending)
+                            }
+                        }
+                        state.pendingPlayers.clear()
+
+                        // Assign host if needed
+                        if (state.players.isNotEmpty() && (state.hostPlayerId == null || state.players.none { it.id == state.hostPlayerId })) {
+                            state.hostPlayerId = state.players.first().id
+                        }
+
+                        state.players.forEach { it.ready = false }
+                        state.currentHotPlayerIndex = 0
+
+                        // Reset revealed words for existing phrase
+                        state.revealedWords = (state.currentWord ?: "").split(" ").map { false }.toMutableList()
+
+                        // Broadcast round reset to all connected sessions
+                        // A fresh word will be picked when all players ready up and game starts
+                        val newRoundMsg = GameMessage(type = "NEW_ROUND")
+                        val playerInfoList2 = state.players.map { PlayerInfo(it.id, it.name, it.ready) }
+                        val playerListMsg2 = GameMessage(
+                            type = "PLAYER_LIST",
+                            players = playerInfoList2,
+                            hotPlayerIndex = state.currentHotPlayerIndex,
+                            hostPlayerId = state.hostPlayerId
+                        )
+                        rooms[roomId]?.forEach { session ->
+                            try {
+                                CoroutineScope(Dispatchers.IO).launch {
+                                    session.sendSerialized(newRoundMsg)
+                                    session.sendSerialized(playerListMsg2)
+                                }
+                            } catch (_: Exception) {}
+                        }
+                    }
+                }
+
                 // Track empty rooms for cleanup
                 val roomSessions = rooms[roomId]
                 if (state.players.isEmpty() && state.pendingPlayers.isEmpty() && (roomSessions == null || roomSessions.isEmpty())) {
@@ -1075,7 +1126,10 @@ Rules:
                                 sessionToPlayerId[this] = playerId
 
                                 // Mid-game new joiners go to pending list — not added to active roster
-                                if (isNewPlayer && state.gameStartTime != null) {
+                                // But if the timer has already expired, treat as normal join
+                                val gameStillActive = state.gameStartTime != null &&
+                                    (System.currentTimeMillis() - state.gameStartTime!!) / 1000 <= state.roundDuration + 10
+                                if (isNewPlayer && gameStillActive) {
                                     state.pendingPlayers.add(player)
 
                                     // Send room category
