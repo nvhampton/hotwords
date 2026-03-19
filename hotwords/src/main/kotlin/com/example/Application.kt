@@ -21,9 +21,21 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.*
 import java.io.File
 import java.security.MessageDigest
-import java.time.Duration
+import java.time.*
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
+
+// Weekly reset: Monday 3:00 AM Pacific Time
+// Returns the epoch millis of the most recent Monday 3am PT boundary
+fun weeklyResetTimestamp(): Long {
+    val pacific = ZoneId.of("America/Los_Angeles")
+    val now = ZonedDateTime.now(pacific)
+    // Find the most recent Monday
+    var reset = now.with(DayOfWeek.MONDAY).withHour(3).withMinute(0).withSecond(0).withNano(0)
+    // If we haven't passed this Monday's 3am yet, go back to last Monday
+    if (reset.isAfter(now)) reset = reset.minusWeeks(1)
+    return reset.toInstant().toEpochMilli()
+}
 
 // This must be outside the module function
 @Serializable
@@ -40,7 +52,10 @@ data class GameMessage(
     val timeRemaining: Int? = null,
     val gameStartTime: Long? = null,
     val theme: String? = null,
-    val playerOrder: List<String>? = null
+    val playerOrder: List<String>? = null,
+    val hostPlayerId: String? = null,
+    val phrases: List<String>? = null,
+    val category: String? = null
 )
 
 @Serializable
@@ -63,7 +78,20 @@ data class RoomState(
     var currentHotPlayerIndex: Int = 0,
     var currentWord: String = "",
     var revealedWords: MutableList<Boolean> = mutableListOf(),
-    var gameStartTime: Long? = null  // When the game timer started (null = not started)
+    var gameStartTime: Long? = null,  // When the game timer started (null = not started)
+    var hostPlayerId: String? = null,  // The player who controls phrase selection
+    var roundDuration: Int = 30  // Seconds for this round (30 + 5*(players-2))
+)
+
+@Serializable
+data class CategoryEntry(
+    val name: String,
+    val phrases: List<String>
+)
+
+@Serializable
+data class CategoriesResponse(
+    val categories: List<CategoryEntry>
 )
 
 @Serializable
@@ -74,7 +102,8 @@ data class RoundEntry(
     val mode: String,
     val roomId: String? = null,
     val sessionHash: String,
-    val timestamp: Long
+    val timestamp: Long,
+    val category: String = "classic"
 )
 
 @Serializable
@@ -90,7 +119,8 @@ data class RoundSubmission(
     val players: List<String>,
     val mode: String,
     val roomId: String? = null,
-    val phrases: List<PhraseEvent> = emptyList()
+    val phrases: List<PhraseEvent> = emptyList(),
+    val category: String = "classic"
 )
 
 @Serializable
@@ -186,7 +216,13 @@ fun Application.module() {
     val roomWords = ConcurrentHashMap<String, String>()  // Per-room active word
     val roomStates = ConcurrentHashMap<String, RoomState>()  // Per-room player state
     val roomThemes = ConcurrentHashMap<String, String>()  // Per-room phrase theme
+    val roomCustomPhrases = ConcurrentHashMap<String, List<String>>()  // Per-room custom phrases from host
+    val roomCategories = ConcurrentHashMap<String, String>()  // Per-room active category name
     val sessionToPlayerId = ConcurrentHashMap<DefaultWebSocketServerSession, String>()  // Session to player ID mapping
+
+    // Categories of the week: category name -> (timestamp, cached phrases) — resets Monday 3am PT
+    data class CachedCategory(val timestamp: Long, val phrases: List<String>)
+    val categoriesOfTheDay = ConcurrentHashMap<String, CachedCategory>()
 
     // Rate limiting for POST /api/scores: IP -> list of timestamps
     val scoreRateLimit = ConcurrentHashMap<String, MutableList<Long>>()
@@ -194,8 +230,25 @@ fun Application.module() {
     // Track when rooms became empty for cleanup
     val roomEmptySince = ConcurrentHashMap<String, Long>()
 
+    // Debounce CLAIM_VICTORY: room -> last claim timestamp
+    val roomLastClaimTime = ConcurrentHashMap<String, Long>()
+
     // Per-connection message rate limiting: session -> list of timestamps
     val wsMessageTimestamps = ConcurrentHashMap<DefaultWebSocketServerSession, MutableList<Long>>()
+
+    // Promote a new host when the current host leaves. Returns the new host's ID or null.
+    fun promoteNewHost(roomId: String, state: RoomState): String? {
+        if (state.players.isEmpty()) {
+            state.hostPlayerId = null
+            return null
+        }
+        // Promote the first player (longest-tenured by list order)
+        val newHost = state.players.first()
+        state.hostPlayerId = newHost.id
+        // Clear custom phrases — new host can set their own
+        roomCustomPhrases.remove(roomId)
+        return newHost.id
+    }
 
     // TTL cleanup coroutine - removes inactive players every 5 seconds
     val cleanupJob = CoroutineScope(Dispatchers.Default).launch {
@@ -204,9 +257,9 @@ fun Application.module() {
             val now = System.currentTimeMillis()
             val ttlMs = 15000L  // 15 seconds TTL
 
-            // Clean up round entries older than 24 hours
-            val ttl24h = 24 * 60 * 60 * 1000L
-            roundEntries.entries.removeIf { now - it.value.timestamp > ttl24h }
+            // Clean up round entries older than weekly reset (Monday 3am PT)
+            val weeklyReset = weeklyResetTimestamp()
+            roundEntries.entries.removeIf { it.value.timestamp < weeklyReset }
 
             // Cap round entries at 50000 — evict oldest if exceeded
             if (roundEntries.size > 50_000) {
@@ -217,6 +270,7 @@ fun Application.module() {
             roomStates.forEach { (roomId, state) ->
                 val playersToRemove = state.players.filter { now - it.lastHeartbeat > ttlMs }
                 if (playersToRemove.isNotEmpty()) {
+                    val removedIds = playersToRemove.map { it.id }.toSet()
                     playersToRemove.forEach { player ->
                         state.players.remove(player)
                         sessionToPlayerId.remove(player.session)
@@ -229,12 +283,18 @@ fun Application.module() {
                         state.currentHotPlayerIndex = 0
                     }
 
+                    // Promote new host if current host was removed
+                    if (state.hostPlayerId in removedIds) {
+                        promoteNewHost(roomId, state)
+                    }
+
                     // Broadcast updated player list
                     val playerInfoList = state.players.map { PlayerInfo(it.id, it.name, it.ready) }
                     val playerListMsg = GameMessage(
                         type = "PLAYER_LIST",
                         players = playerInfoList,
-                        hotPlayerIndex = state.currentHotPlayerIndex
+                        hotPlayerIndex = state.currentHotPlayerIndex,
+                        hostPlayerId = state.hostPlayerId
                     )
                     rooms[roomId]?.forEach { session ->
                         try {
@@ -264,6 +324,9 @@ fun Application.module() {
                     roomWords.remove(roomId)
                     roomScores.remove(roomId)
                     roomThemes.remove(roomId)
+                    roomCustomPhrases.remove(roomId)
+                    roomCategories.remove(roomId)
+                    roomLastClaimTime.remove(roomId)
                     true
                 } else false
             }
@@ -501,6 +564,11 @@ fun Application.module() {
     }
 
     fun getWordForRoom(roomId: String): String {
+        // Custom phrases from host take priority
+        val custom = roomCustomPhrases[roomId]
+        println("getWordForRoom($roomId): custom=${custom?.size ?: 0}, theme=${roomThemes[roomId]}")
+        if (custom != null && custom.isNotEmpty()) return custom.random()
+
         val theme = roomThemes[roomId]
         if (theme == "rko") return rkoWords.random()
         if (theme != null && theme.startsWith("rko:")) {
@@ -517,6 +585,7 @@ fun Application.module() {
         return gameWords.random()
     }
 
+
     val appVersion = Application::class.java.`package`?.implementationVersion ?: "dev"
 
     routing {
@@ -526,6 +595,54 @@ fun Application.module() {
 
         get("/health") {
             call.respond(mapOf("status" to "ok", "version" to appVersion))
+        }
+
+        // Categories of the day — returns recently played custom categories
+        get("/api/categories") {
+            val weeklyReset = weeklyResetTimestamp()
+            // Clean up entries from before this week's reset
+            categoriesOfTheDay.entries.removeIf { it.value.timestamp < weeklyReset }
+            // Return sorted by most recent, include cached phrases
+            val categories = categoriesOfTheDay.entries
+                .sortedByDescending { it.value.timestamp }
+                .take(20)
+                .map { CategoryEntry(name = it.key, phrases = it.value.phrases) }
+            call.respond(CategoriesResponse(categories = categories))
+        }
+
+        // Top categories by highest score this week
+        get("/api/top-categories") {
+            val weeklyReset = weeklyResetTimestamp()
+            // Group rounds by category, find max score per category
+            val categoryScores = roundEntries.values
+                .filter { it.timestamp >= weeklyReset }
+                .groupBy { it.category.lowercase() }
+                .mapValues { (_, rounds) -> rounds.maxOf { it.score } }
+                .entries
+                .sortedByDescending { it.value }
+                .take(2)
+                .map { mapOf("category" to it.key, "score" to it.value) }
+            call.respond(mapOf("top" to categoryScores))
+        }
+
+        // Add a category of the day (with cached phrases)
+        post("/api/categories") {
+            val body = call.receiveText()
+            val request = jsonLenient.decodeFromString(JsonObject.serializer(), body)
+            val rawCategory = request["category"]?.jsonPrimitive?.contentOrNull?.trim()?.take(100)
+            // Enforce max 3 words, lowercase
+            val category = rawCategory?.split("\\s+".toRegex())?.take(3)?.joinToString(" ")?.lowercase()
+            val phrases = request["phrases"]?.jsonArray?.map { it.jsonPrimitive.content } ?: emptyList()
+            if (!category.isNullOrBlank() && phrases.isNotEmpty()) {
+                categoriesOfTheDay[category] = CachedCategory(System.currentTimeMillis(), phrases.take(200))
+            } else if (!category.isNullOrBlank()) {
+                // Update timestamp but keep existing phrases if any
+                val existing = categoriesOfTheDay[category]
+                if (existing != null) {
+                    categoriesOfTheDay[category] = existing.copy(timestamp = System.currentTimeMillis())
+                }
+            }
+            call.respond(mapOf("ok" to true))
         }
 
         post("/api/scores") {
@@ -577,7 +694,8 @@ fun Application.module() {
                     mode = submission.mode,
                     roomId = submission.roomId?.take(30),
                     sessionHash = sessionHash,
-                    timestamp = now
+                    timestamp = now,
+                    category = submission.category.trim().split("\\s+".toRegex()).take(3).joinToString(" ").lowercase().ifEmpty { "classic" }
                 )
                 roundEntries[roundId] = entry
 
@@ -610,11 +728,11 @@ fun Application.module() {
                     }
                 }
 
-                // Compute percentile among rounds in last 24h (same mode/room)
-                val ttl24h = 24 * 60 * 60 * 1000L
+                // Compute percentile among rounds since weekly reset (same mode/room)
+                val weeklyReset = weeklyResetTimestamp()
                 val comparable = roundEntries.values.filter { r ->
                     r.mode == submission.mode &&
-                    (now - r.timestamp) <= ttl24h &&
+                    r.timestamp >= weeklyReset &&
                     (if (submission.mode == "online") r.roomId == submission.roomId else true)
                 }
                 val total = comparable.size
@@ -637,12 +755,11 @@ fun Application.module() {
         get("/api/leaderboard") {
             val mode = call.request.queryParameters["mode"] ?: "local"
             val room = call.request.queryParameters["room"]
-            val now = System.currentTimeMillis()
-            val ttl24h = 24 * 60 * 60 * 1000L
+            val weeklyReset = weeklyResetTimestamp()
 
             val filtered = roundEntries.values
                 .filter { it.mode == mode }
-                .filter { (now - it.timestamp) <= ttl24h }
+                .filter { it.timestamp >= weeklyReset }
                 .filter { if (mode == "online" && room != null) it.roomId == room else true }
                 .sortedWith(compareByDescending<RoundEntry> { it.score }.thenBy { it.timestamp })
 
@@ -753,6 +870,7 @@ fun Application.module() {
 
         // Generate similar phrases using Claude API
         val claudeApiKey = System.getenv("ANTHROPIC_API_KEY") ?: ""
+        application.log.info("Claude API key configured: ${claudeApiKey.isNotBlank()} (length: ${claudeApiKey.length})")
         val claudeClient = HttpClient(CIO) {
             install(ClientContentNegotiation) {
                 json(Json { ignoreUnknownKeys = true })
@@ -768,17 +886,31 @@ fun Application.module() {
             val body = call.receiveText()
             val request = jsonLenient.decodeFromString(JsonObject.serializer(), body)
             val phrases = request["phrases"]?.jsonArray?.map { it.jsonPrimitive.content } ?: emptyList()
+            val category = request["category"]?.jsonPrimitive?.contentOrNull
             val count = request["count"]?.jsonPrimitive?.intOrNull ?: 50
 
-            if (phrases.isEmpty()) {
+            if (phrases.isEmpty() && category.isNullOrBlank()) {
                 call.respond(mapOf("phrases" to emptyList<String>()))
                 return@post
             }
 
             val safeCount = count.coerceIn(1, 100)
-            val exampleList = phrases.take(20).joinToString(", ") { "\"$it\"" }
 
-            val prompt = """Generate exactly $safeCount short phrases or expressions that are thematically similar to these examples: $exampleList
+            val prompt = if (!category.isNullOrBlank()) {
+                // Category mode: generate phrases for a category
+                val safeCategory = category.take(100).replace(Regex("[\"\\\\]"), "")
+                """Generate exactly $safeCount short phrases or expressions related to the category: "$safeCategory"
+
+Rules:
+- Each phrase should be 1-5 words
+- Phrases should be fun, recognizable things within this category that would work well in a word-guessing party game
+- Vary the difficulty — mix easy and tricky ones
+- Return ONLY a JSON array of strings, no other text
+- Example format: ["phrase one", "phrase two", "phrase three"]"""
+            } else {
+                // Example mode: generate similar phrases
+                val exampleList = phrases.take(20).joinToString(", ") { "\"$it\"" }
+                """Generate exactly $safeCount short phrases or expressions that are thematically similar to these examples: $exampleList
 
 Rules:
 - Each phrase should be 1-5 words
@@ -786,6 +918,7 @@ Rules:
 - Don't repeat any of the example phrases
 - Return ONLY a JSON array of strings, no other text
 - Example format: ["phrase one", "phrase two", "phrase three"]"""
+            }
 
             try {
                 val response = claudeClient.post("https://api.anthropic.com/v1/messages") {
@@ -805,6 +938,12 @@ Rules:
                 }
 
                 val responseBody = response.bodyAsText()
+                application.log.info("Claude API response status: ${response.status}, body length: ${responseBody.length}")
+                if (response.status.value != 200) {
+                    application.log.error("Claude API error response: $responseBody")
+                    call.respond(mapOf("phrases" to emptyList<String>()))
+                    return@post
+                }
                 val responseJson = jsonLenient.decodeFromString(JsonObject.serializer(), responseBody)
 
                 // Extract text from Claude's response
@@ -819,6 +958,7 @@ Rules:
 
                 call.respond(mapOf("phrases" to generatedPhrases))
             } catch (e: Exception) {
+                application.log.error("Claude API error: ${e.message}", e)
                 call.respond(HttpStatusCode.InternalServerError, mapOf("error" to (e.message ?: "Generation failed")))
             }
         }
@@ -890,9 +1030,10 @@ Rules:
                                 val rawName = (received.player ?: "Anonymous").trim().take(20)
                                 val playerName = rawName.replace(Regex("<[^>]*>"), "").ifEmpty { "Anonymous" }
 
-                                // Set room theme if provided
+                                // Set room theme if provided (only host or first player can set)
                                 val theme = received.theme
-                                if (theme != null) {
+                                val isHost = state.hostPlayerId == null || state.hostPlayerId == playerId
+                                if (theme != null && isHost) {
                                     roomThemes[roomId] = theme
                                     // Re-pick word if game hasn't started yet
                                     if (state.gameStartTime == null) {
@@ -903,8 +1044,9 @@ Rules:
                                     }
                                 }
 
-                                // Check if this player already exists (reconnect)
+                                // Check if this player already exists (reconnect/rename)
                                 val existingPlayer = state.players.find { it.id == playerId }
+                                val isNewPlayer = existingPlayer == null
                                 if (existingPlayer != null) {
                                     // Update session and heartbeat
                                     state.players.remove(existingPlayer)
@@ -916,8 +1058,13 @@ Rules:
                                 state.players.add(player)
                                 sessionToPlayerId[this] = playerId
 
-                                // Reset all ready states when roster changes (new player joined)
-                                if (state.gameStartTime == null) {
+                                // Assign host if none exists
+                                if (state.hostPlayerId == null || state.players.none { it.id == state.hostPlayerId }) {
+                                    state.hostPlayerId = playerId
+                                }
+
+                                // Reset all ready states only when a genuinely new player joins (not renames)
+                                if (isNewPlayer && state.gameStartTime == null) {
                                     state.players.forEach { it.ready = false }
                                 }
 
@@ -926,26 +1073,47 @@ Rules:
                                 val playerListMsg = GameMessage(
                                     type = "PLAYER_LIST",
                                     players = playerInfoList,
-                                    hotPlayerIndex = state.currentHotPlayerIndex
+                                    hotPlayerIndex = state.currentHotPlayerIndex,
+                                    hostPlayerId = state.hostPlayerId
                                 )
                                 room.forEach { session ->
                                     session.sendSerialized(playerListMsg)
                                 }
 
-                                // Send current word/progress to this player
-                                sendSerialized(GameMessage(
-                                    type = "NEW_WORD",
-                                    word = state.currentWord,
-                                    revealed = state.revealedWords
-                                ))
+                                // Send room category so all players know it
+                                val roomCat = roomCategories[roomId]
+                                if (roomCat != null) {
+                                    sendSerialized(GameMessage(type = "CATEGORY", category = roomCat))
+                                }
 
-                                // If game is in progress and 2+ players, send timer sync
+                                // If game is in progress, tell new joiners to spectate (don't send TIMER_SYNC)
+                                // Reconnecting players (existingPlayer != null) get TIMER_SYNC + current word to rejoin
                                 if (state.gameStartTime != null && state.players.size >= 2) {
                                     val elapsed = (System.currentTimeMillis() - state.gameStartTime!!) / 1000
-                                    val remaining = maxOf(0, 60 - elapsed.toInt())
+                                    val remaining = maxOf(0, state.roundDuration - elapsed.toInt())
+                                    if (isNewPlayer) {
+                                        // Don't send NEW_WORD — spectators shouldn't see the phrase
+                                        sendSerialized(GameMessage(
+                                            type = "GAME_IN_PROGRESS",
+                                            timeRemaining = remaining
+                                        ))
+                                    } else {
+                                        sendSerialized(GameMessage(
+                                            type = "NEW_WORD",
+                                            word = state.currentWord,
+                                            revealed = state.revealedWords
+                                        ))
+                                        sendSerialized(GameMessage(
+                                            type = "TIMER_SYNC",
+                                            timeRemaining = remaining
+                                        ))
+                                    }
+                                } else {
+                                    // Game not in progress — send current word/progress
                                     sendSerialized(GameMessage(
-                                        type = "TIMER_SYNC",
-                                        timeRemaining = remaining
+                                        type = "NEW_WORD",
+                                        word = state.currentWord,
+                                        revealed = state.revealedWords
                                     ))
                                 }
                             }
@@ -961,7 +1129,8 @@ Rules:
                                 val playerListMsg = GameMessage(
                                     type = "PLAYER_LIST",
                                     players = playerInfoList,
-                                    hotPlayerIndex = state.currentHotPlayerIndex
+                                    hotPlayerIndex = state.currentHotPlayerIndex,
+                                    hostPlayerId = state.hostPlayerId
                                 )
                                 room.forEach { session ->
                                     session.sendSerialized(playerListMsg)
@@ -973,6 +1142,7 @@ Rules:
                                         delay(1000)
                                         // Re-check after delay (player may have unreadied or left)
                                         if (state.players.size >= 2 && state.players.all { it.ready }) {
+                                            state.roundDuration = 30 + 5 * maxOf(0, state.players.size - 2)
                                             state.gameStartTime = System.currentTimeMillis()
                                             state.players.forEach { it.ready = false }
 
@@ -990,7 +1160,7 @@ Rules:
                                             room.forEach { session ->
                                                 session.sendSerialized(GameMessage(
                                                     type = "GAME_STARTED",
-                                                    timeRemaining = 30
+                                                    timeRemaining = state.roundDuration
                                                 ))
                                                 session.sendSerialized(startWordMsg)
                                             }
@@ -999,14 +1169,61 @@ Rules:
                                 }
                             }
 
+                            "SET_PHRASES" -> {
+                                // Host uploads custom phrase list for the room
+                                val senderPlayerId = sessionToPlayerId[this] ?: continue
+                                println("SET_PHRASES from $senderPlayerId (host=${state.hostPlayerId}), ${received.phrases?.size ?: 0} phrases, category=${received.category}")
+                                if (senderPlayerId != state.hostPlayerId) continue  // Only host can set phrases
+                                val phrases = received.phrases
+                                // Store category if provided
+                                val cat = received.category?.trim()?.take(100)
+                                if (!cat.isNullOrBlank()) {
+                                    roomCategories[roomId] = cat
+                                } else if (phrases == null || phrases.isEmpty()) {
+                                    roomCategories.remove(roomId)
+                                }
+                                // Broadcast category to all players
+                                val categoryMsg = GameMessage(
+                                    type = "CATEGORY",
+                                    category = roomCategories[roomId]
+                                )
+                                room.forEach { session -> session.sendSerialized(categoryMsg) }
+
+                                if (phrases != null && phrases.isNotEmpty()) {
+                                    // Cap at 200 phrases, sanitize
+                                    val sanitized = phrases.take(200).map { it.trim() }.filter { it.isNotEmpty() }
+                                    if (sanitized.isNotEmpty()) {
+                                        roomCustomPhrases[roomId] = sanitized
+                                        // Re-pick word if game hasn't started yet and broadcast to all
+                                        if (state.gameStartTime == null) {
+                                            val newWord = getWordForRoom(roomId)
+                                            roomWords[roomId] = newWord
+                                            state.currentWord = newWord
+                                            state.revealedWords = newWord.split(" ").map { false }.toMutableList()
+                                            val newWordMsg = GameMessage(
+                                                type = "NEW_WORD",
+                                                word = newWord,
+                                                revealed = state.revealedWords.toList()
+                                            )
+                                            room.forEach { session -> session.sendSerialized(newWordMsg) }
+                                        }
+                                    }
+                                } else {
+                                    // Empty list clears custom phrases
+                                    roomCustomPhrases.remove(roomId)
+                                }
+                            }
+
                             "NEW_ROUND" -> {
-                                // Update theme if provided
+                                // Update theme if provided (only host)
+                                val senderPlayerId = sessionToPlayerId[this]
                                 val roundTheme = received.theme
-                                if (roundTheme != null) {
+                                if (roundTheme != null && senderPlayerId == state.hostPlayerId) {
                                     roomThemes[roomId] = roundTheme
                                 }
                                 // Reset state for new round
                                 state.players.forEach { it.ready = false }
+                                state.gameStartTime = null
                                 roomScores[roomId] = 0
 
                                 // Get a new word
@@ -1017,15 +1234,15 @@ Rules:
 
                                 // Broadcast NEW_ROUND (tells clients to show ready overlay)
                                 val newRoundMsg = GameMessage(
-                                    type = "NEW_ROUND",
-                                    timeRemaining = 30
+                                    type = "NEW_ROUND"
                                 )
                                 // Send updated player list (all unready) so ready overlay shows correctly
                                 val playerInfoList = state.players.map { PlayerInfo(it.id, it.name, it.ready) }
                                 val playerListMsg = GameMessage(
                                     type = "PLAYER_LIST",
                                     players = playerInfoList,
-                                    hotPlayerIndex = state.currentHotPlayerIndex
+                                    hotPlayerIndex = state.currentHotPlayerIndex,
+                                    hostPlayerId = state.hostPlayerId
                                 )
                                 val newWordMsg = GameMessage(
                                     type = "NEW_WORD",
@@ -1090,7 +1307,8 @@ Rules:
                                         val playerListMsg = GameMessage(
                                             type = "PLAYER_LIST",
                                             players = playerInfoList,
-                                            hotPlayerIndex = state.currentHotPlayerIndex
+                                            hotPlayerIndex = state.currentHotPlayerIndex,
+                                            hostPlayerId = state.hostPlayerId
                                         )
 
                                         val newWordMsg = GameMessage(
@@ -1167,7 +1385,8 @@ Rules:
                                 val playerListMsg = GameMessage(
                                     type = "PLAYER_LIST",
                                     players = playerInfoList,
-                                    hotPlayerIndex = state.currentHotPlayerIndex
+                                    hotPlayerIndex = state.currentHotPlayerIndex,
+                                    hostPlayerId = state.hostPlayerId
                                 )
 
                                 val newWordMsg = GameMessage(
@@ -1186,6 +1405,11 @@ Rules:
                             "CLAIM_VICTORY" -> {
                                 // Any room member can claim victory
                                 if (sessionToPlayerId[this] == null) continue
+                                // Debounce: ignore if another claim was processed within 500ms
+                                val now = System.currentTimeMillis()
+                                val lastClaim = roomLastClaimTime[roomId] ?: 0L
+                                if (now - lastClaim < 500) continue
+                                roomLastClaimTime[roomId] = now
                                 // Rotate to next describer
                                 if (state.players.isNotEmpty()) {
                                     state.currentHotPlayerIndex = (state.currentHotPlayerIndex + 1) % state.players.size
@@ -1208,7 +1432,8 @@ Rules:
                                 val playerListMsg = GameMessage(
                                     type = "PLAYER_LIST",
                                     players = playerInfoList,
-                                    hotPlayerIndex = state.currentHotPlayerIndex
+                                    hotPlayerIndex = state.currentHotPlayerIndex,
+                                    hostPlayerId = state.hostPlayerId
                                 )
 
                                 val newWordMsg = GameMessage(
@@ -1264,7 +1489,7 @@ Rules:
                                 state.currentHotPlayerIndex = state.players.indexOfFirst { it.id == hotPlayerId }.coerceAtLeast(0)
                                 // Broadcast
                                 val playerInfoList = state.players.map { PlayerInfo(it.id, it.name, it.ready) }
-                                val playerListMsg = GameMessage(type = "PLAYER_LIST", players = playerInfoList, hotPlayerIndex = state.currentHotPlayerIndex)
+                                val playerListMsg = GameMessage(type = "PLAYER_LIST", players = playerInfoList, hotPlayerIndex = state.currentHotPlayerIndex, hostPlayerId = state.hostPlayerId)
                                 room.forEach { session -> session.sendSerialized(playerListMsg) }
                             }
                         }
@@ -1286,12 +1511,18 @@ Rules:
                         state.currentHotPlayerIndex = 0
                     }
 
+                    // Promote new host if the departing player was host
+                    if (state.hostPlayerId == playerId) {
+                        promoteNewHost(roomId, state)
+                    }
+
                     // Broadcast updated player list
                     val playerInfoList = state.players.map { PlayerInfo(it.id, it.name, it.ready) }
                     val playerListMsg = GameMessage(
                         type = "PLAYER_LIST",
                         players = playerInfoList,
-                        hotPlayerIndex = state.currentHotPlayerIndex
+                        hotPlayerIndex = state.currentHotPlayerIndex,
+                        hostPlayerId = state.hostPlayerId
                     )
                     room.forEach { session ->
                         try {

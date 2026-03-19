@@ -14,11 +14,18 @@
             color: #fff;
             min-height: 100vh;
             margin: 0;
+            -webkit-user-select: none;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
             padding: 20px;
+        }
+        input, textarea {
+            -webkit-user-select: text;
+            user-select: text;
         }
         h1 {
             font-size: 2.5rem;
@@ -232,6 +239,8 @@
             letter-spacing: 1px;
         }
         .timer-display {
+            position: relative;
+            display: inline-block;
             font-size: 2rem;
             font-weight: bold;
             color: #3EBECB;
@@ -253,6 +262,38 @@
         }
         .timer-display.paused {
             opacity: 0.4;
+        }
+        .timer-display.clickable {
+            cursor: pointer;
+        }
+        .pause-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0, 0, 0, 0.85);
+            z-index: 1060;
+            align-items: center;
+            justify-content: center;
+        }
+        .pause-overlay.active {
+            display: flex;
+        }
+        .pause-dialog {
+            text-align: center;
+        }
+        .timer-bonus {
+            position: absolute;
+            top: -5px;
+            right: -40px;
+            font-size: 1rem;
+            color: #4ade80;
+            font-weight: bold;
+            animation: bonusFade 1s ease-out forwards;
+            pointer-events: none;
+        }
+        @keyframes bonusFade {
+            0% { opacity: 1; transform: translateY(0); }
+            100% { opacity: 0; transform: translateY(-20px); }
         }
         .status {
             font-size: 1.2rem;
@@ -309,7 +350,7 @@
         .gotit-btn {
             background: linear-gradient(135deg, #3EBECB 0%, #007485 100%);
             color: #fff;
-            font-size: 1.3rem;
+            font-size: 1.8rem;
             padding: 50px 50px;
             border-radius: 16px;
         }
@@ -321,6 +362,7 @@
             background: linear-gradient(135deg, #f9ca24 0%, #f0932b 100%);
             color: #1a1a2e;
             font-weight: bold;
+            font-size: 1.8rem;
             padding: 50px 40px;
             border-radius: 16px;
         }
@@ -964,6 +1006,28 @@
         .online-player-item.is-hot .player-role {
             color: #B4975A;
         }
+        .host-badge {
+            font-size: 0.75em;
+            margin-left: 4px;
+        }
+        .category-label {
+            font-size: 1.7rem;
+            color: #9b59b6;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 5px;
+            opacity: 0.8;
+        }
+        .category-label:empty {
+            display: none;
+        }
+        .custom-status {
+            text-align: center;
+            font-size: 0.85rem;
+            color: #9b59b6;
+            margin: 8px 0;
+            min-height: 1.2em;
+        }
 
         /* Drag handle for reordering players */
         .drag-handle {
@@ -1046,18 +1110,18 @@
             text-align: center;
         }
         .onboard-emoji {
-            font-size: 3rem;
+            font-size: 4rem;
             margin-bottom: 16px;
         }
         .onboard-title {
-            font-size: 1.4rem;
+            font-size: 2rem;
             font-weight: bold;
             color: #fff;
             margin-bottom: 12px;
             line-height: 1.4;
         }
         .onboard-hint {
-            font-size: 0.95rem;
+            font-size: 1.3rem;
             color: #aaa;
             margin-bottom: 28px;
             line-height: 1.5;
@@ -1085,7 +1149,9 @@
             box-shadow: 0 6px 20px rgba(62, 190, 203, 0.4);
         }
         .onboard-back {
-            margin-top: 20px;
+            position: fixed;
+            bottom: 30px;
+            left: 20px;
             font-size: 0.85rem;
             color: #888;
             background: none;
@@ -1095,6 +1161,20 @@
         }
         .onboard-back:hover {
             color: #fff;
+        }
+        .onboard-skip {
+            position: fixed;
+            bottom: 30px;
+            right: 20px;
+            font-size: 0.85rem;
+            color: rgba(255, 255, 255, 0.3);
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 8px 16px;
+        }
+        .onboard-skip:hover {
+            color: rgba(255, 255, 255, 0.6);
         }
 
         /* Ready overlay */
@@ -1809,6 +1889,20 @@
             color: #fff;
             box-shadow: 0 0 12px rgba(180, 151, 90, 0.4);
         }
+        .topic-pill.hot-category {
+            border-color: #ff4444;
+            box-shadow: 0 0 10px rgba(255, 68, 68, 0.5), 0 0 20px rgba(255, 68, 68, 0.2);
+            animation: hotGlow 2s ease-in-out infinite alternate;
+        }
+        @keyframes hotGlow {
+            from { box-shadow: 0 0 8px rgba(255, 68, 68, 0.4); }
+            to { box-shadow: 0 0 16px rgba(255, 68, 68, 0.7), 0 0 30px rgba(255, 68, 68, 0.2); }
+        }
+        .topic-pill.active.hot-category {
+            border-color: #B4975A;
+            box-shadow: 0 0 12px rgba(180, 151, 90, 0.4);
+            animation: none;
+        }
     </style>
 </head>
 <body>
@@ -1817,7 +1911,7 @@
 
     <!-- Lobby Screen -->
     <div class="lobby" id="lobbyScreen">
-        <h1><span class="preset-fire" id="presetFire" title="Hottest this week">🔥</span> Hotwords <span class="customize-balloon" id="customizeBalloon" title="Custom phrases">💬</span></h1>
+        <h1><span class="preset-fire" id="presetFire" title="Hottest this week">🔥</span> <span id="titleHotwords" style="cursor: pointer;">Hotwords</span> <span class="customize-balloon" id="customizeBalloon" title="Custom phrases">💬</span></h1>
 
         <div class="topic-picker" id="topicPicker"></div>
 
@@ -1836,6 +1930,12 @@
                         <button class="player-count-btn" id="playerCountDown">−</button>
                         <span style="font-size: 1.5rem; font-weight: bold; min-width: 30px; text-align: center;" id="playerCountDisplay">2</span>
                         <button class="player-count-btn" id="playerCountUp">+</button>
+                    </div>
+                    <div style="display: flex; align-items: center; justify-content: center; gap: 16px; padding: 12px 0;">
+                        <span style="color: #aaa; font-size: 1rem;">Round Time:</span>
+                        <button class="player-count-btn" id="roundTimeDown">−</button>
+                        <span style="font-size: 1.5rem; font-weight: bold; min-width: 40px; text-align: center;" id="roundTimeDisplay">30s</span>
+                        <button class="player-count-btn" id="roundTimeUp">+</button>
                     </div>
                     <button class="local-start-btn" id="localStartBtn">▶ Start Game</button>
                 </div>
@@ -1864,19 +1964,20 @@
     <!-- Customize Phrases Overlay -->
     <div class="customize-overlay" id="customizeOverlay">
         <div class="customize-dialog">
-            <h2>Custom Phrases</h2>
-            <div class="customize-desc">Enter your own phrases, separated by commas. If you add fewer than 70, the rest will be filled with similar ones.</div>
-            <textarea id="customizeInput" placeholder="e.g. Machine learning, Neural network, Gradient descent, Overfitting..."></textarea>
-            <div class="customize-count" id="customizeCount">0 phrases</div>
+            <h2>Custom Category</h2>
+            <div class="customize-desc">Enter a category and we'll generate phrases for you.</div>
+            <input type="text" id="customizeCategoryInput" class="name-input" placeholder="e.g. 80s movies, breakfast foods, famous dogs..." maxlength="100" style="width: 100%; box-sizing: border-box; margin-bottom: 10px;">
+            <div class="custom-status" id="customizeCategoryStatus"></div>
             <div class="customize-buttons">
                 <button class="customize-btn clear" id="customizeClear">Clear</button>
-                <button class="customize-btn save" id="customizeSave">Save</button>
+                <button class="customize-btn save" id="customizeSave">✨ Generate</button>
             </div>
         </div>
     </div>
 
     <!-- Game Screen -->
     <div class="container game-screen" id="gameScreen">
+        <div class="category-label" id="categoryLabel"></div>
         <div class="word-progress" id="wordProgress"></div>
 
         <!-- Online Player Panel -->
@@ -1924,6 +2025,15 @@
         </div>
 
         <div class="error" id="error"></div>
+    </div>
+
+    <!-- Pause Overlay -->
+    <div class="pause-overlay" id="pauseOverlay">
+        <div class="pause-dialog">
+            <div style="font-size: 4rem; margin-bottom: 20px;">⏸️</div>
+            <div style="font-size: 2rem; font-weight: bold; color: #fff; margin-bottom: 30px;">Paused</div>
+            <button class="local-start-btn" id="pauseResumeBtn" style="font-size: 1.3rem;">▶ Resume</button>
+        </div>
     </div>
 
     <!-- Close Match Anticipation Overlay -->
@@ -1974,7 +2084,7 @@
     <div class="onboard-overlay" id="onboardRules">
         <div class="onboard-card">
             <div class="onboard-emoji">🔥</div>
-            <div class="onboard-title">You have 30 seconds to get as many of the hot words as you can.</div>
+            <div class="onboard-title" id="onboardRulesTitle">You have 30 seconds to get as many of the hot words as you can.</div>
             <div class="onboard-hint">Timer starts when you reveal the first clue.</div>
             <button class="onboard-btn play" id="onboardRulesBtn">Got it!</button>
         </div>
@@ -1989,6 +2099,7 @@
             <div class="onboard-hint">Hold your phone upright to see words.</div>
         </div>
         <button class="onboard-back" id="onboardReadyBack">&larr; Back</button>
+        <button class="onboard-skip" id="onboardReadySkip">Skip &rarr;</button>
     </div>
 
     <!-- Ready overlay -->
@@ -1996,6 +2107,7 @@
         <button class="ready-back-btn" id="readyBackBtn">&larr; Back</button>
         <div class="ready-dialog">
             <div class="ready-title">Get Ready!</div>
+            <div class="ready-round-time" id="readyRoundTime" style="text-align: center; color: #888; font-size: 0.95rem; margin-bottom: 8px;"></div>
             <div class="ready-players" id="readyPlayersList"></div>
             <div class="ready-mic-toggle">
                 <label class="mic-switch">
@@ -2015,7 +2127,7 @@
     <div class="leaderboard-overlay" id="leaderboardOverlay">
         <div class="leaderboard-container">
             <div class="leaderboard-title">Leaderboard</div>
-            <div class="leaderboard-subtitle" id="leaderboardSubtitle">Top scores (last 24h)</div>
+            <div class="leaderboard-subtitle" id="leaderboardSubtitle">Top scores (this week)</div>
             <div class="leaderboard-list" id="leaderboardList"></div>
             <button class="leaderboard-close" id="leaderboardClose">Close</button>
         </div>
@@ -2142,6 +2254,13 @@
         function updateScoreDisplay(score) {
             scoreCountEl.textContent = score;
         }
+        function showTimerBonus(seconds) {
+            const bonus = document.createElement('span');
+            bonus.className = 'timer-bonus';
+            bonus.textContent = '+' + seconds + 's';
+            timerDisplayEl.appendChild(bonus);
+            setTimeout(() => bonus.remove(), 1000);
+        }
         const wordProgressEl = document.getElementById('wordProgress');
         const redactLabelEl = document.getElementById('redactLabel');
         const timerDisplayEl = document.getElementById('timerDisplay');
@@ -2172,6 +2291,9 @@
         let gameActive = false;
         let pendingLeaderboard = null;
         let isLocalMode = false;
+        let isPracticeMode = false;
+        let practiceDifficulty = 'easy';
+        let customCategory = null;
         let localModePlayers = [];
         let currentPlayerIndex = 0;
         let orientationEnabled = false;
@@ -2192,6 +2314,9 @@
         let onlineHotPlayerIndex = 0;  // Who is "hot" (describer)
         let myPlayerId = null;         // This client's player ID
         let isHotPlayer = false;       // Am I the describer?
+        let isSpectating = false;      // Joined mid-game, waiting for next round
+        let hostPlayerId = null;       // Who controls phrase selection
+        let isHost = false;            // Am I the host?
         let heartbeatInterval = null;  // Heartbeat timer
         let onlineRevealedWords = [];  // Which words are revealed (for guessers)
         let gotItCooldown = false;     // Prevent got-it spam
@@ -2332,7 +2457,16 @@
         }
 
         const CELEBRATION_DELAY = 1200; // 1.2s
-        const GAME_DURATION = 30; // 30 seconds
+        const BASE_GAME_DURATION = 30; // 30 seconds base
+        const EXTRA_TIME_PER_PLAYER = 5; // +5s per player over 2
+
+        function getGameDuration() {
+            const count = isLocalMode ? localModePlayers.length : onlinePlayers.length;
+            const base = isLocalMode ? customRoundTime : BASE_GAME_DURATION;
+            return base + Math.max(0, count - 2) * EXTRA_TIME_PER_PLAYER;
+        }
+        // Keep GAME_DURATION as a getter for backwards compat
+        let GAME_DURATION = 30;
 
         // Local word list (same as server)
         // Kid-friendly phrases saved in phrases/kid-phrases.txt
@@ -2595,6 +2729,51 @@
                     pill.addEventListener('click', () => selectTopic(t.id));
                     picker.appendChild(pill);
                 });
+
+                // Load categories of the day
+                try {
+                    const catRes = await fetch('/api/categories');
+                    const catData = await catRes.json();
+                    if (catData.categories && catData.categories.length > 0) {
+                        catData.categories.forEach(catEntry => {
+                            const catName = catEntry.name;
+                            const cachedPhrases = catEntry.phrases || [];
+                            const pill = document.createElement('span');
+                            pill.className = 'topic-pill';
+                            pill.textContent = catName;
+                            pill.dataset.topicId = 'custom:' + catName;
+                            pill.style.borderColor = 'rgba(155, 89, 182, 0.4)';
+                            pill.addEventListener('click', () => {
+                                // Select this pill like a built-in topic
+                                document.querySelectorAll('.topic-pill').forEach(p => p.classList.remove('active'));
+                                pill.classList.add('active');
+                                // Use cached phrases directly — no API call
+                                customPhrases = cachedPhrases;
+                                customCategory = catName;
+                                activeTopic = null;
+                                topicPhrases = null;
+                                sendPhrasesToServer();
+                            });
+                            picker.appendChild(pill);
+                        });
+                    }
+                } catch (e) { /* categories fetch failed — not critical */ }
+
+                // Highlight top 2 categories by highest score this week
+                try {
+                    const topRes = await fetch('/api/top-categories');
+                    const topData = await topRes.json();
+                    if (topData.top && topData.top.length > 0) {
+                        const topNames = topData.top.map(t => t.category.toLowerCase());
+                        picker.querySelectorAll('.topic-pill').forEach(pill => {
+                            const pillId = (pill.dataset.topicId || '').replace('custom:', '').toLowerCase();
+                            const pillText = pill.textContent.toLowerCase();
+                            if (topNames.includes(pillId) || topNames.includes(pillText)) {
+                                pill.classList.add('hot-category');
+                            }
+                        });
+                    }
+                } catch (e) { /* top categories fetch failed — not critical */ }
             } catch (e) {
                 // If fetch fails, no topic picker — just use defaults
             }
@@ -2624,6 +2803,8 @@
                     topicPhrases = null;
                 }
             }
+            // Broadcast updated category to room
+            sendPhrasesToServer();
         }
 
         // Random room name words
@@ -2815,10 +2996,13 @@
         }
 
         // Start game timer
-        function startGameTimer() {
+        function startGameTimer(serverDuration) {
             gameActive = true;
+            timerDisplayEl.style.display = '';
+            timerDisplayEl.classList.toggle('clickable', isLocalMode);
             localScore = 0;
             updateScoreDisplay(0);
+            GAME_DURATION = serverDuration || getGameDuration();
             timeRemaining = GAME_DURATION;
             timerCountEl.textContent = timeRemaining;
             timerDisplayEl.classList.add('active');
@@ -2879,6 +3063,11 @@
             statusEl.classList.remove('listening');
 
             wordProgressEl.innerHTML = '';
+            // Show the final word that was active when time expired
+            if (currentWord) {
+                wordDisplay.textContent = currentWord;
+                wordContainer.classList.remove('orientation-hidden', 'redacted');
+            }
             if (isLocalMode) {
                 wordContainer.classList.remove('orientation-hidden');
                 listenBtn.disabled = true;
@@ -2923,6 +3112,16 @@
                     const phrases = phraseHistory.map(e => ({ phrase: e.phrase, status: e.status, timeSeconds: e.time }));
                     submissionResult = await submitRound('online', currentRoomId, players, localScore, phrases);
                 }
+                // Refresh category timestamp (phrases already saved on generate)
+                if (customCategory) {
+                    try {
+                        fetch('/api/categories', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ category: customCategory, phrases: customPhrases || [] })
+                        });
+                    } catch (e) { /* ignore */ }
+                }
                 return { result: submissionResult, mode: leaderboardMode, roomId: leaderboardRoomId };
             })();
         }
@@ -2960,12 +3159,18 @@
             return div.innerHTML;
         }
 
+        function getActiveCategory() {
+            if (customCategory) return customCategory;
+            if (activeTopic && activeTopic !== 'default') return activeTopic;
+            return 'classic';
+        }
+
         async function submitRound(mode, roomId, players, score, phrases) {
             try {
                 const res = await fetch('/api/scores', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ score, players, mode, roomId: roomId || null, phrases: phrases || [] })
+                    body: JSON.stringify({ score, players, mode, roomId: roomId || null, phrases: phrases || [], category: getActiveCategory() })
                 });
                 return await res.json();
             } catch (e) {
@@ -2976,20 +3181,17 @@
 
         async function showLeaderboardView(mode, roomId, submissionResult) {
             try {
-                const params = new URLSearchParams({ mode });
-                if (mode === 'online' && roomId) params.set('room', roomId);
+                // Fetch both local and online scores
+                const [localRes, onlineRes] = await Promise.all([
+                    fetch('/api/leaderboard?mode=local'),
+                    fetch('/api/leaderboard?mode=online')
+                ]);
+                const localData = await localRes.json();
+                const onlineData = await onlineRes.json();
 
-                const res = await fetch('/api/leaderboard?' + params.toString());
-                const data = await res.json();
+                renderLeaderboard(localData, onlineData, submissionResult, mode);
 
-                renderLeaderboard(data, submissionResult);
-
-                if (mode === 'online' && roomId) {
-                    leaderboardSubtitle.textContent = `Room: ${escapeHtml(roomId)} (last 24h)`;
-                } else {
-                    leaderboardSubtitle.textContent = 'Top rounds (last 24h)';
-                }
-
+                leaderboardSubtitle.textContent = 'High scores (this week)';
                 leaderboardOverlay.classList.add('active');
             } catch (e) {
                 console.error('Failed to load leaderboard:', e);
@@ -3005,10 +3207,8 @@
             return `${hours}h ago`;
         }
 
-        function renderLeaderboard(data, submissionResult) {
-            const { topRounds, grouped, totalRounds } = data;
-
-            if (totalRounds === 0) {
+        function renderLeaderboard(localData, onlineData, submissionResult, activeMode) {
+            if (localData.totalRounds === 0 && onlineData.totalRounds === 0) {
                 leaderboardList.innerHTML = '<div class="leaderboard-empty">No rounds yet. Be the first!</div>';
                 return;
             }
@@ -3020,52 +3220,51 @@
                 const pct = submissionResult.percentile;
                 const rank = 100 - pct + 1;
                 if (pct >= 100) {
-                    html += '<div class="leaderboard-percentile">Your score is the best today!</div>';
+                    html += '<div class="leaderboard-percentile">Your score is the best this week!</div>';
                 } else {
-                    html += `<div class="leaderboard-percentile">Top ${rank}% of rounds today</div>`;
+                    html += `<div class="leaderboard-percentile">Top ${rank}% of rounds this week</div>`;
                 }
             }
 
-            // Individual top rounds
             const currentRoundId = submissionResult ? submissionResult.roundId : null;
-            topRounds.forEach((round, i) => {
-                const rank = i + 1;
-                let rankClass = '';
-                let rankDisplay = rank;
-                if (rank === 1) { rankClass = 'gold'; rankDisplay = '\u{1F947}'; }
-                else if (rank === 2) { rankClass = 'silver'; rankDisplay = '\u{1F948}'; }
-                else if (rank === 3) { rankClass = 'bronze'; rankDisplay = '\u{1F949}'; }
 
-                const isYou = currentRoundId && round.id === currentRoundId;
-                const playerCount = round.players.length;
-                const timeAgo = formatTimeAgo(round.timestamp);
+            function renderSection(label, data) {
+                if (!data.topRounds || data.topRounds.length === 0) return '';
+                let s = `<div style="font-size: 0.85rem; color: #888; text-transform: uppercase; letter-spacing: 1px; margin: 12px 0 8px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.1);">${label}</div>`;
+                data.topRounds.forEach((round, i) => {
+                    const rank = i + 1;
+                    let rankClass = '';
+                    let rankDisplay = rank;
+                    if (rank === 1) { rankClass = 'gold'; rankDisplay = '\u{1F947}'; }
+                    else if (rank === 2) { rankClass = 'silver'; rankDisplay = '\u{1F948}'; }
+                    else if (rank === 3) { rankClass = 'bronze'; rankDisplay = '\u{1F949}'; }
 
-                html += `<div class="leaderboard-entry${isYou ? ' is-you' : ''}">
-                    <div class="leaderboard-rank ${rankClass}">${rankDisplay}</div>
-                    <div class="leaderboard-details">
-                        <div class="leaderboard-players">${Number(playerCount)} player${playerCount !== 1 ? 's' : ''}${isYou ? ' (you)' : ''}</div>
-                        <div class="leaderboard-meta">
-                            <span class="leaderboard-hash">#${escapeHtml(round.sessionHash)}</span>
-                            <span class="leaderboard-time">${escapeHtml(timeAgo)}</span>
+                    const isYou = currentRoundId && round.id === currentRoundId;
+                    const playerCount = round.players.length;
+                    const timeAgo = formatTimeAgo(round.timestamp);
+                    const cat = round.category ? ` · ${round.category}` : '';
+
+                    s += `<div class="leaderboard-entry${isYou ? ' is-you' : ''}">
+                        <div class="leaderboard-rank ${rankClass}">${rankDisplay}</div>
+                        <div class="leaderboard-details">
+                            <div class="leaderboard-players">${Number(playerCount)} player${playerCount !== 1 ? 's' : ''}${cat}${isYou ? ' (you)' : ''}</div>
+                            <div class="leaderboard-meta">
+                                <span class="leaderboard-hash">#${escapeHtml(round.sessionHash)}</span>
+                                <span class="leaderboard-time">${escapeHtml(timeAgo)}</span>
+                            </div>
                         </div>
-                    </div>
-                    <div class="leaderboard-score">${Number(round.score)}</div>
-                </div>`;
-            });
-
-            // Grouped section
-            if (grouped && grouped.length > 0) {
-                html += '<hr class="leaderboard-divider">';
-                grouped.forEach(g => {
-                    html += `<div class="leaderboard-grouped">
-                        <span class="leaderboard-grouped-score">Score ${Number(g.score)}</span>
-                        <span class="leaderboard-grouped-count">${Number(g.roundCount)} round${g.roundCount !== 1 ? 's' : ''}</span>
+                        <div class="leaderboard-score">${Number(round.score)}</div>
                     </div>`;
                 });
+                return s;
             }
 
+            html += renderSection('📱 Local', localData);
+            html += renderSection('🌐 Online', onlineData);
+
             // Footer
-            html += `<div class="leaderboard-total">${Number(totalRounds)} total round${totalRounds !== 1 ? 's' : ''} today</div>`;
+            const total = localData.totalRounds + onlineData.totalRounds;
+            html += `<div class="leaderboard-total">${Number(total)} total round${total !== 1 ? 's' : ''} this week</div>`;
 
             leaderboardList.innerHTML = html;
         }
@@ -3283,11 +3482,12 @@
                 const badge = isHot ? '🔥' : (index === (onlineHotPlayerIndex + 1) % onlinePlayers.length ? '→' : '');
                 const role = isHot ? 'Describer' : 'Guesser';
                 const dragHandle = showDragHandles ? '<span class="drag-handle">☰</span>' : '';
+                const hostBadge = player.id === hostPlayerId ? '<span class="host-badge" title="Host">⭐</span>' : '';
 
                 item.innerHTML = `
                     ${dragHandle}
                     <span class="player-badge">${badge}</span>
-                    <span class="player-name">${escapeHtml(player.name)}${isMe ? ' (you)' : ''}</span>
+                    <span class="player-name">${escapeHtml(player.name)}${isMe ? ' (you)' : ''}${hostBadge}</span>
                     <span class="player-role">${role}</span>
                 `;
                 onlinePlayersList.appendChild(item);
@@ -3427,8 +3627,9 @@
                 const isMe = player.id === myPlayerId;
                 const item = document.createElement('div');
                 item.className = 'ready-player-item' + (isMe ? ' is-me' : '');
+                const isPlayerHost = player.id === hostPlayerId;
                 item.innerHTML = `
-                    <span class="ready-player-name${isMe && !gameActive ? ' editable' : ''}">${escapeHtml(player.name)}${isMe ? ' (you)' : ''}</span>
+                    <span class="ready-player-name${isMe && !gameActive ? ' editable' : ''}">${isPlayerHost ? '<span class="host-badge" title="Host">⭐</span> ' : ''}${escapeHtml(player.name)}${isMe ? ' (you)' : ''}</span>
                     <span class="ready-player-check ${player.ready ? 'visible' : ''}">&#10003;</span>
                 `;
                 // Let the player click their own name to rename (only in lobby/ready phase)
@@ -3471,6 +3672,13 @@
                 }
                 playersList.appendChild(item);
             });
+
+            // Show round time
+            const roundTimeEl = document.getElementById('readyRoundTime');
+            if (roundTimeEl) {
+                const duration = getGameDuration();
+                roundTimeEl.textContent = `Round time: ${duration}s`;
+            }
 
             // Update button and status
             const me = onlinePlayers.find(p => p.id === myPlayerId);
@@ -3545,11 +3753,23 @@
             if (micError) micError.style.display = 'none';
         }
 
+        // Send custom phrases to server (host only)
+        function sendPhrasesToServer() {
+            if (!isHost || !ws || ws.readyState !== WebSocket.OPEN) return;
+            if (customPhrases && customPhrases.length > 0) {
+                ws.send(JSON.stringify({ type: 'SET_PHRASES', phrases: customPhrases, category: getActiveCategory() }));
+            } else {
+                ws.send(JSON.stringify({ type: 'SET_PHRASES', phrases: [], category: getActiveCategory() }));
+            }
+        }
+
         function updateOnlineModeButtons() {
             if (isLocalMode) return;
 
+            const isDesktop = !('ontouchstart' in window) && navigator.maxTouchPoints === 0;
+
             // Update button text for online mode
-            skipBtn.textContent = 'Skip Phrase';
+            skipBtn.innerHTML = 'Skip Phrase' + (isDesktop ? ' <span class="key-hint">[Tab]</span>' : '');
 
             if (isHotPlayer) {
                 // Hot player: listen (monitoring) + skip + "They Got It!"
@@ -3559,7 +3779,7 @@
                 listenBtn.disabled = false;
                 skipBtn.disabled = skipCooldown;
                 gotItBtn.disabled = gotItCooldown;
-                gotItBtn.textContent = 'They Got It!';
+                gotItBtn.innerHTML = 'They Got It!' + (isDesktop ? ' <span class="key-hint">[Enter]</span>' : '');
             } else {
                 // Guesser: listen button, got it button, no skip
                 listenBtn.style.display = '';
@@ -3567,7 +3787,7 @@
                 skipBtn.style.display = 'none';
                 listenBtn.disabled = false;
                 gotItBtn.disabled = gotItCooldown;
-                gotItBtn.textContent = 'Got It!';
+                gotItBtn.innerHTML = 'Got It!' + (isDesktop ? ' <span class="key-hint">[Enter]</span>' : '');
             }
         }
 
@@ -3676,6 +3896,14 @@
                     theme: getActiveThemeForServer()
                 }));
 
+                // Send custom phrases if we have them (server will accept only if we're host)
+                if (customPhrases && customPhrases.length > 0) {
+                    console.log('Sending SET_PHRASES on connect:', customPhrases.length, 'phrases');
+                    ws.send(JSON.stringify({ type: 'SET_PHRASES', phrases: customPhrases, category: getActiveCategory() }));
+                } else {
+                    console.log('No custom phrases to send on connect');
+                }
+
                 // Start heartbeat
                 startHeartbeat();
 
@@ -3693,10 +3921,19 @@
                     // Update player list
                     onlinePlayers = msg.players || [];
                     onlineHotPlayerIndex = msg.hotPlayerIndex ?? 0;
+
+                    // Track host
+                    const wasHost = isHost;
+                    hostPlayerId = msg.hostPlayerId || null;
+                    isHost = (hostPlayerId === myPlayerId);
+                    if (isHost && !wasHost && onlinePlayers.length > 1) {
+                        statusEl.textContent = 'You are now the host!';
+                    }
+
                     updatePlayerListUI();
 
                     // Enable game controls when 2+ players arrive
-                    if (onlinePlayers.length >= 2 && !gameActive) {
+                    if (onlinePlayers.length >= 2 && !gameActive && !isSpectating) {
                         listenBtn.style.display = 'none';
                         gotItBtn.disabled = true;
                         skipBtn.disabled = true;
@@ -3706,7 +3943,7 @@
                         if (currentWord) {
                             showNewWordOnline(currentWord, onlineRevealedWords);
                         }
-                    } else if (onlinePlayers.length < 2 && !gameActive) {
+                    } else if (onlinePlayers.length < 2 && !gameActive && !isSpectating) {
                         listenBtn.style.display = 'none';
                         gotItBtn.disabled = true;
                         skipBtn.disabled = true;
@@ -3719,12 +3956,17 @@
                         showNewWordOnline(currentWord, onlineRevealedWords);
                     }
                 } else if (msg.type === 'WORD_PROGRESS') {
+                    if (isSpectating) { /* ignore during spectating */ }
+                    else {
                     // Update revealed words (for guessers)
                     onlineRevealedWords = msg.revealed || [];
                     if (!isHotPlayer) {
                         renderWordProgress();
                     }
+                    }
                 } else if (msg.type === 'NEW_WORD') {
+                    if (isSpectating) { /* ignore during spectating */ }
+                    else {
                     const word = msg.word;
                     const revealed = msg.revealed || new Array(word.split(' ').length).fill(false);
 
@@ -3742,6 +3984,8 @@
                         wordDisplay.textContent = 'Waiting for players...';
                     } else if (isCelebrating) {
                         pendingWord = { word, revealed };
+                        // Update word arrays so speech recognition doesn't match old phrase
+                        currentWords = word.trim().split(/\s+/);
                     } else {
                         if (isLocalMode) {
                             showNewWord(word);
@@ -3749,10 +3993,21 @@
                             showNewWordOnline(word, revealed);
                         }
                     }
+                    }
                 } else if (msg.type === 'ROUND_WON') {
+                    if (isSpectating) { /* ignore during spectating */ }
+                    else {
                     // Track phrase as got-it in online mode
                     if (!isLocalMode && currentWord) {
                         phraseHistory.push({ phrase: currentWord, status: 'got-it', time: Math.round((Date.now() - phraseStartTime) / 1000) });
+                    }
+                    // Add 4 seconds when under 6s remaining
+                    if (timeRemaining < 6) {
+                        timeRemaining += 4;
+                        timerCountEl.textContent = timeRemaining;
+                        timerDisplayEl.classList.remove('warning', 'danger');
+                        document.body.classList.remove('countdown-danger');
+                        showTimerBonus(4);
                     }
                     // Update local score if game is active
                     incrementLocalScore();
@@ -3761,7 +4016,10 @@
                     // Clear redaction timer during celebration
                     if (redactTimer) clearTimeout(redactTimer);
                     showCelebration(msg.player, currentWord);
+                    }
                 } else if (msg.type === 'WORD_SKIPPED') {
+                    if (isSpectating) { /* ignore during spectating */ }
+                    else {
                     // Track phrase as skipped in online mode
                     if (!isLocalMode && currentWord) {
                         phraseHistory.push({ phrase: currentWord, status: 'skipped', time: Math.round((Date.now() - phraseStartTime) / 1000) });
@@ -3770,6 +4028,7 @@
                     statusEl.textContent = `${skipper} skipped! New phrase...`;
                     statusEl.classList.remove('listening', 'winner');
                     statusEl.classList.add('skipped');
+                    }
                 } else if (msg.type === 'TIMER_SYNC') {
                     // Sync timer for players joining mid-game (only if 2+ players)
                     if (msg.timeRemaining !== undefined && msg.timeRemaining > 0 && onlinePlayers.length >= 2) {
@@ -3795,12 +4054,50 @@
                             }, 1000);
                         }
                     }
+                } else if (msg.type === 'GAME_IN_PROGRESS') {
+                    // Joined mid-game — spectate until next round
+                    isSpectating = true;
+                    hideReadyOverlay();
+                    listenBtn.style.display = 'none';
+                    gotItBtn.style.display = 'none';
+                    skipBtn.style.display = 'none';
+                    wordDisplay.innerHTML = '<div style="font-size: 1.2rem; color: #888;">Round in progress<br><span style="font-size: 0.95rem;">You\'ll join the next round</span></div>';
+                    // Show a spectator countdown
+                    if (msg.timeRemaining !== undefined && msg.timeRemaining > 0) {
+                        timeRemaining = msg.timeRemaining;
+                        timerCountEl.textContent = timeRemaining;
+                        timerDisplayEl.style.display = '';
+                        timerDisplayEl.classList.add('active');
+                        if (gameTimer) clearInterval(gameTimer);
+                        gameTimer = setInterval(() => {
+                            timeRemaining--;
+                            timerCountEl.textContent = timeRemaining;
+                            if (timeRemaining <= 0) {
+                                clearInterval(gameTimer);
+                                gameTimer = null;
+                                timerDisplayEl.classList.remove('active');
+                                wordDisplay.innerHTML = '<div style="font-size: 1.2rem; color: #888;">Waiting for next round...</div>';
+                            }
+                        }, 1000);
+                    }
+                } else if (msg.type === 'CATEGORY') {
+                    // Server broadcast the room's active category
+                    if (msg.category) {
+                        customCategory = msg.category;
+                    } else {
+                        customCategory = null;
+                    }
+                    updateCategoryLabel();
                 } else if (msg.type === 'GAME_STARTED') {
                     // All players ready — start game
+                    isSpectating = false;
                     if (!gameActive && onlinePlayers.length >= 2) {
                         hideReadyOverlay();
                         listenBtn.style.display = '';
-                        startGameTimer();
+                        gotItCooldown = false;
+                        skipCooldown = false;
+                        hasClaimedVictory = false;
+                        startGameTimer(msg.timeRemaining);
                         updateOnlineModeButtons();
                         // Start mic only if player enabled it in the ready overlay
                         if (readyMicEnabled && recognition) {
@@ -3836,6 +4133,7 @@
                     }
                 } else if (msg.type === 'NEW_ROUND') {
                     // New round requested - reset state and show ready overlay
+                    isSpectating = false;
                     dismissGameSummary();
                     dismissLeaderboard();
                     phraseHistory = [];
@@ -3843,6 +4141,8 @@
                     localScore = 0;
                     updateScoreDisplay(0);
                     hasClaimedVictory = false;
+                    gotItCooldown = false;
+                    skipCooldown = false;
                     gameActive = false;
                     if (gameTimer) { clearInterval(gameTimer); gameTimer = null; }
                     timerDisplayEl.classList.remove('active', 'warning', 'danger');
@@ -3863,6 +4163,8 @@
                         updateScoreDisplay(msg.score);
                     }
                 } else if (msg.type === 'DESCRIBER_SLIPPED') {
+                    if (isSpectating) { /* ignore during spectating */ }
+                    else {
                     // Describer said a forbidden word - show penalty
                     const word = msg.word || '???';
                     statusEl.textContent = `Oops! Describer said "${word}"!`;
@@ -3871,7 +4173,10 @@
                     // Flash the word display briefly to show the penalty
                     wordContainer.classList.add('slip-penalty');
                     setTimeout(() => wordContainer.classList.remove('slip-penalty'), 500);
+                    }
                 } else if (msg.type === 'DESCRIBER_FAILED') {
+                    if (isSpectating) { /* ignore during spectating */ }
+                    else {
                     // Track phrase as skipped in online mode
                     if (!isLocalMode && currentWord) {
                         phraseHistory.push({ phrase: currentWord, status: 'skipped', time: Math.round((Date.now() - phraseStartTime) / 1000) });
@@ -3884,6 +4189,7 @@
                     // Show a fail animation
                     wordContainer.classList.add('describer-fail');
                     setTimeout(() => wordContainer.classList.remove('describer-fail'), 1000);
+                    }
                 }
             };
 
@@ -4207,10 +4513,15 @@
                 showNewWordLocalMode(word);
                 // Defer timer until first reveal
                 waitingForFirstReveal = true;
+                GAME_DURATION = getGameDuration();
                 timerDisplayEl.classList.add('active');
                 timerCountEl.textContent = GAME_DURATION;
             } else if (ws && ws.readyState === WebSocket.OPEN) {
                 ws.send(JSON.stringify({ type: 'NEW_ROUND', theme: getActiveThemeForServer() }));
+                // Re-send custom phrases for new round (server accepts only from host)
+                if (customPhrases && customPhrases.length > 0) {
+                    ws.send(JSON.stringify({ type: 'SET_PHRASES', phrases: customPhrases, category: getActiveCategory() }));
+                }
             }
         });
 
@@ -4282,18 +4593,30 @@
 
         // ========== LOBBY & NAVIGATION ==========
 
+        function updateCategoryLabel() {
+            const categoryLabel = document.getElementById('categoryLabel');
+            if (!categoryLabel) return;
+            const cat = getActiveCategory();
+            categoryLabel.textContent = cat !== 'classic' ? cat : '';
+        }
+
         // Show game screen, hide lobby
         function showGameScreen() {
             lobbyScreen.classList.add('hidden');
             gameScreen.classList.add('active');
             backBtn.classList.add('active');
+            updateCategoryLabel();
+            // Push history so device back button returns to lobby instead of leaving
+            history.pushState({ screen: 'game' }, '');
         }
 
         // Show lobby, hide game screen
         function showLobby() {
+            isSpectating = false;
             dismissLeaderboard();
             dismissGameSummary();
             hideReadyOverlay();
+            document.getElementById('pauseOverlay').classList.remove('active');
             hideOnboardRules();
             hideOnboardReady();
             waitingForFirstReveal = false;
@@ -4322,6 +4645,8 @@
             onlinePlayers = [];
             onlineHotPlayerIndex = 0;
             isHotPlayer = false;
+            hostPlayerId = null;
+            isHost = false;
             renderWordProgress();
             gameScreen.classList.remove('active', 'local-mode', 'online-mode');
             lobbyScreen.classList.remove('hidden');
@@ -4345,7 +4670,63 @@
             selectedMode = null;
             localSection.classList.remove('selected');
             onlineSection.classList.remove('selected');
+
+            // Refresh topic picker (picks up new categories of the day)
+            loadTopicPicker();
         }
+
+        // Title click → show leaderboard from lobby
+        document.getElementById('titleHotwords').addEventListener('click', async () => {
+            showLeaderboardView('local', null, null);
+        });
+
+        // Device back button / browser back
+        // Push an initial state so first back doesn't leave the app
+        history.replaceState({ screen: 'lobby' }, '');
+
+        window.addEventListener('popstate', (e) => {
+            // Dismiss overlays first
+            const pauseOvl = document.getElementById('pauseOverlay');
+            if (pauseOvl && pauseOvl.classList.contains('active')) {
+                timerPaused = false;
+                timerDisplayEl.classList.remove('paused');
+                pauseOvl.classList.remove('active');
+                history.pushState({ screen: 'overlay' }, '');
+                return;
+            }
+            const leaderboardOverlay = document.getElementById('leaderboardOverlay');
+            if (leaderboardOverlay && leaderboardOverlay.classList.contains('active')) {
+                dismissLeaderboard();
+                history.pushState({ screen: 'overlay' }, '');
+                return;
+            }
+            const customizeOvl = document.getElementById('customizeOverlay');
+            if (customizeOvl && customizeOvl.classList.contains('active')) {
+                customizeOvl.classList.remove('active');
+                history.pushState({ screen: 'overlay' }, '');
+                return;
+            }
+            // If in game, go back to lobby
+            if (gameScreen.classList.contains('active')) {
+                showLobby();
+                return;
+            }
+            // If on lobby already, push state back so we don't leave the app
+            history.pushState({ screen: 'lobby' }, '');
+        });
+
+        // Pause on timer click (local mode only)
+        timerDisplayEl.addEventListener('click', () => {
+            if (!isLocalMode || !gameActive || timerPaused) return;
+            timerPaused = true;
+            timerDisplayEl.classList.add('paused');
+            document.getElementById('pauseOverlay').classList.add('active');
+        });
+        document.getElementById('pauseResumeBtn').addEventListener('click', () => {
+            timerPaused = false;
+            timerDisplayEl.classList.remove('paused');
+            document.getElementById('pauseOverlay').classList.remove('active');
+        });
 
         // Back button
         backBtn.addEventListener('click', showLobby);
@@ -4374,7 +4755,7 @@
         // Customize phrases (💬 balloon)
         const customizeBalloon = document.getElementById('customizeBalloon');
         const customizeOverlay = document.getElementById('customizeOverlay');
-        const customizeInput = document.getElementById('customizeInput');
+        const customizeInput = document.getElementById('customizeInput'); // null — replaced by customizeCategoryInput
         const customizeCount = document.getElementById('customizeCount');
         const customizeSave = document.getElementById('customizeSave');
         const customizeClear = document.getElementById('customizeClear');
@@ -4424,34 +4805,25 @@
         function updateCustomActiveUI() {
             const picker = document.getElementById('topicPicker');
             const existingBanner = document.querySelector('.custom-active-banner');
-            if (customPhrases && customPhrases.length > 0) {
-                const userCount = parseCustomPhrases(customPhrasesRaw).length;
-                const totalCount = customPhrases.length;
-                const genCount = totalCount - userCount;
-                let sourceLabel = '';
-                if (genCount > 0) {
-                    sourceLabel = customPhraseSource === 'ai'
-                        ? ` + ${genCount} AI-generated`
-                        : ` + ${genCount} random`;
-                }
-                // Hide topic picker, show banner
+            if (customPhrases && customPhrases.length > 0 && customCategory) {
+                // Hide topic picker, show banner with category name
                 picker.style.display = 'none';
+                const label = `"${customCategory}" &mdash; ${customPhrases.length} phrases`;
                 if (existingBanner) {
-                    existingBanner.querySelector('.custom-active-text').innerHTML =
-                        `Custom mode &mdash; <span class="custom-active-count">${userCount}</span> phrases${sourceLabel}`;
+                    existingBanner.querySelector('.custom-active-text').innerHTML = label;
                 } else {
                     const banner = document.createElement('div');
                     banner.className = 'custom-active-banner';
                     banner.innerHTML = `
                         <span class="custom-active-dot"></span>
-                        <span class="custom-active-text">Custom mode &mdash; <span class="custom-active-count">${userCount}</span> phrases${sourceLabel}</span>
+                        <span class="custom-active-text">${label}</span>
                         <button class="custom-active-edit" id="customActiveEdit">Edit</button>
                     `;
                     picker.parentNode.insertBefore(banner, picker);
                     banner.querySelector('#customActiveEdit').addEventListener('click', () => {
                         customizeOverlay.classList.add('active');
-                        updateCustomizeCount();
-                        customizeInput.focus();
+                        if (customCategory) customizeCategoryInput.value = customCategory;
+                        customizeCategoryInput.focus();
                     });
                 }
             } else {
@@ -4462,32 +4834,10 @@
         }
 
         function updateCustomizeCount() {
-            const phrases = parseCustomPhrases(customizeInput.value);
-            const n = phrases.length;
-            if (n === 0) {
-                customizeCount.textContent = '0 phrases';
-            } else if (n < 70) {
-                customizeCount.textContent = `${n} phrases (+ ${70 - n} similar will be generated)`;
-            } else {
-                customizeCount.textContent = `${n} phrases`;
-            }
+            // Legacy — no longer used with category-based input
         }
 
-        // Load saved custom phrases on startup
-        if (customPhrasesRaw) {
-            customizeInput.value = customPhrasesRaw;
-            const parsed = parseCustomPhrases(customPhrasesRaw);
-            if (parsed.length > 0) {
-                // Use user phrases immediately, generate similar ones in background
-                customPhrases = [...parsed];
-                customizeBalloon.classList.add('has-custom');
-                updateCustomActiveUI();
-                buildCustomPhraseList(parsed).then(full => {
-                    customPhrases = full;
-                    updateCustomActiveUI();
-                });
-            }
-        }
+        // Legacy custom phrases loading removed — now using category-based generation
 
         // Preset fire (🔥) — tap to use built-in defaults, long-press for RKO easter egg
         const presetFire = document.getElementById('presetFire');
@@ -4510,10 +4860,8 @@
                 topicPhrases = null;
                 // Clear custom phrases when switching to RKO
                 if (rkoTakeoverActive) {
-                    customizeInput.value = '';
-                    localStorage.removeItem('hotwords_custom_phrases');
-                    customPhrasesRaw = '';
                     customPhrases = null;
+                    customCategory = null;
                     customizeBalloon.classList.remove('has-custom');
                     updateCustomActiveUI();
                 }
@@ -4533,10 +4881,8 @@
             e.stopPropagation();
             if (rkoLongPressTriggered) return; // Long-press already handled
             // Clear custom phrases and use built-in defaults
-            customizeInput.value = '';
-            localStorage.removeItem('hotwords_custom_phrases');
-            customPhrasesRaw = '';
             customPhrases = null;
+            customCategory = null;
             customizeBalloon.classList.remove('has-custom');
             presetFire.classList.add('active');
             updateCustomActiveUI();
@@ -4544,48 +4890,74 @@
             selectTopic('default');
         });
 
+        const customizeCategoryInput = document.getElementById('customizeCategoryInput');
+        const customizeCategoryStatus = document.getElementById('customizeCategoryStatus');
+
         customizeBalloon.addEventListener('click', (e) => {
             e.stopPropagation();
             customizeOverlay.classList.add('active');
-            updateCustomizeCount();
-            customizeInput.focus();
+            // Restore saved category
+            if (customCategory) customizeCategoryInput.value = customCategory;
+            customizeCategoryInput.focus();
         });
 
-        customizeInput.addEventListener('input', updateCustomizeCount);
-
         customizeSave.addEventListener('click', async () => {
-            const raw = customizeInput.value;
-            const parsed = parseCustomPhrases(raw);
-            localStorage.setItem('hotwords_custom_phrases', raw);
-            customPhrasesRaw = raw;
-            if (parsed.length > 0) {
-                // Show generating state
-                customizeSave.textContent = 'Generating...';
-                customizeSave.disabled = true;
-                customPhrases = await buildCustomPhraseList(parsed);
-                customizeSave.textContent = 'Save';
-                customizeSave.disabled = false;
-                customizeBalloon.classList.add('has-custom');
-                presetFire.classList.remove('active');
-            } else {
-                customPhrases = null;
-                customizeBalloon.classList.remove('has-custom');
-                presetFire.classList.add('active');
+            const category = customizeCategoryInput.value.trim().split(/\s+/).slice(0, 3).join(' ').toLowerCase();
+            if (!category) return;
+
+            customizeSave.textContent = 'Generating...';
+            customizeSave.disabled = true;
+            customizeCategoryStatus.textContent = '';
+
+            try {
+                const res = await fetch('/api/generate-phrases', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ category: category, count: 70 })
+                });
+                const data = await res.json();
+                if (data.phrases && data.phrases.length > 0) {
+                    customPhrases = data.phrases;
+                    customCategory = category;
+                    activeTopic = null;
+                    topicPhrases = null;
+                    customizeBalloon.classList.add('has-custom');
+                    presetFire.classList.remove('active');
+                    customizeOverlay.classList.remove('active');
+                    updateCustomActiveUI();
+                    sendPhrasesToServer();
+                    // Save category + phrases to server immediately
+                    try {
+                        fetch('/api/categories', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ category: category, phrases: data.phrases })
+                        });
+                    } catch (e) { /* ignore */ }
+                } else {
+                    customizeCategoryStatus.textContent = 'No phrases generated. Try a different category.';
+                }
+            } catch (e) {
+                customizeCategoryStatus.textContent = 'Error generating. Try again.';
             }
-            customizeOverlay.classList.remove('active');
-            updateCustomActiveUI();
+            customizeSave.textContent = '✨ Generate';
+            customizeSave.disabled = false;
+        });
+
+        // Enter key in category input triggers generate
+        customizeCategoryInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') { e.preventDefault(); customizeSave.click(); }
         });
 
         customizeClear.addEventListener('click', () => {
-            customizeInput.value = '';
-            localStorage.removeItem('hotwords_custom_phrases');
-            customPhrasesRaw = '';
+            customizeCategoryInput.value = '';
             customPhrases = null;
+            customCategory = null;
             customizeBalloon.classList.remove('has-custom');
             presetFire.classList.add('active');
-            updateCustomizeCount();
             customizeOverlay.classList.remove('active');
             updateCustomActiveUI();
+            sendPhrasesToServer();
         });
 
         // Close overlay on background click
@@ -4636,13 +5008,26 @@
         let waitingForFirstReveal = false;
 
         function showOnboardRules() {
+            const duration = getGameDuration();
+            document.getElementById('onboardRulesTitle').textContent = `You have ${duration} seconds to get as many of the hot words as you can.`;
             document.getElementById('onboardRules').classList.add('active');
         }
         function hideOnboardRules() {
             document.getElementById('onboardRules').classList.remove('active');
         }
         function showOnboardReady() {
-            document.getElementById('onboardReady').classList.add('active');
+            const overlay = document.getElementById('onboardReady');
+            const isDesktop = !('ontouchstart' in window) && navigator.maxTouchPoints === 0;
+            if (isDesktop) {
+                overlay.querySelector('.onboard-emoji').textContent = '⌨️';
+                overlay.querySelector('.onboard-title').textContent = 'Ready for you.';
+                overlay.querySelector('.onboard-hint').textContent = 'Press Spacebar to reveal words.';
+            } else {
+                overlay.querySelector('.onboard-emoji').textContent = '🤳';
+                overlay.querySelector('.onboard-title').textContent = 'Ready for you.';
+                overlay.querySelector('.onboard-hint').textContent = 'Hold your phone upright to see words.';
+            }
+            overlay.classList.add('active');
         }
         function hideOnboardReady() {
             document.getElementById('onboardReady').classList.remove('active');
@@ -4681,6 +5066,13 @@
             hideOnboardReady();
             showLobby();
         });
+        document.getElementById('onboardReadySkip').addEventListener('click', () => {
+            if (waitingForFirstReveal) {
+                waitingForFirstReveal = false;
+                hideOnboardReady();
+                startGameTimer();
+            }
+        });
 
         // Start Local Game (called from onboarding flow)
         function startLocalGame() {
@@ -4714,7 +5106,8 @@
             listenBtn.disabled = false;
             skipBtn.disabled = false;
             gotItBtn.disabled = false;
-            statusEl.textContent = 'Hold upright to reveal!';
+            const isDesktop = !('ontouchstart' in window) && navigator.maxTouchPoints === 0;
+            statusEl.textContent = isDesktop ? 'Press Spacebar to reveal!' : 'Hold upright to reveal!';
             statusEl.classList.add('listening');
             transcriptBox.classList.add('listening');
 
@@ -4724,6 +5117,7 @@
 
             // Don't start the timer yet — wait for first reveal
             waitingForFirstReveal = true;
+            GAME_DURATION = getGameDuration();
             timerDisplayEl.classList.add('active');
             timerCountEl.textContent = GAME_DURATION;
         }
@@ -4774,12 +5168,47 @@
             playerCountUp.disabled = playerCount >= 10;
         }
         playerCountUp.addEventListener('click', () => {
-            if (playerCount < 10) { playerCount++; updatePlayerCountUI(); }
+            if (playerCount < 10) { playerCount++; updatePlayerCountUI(); enforceMinRoundTime(); updateRoundTimeUI(); }
         });
         playerCountDown.addEventListener('click', () => {
-            if (playerCount > 2) { playerCount--; updatePlayerCountUI(); }
+            if (playerCount > 2) {
+                // If round time was at the old minimum, decrease it with the player count
+                const wasAtMin = customRoundTime === minRoundTime();
+                playerCount--;
+                updatePlayerCountUI();
+                if (wasAtMin) customRoundTime = minRoundTime();
+                updateRoundTimeUI();
+            }
         });
         updatePlayerCountUI();
+
+        // Round time controls
+        let customRoundTime = 30;
+        const roundTimeDisplay = document.getElementById('roundTimeDisplay');
+        const roundTimeUp = document.getElementById('roundTimeUp');
+        const roundTimeDown = document.getElementById('roundTimeDown');
+
+        function minRoundTime() {
+            return 30 + Math.max(0, playerCount - 2) * 5;
+        }
+        function enforceMinRoundTime() {
+            const min = minRoundTime();
+            if (customRoundTime < min) {
+                customRoundTime = min;
+            }
+        }
+        function updateRoundTimeUI() {
+            roundTimeDisplay.textContent = customRoundTime + 's';
+            roundTimeDown.disabled = customRoundTime <= minRoundTime();
+            roundTimeUp.disabled = customRoundTime >= 90;
+        }
+        roundTimeUp.addEventListener('click', () => {
+            if (customRoundTime < 90) { customRoundTime += 5; updateRoundTimeUI(); }
+        });
+        roundTimeDown.addEventListener('click', () => {
+            if (customRoundTime > minRoundTime()) { customRoundTime -= 5; updateRoundTimeUI(); }
+        });
+        updateRoundTimeUI();
 
 
         // Sync the word-display box height so it doesn't jump between revealed/hidden
@@ -4873,15 +5302,22 @@
             localScore++;
             updateScoreDisplay(localScore);
 
+            // Add 4 seconds when under 6s remaining
+            if (timeRemaining < 6) {
+                timeRemaining += 4;
+                timerCountEl.textContent = timeRemaining;
+                timerDisplayEl.classList.remove('warning', 'danger');
+                document.body.classList.remove('countdown-danger');
+                showTimerBonus(4);
+            }
+
             closeMatchOverlay.classList.remove('active');
 
             // Show celebration with score
             showCelebrationLocal(currentWord, localScore);
 
-            // After celebration, move to next player
-            setTimeout(() => {
-                nextLocalModePlayer();
-            }, CELEBRATION_DELAY + 500);
+            // Prep next word behind the celebration so transition is seamless
+            nextLocalModePlayer();
         }
 
         // Local Mode: Skip phrase (hot potato - same player, new phrase)
@@ -5111,8 +5547,11 @@
                 timerPaused = false;
                 timerDisplayEl.classList.remove('paused');
                 // Recognition stays running — timerPaused guard handles ignoring results
-                startGotItCooldown();
-                startSkipCooldown();
+                hasClaimedVictory = false;
+                gotItCooldown = false;
+                gotItBtn.disabled = false;
+                skipCooldown = false;
+                skipBtn.disabled = false;
             }
         }
 
@@ -5151,9 +5590,10 @@
                     pattern = `${count} word${count !== 1 ? 's' : ''}`;
                 }
             }
-            const hint = orientationEnabled
-                ? 'Tilt vertical or press & hold to reveal'
-                : 'Press & hold to reveal <span class="hint-keys">or hold SPACE</span>';
+            const isDesktopHint = !('ontouchstart' in window) && navigator.maxTouchPoints === 0;
+            const hint = isDesktopHint
+                ? 'Hold Spacebar to reveal'
+                : (orientationEnabled ? 'Tilt vertical or press & hold to reveal' : 'Press & hold to reveal');
             return `<div class="reveal-hint" style="font-size: 3rem; letter-spacing: 4px; color: #fff; font-weight: bold; line-height: 1.4; word-break: keep-all;">${pattern}</div><div class="reveal-hint" style="margin-top: 12px; font-size: 0.85rem; color: #999;">${hint}</div>`;
         }
 
@@ -5220,32 +5660,44 @@
                 return;
             }
 
-            // Local mode only shortcuts
-            if (!isLocalMode || !gameActive) return;
+            if (!gameActive && !waitingForFirstReveal) return;
 
-            // Space: reveal word (press and hold)
-            if (e.code === 'Space' && !e.repeat) {
-                e.preventDefault();
-                startReveal();
-            }
-
-            // Enter: Got it!
-            if (e.code === 'Enter') {
-                e.preventDefault();
-                if (!hasClaimedVictory) {
-                    localModeClaimVictory();
+            if (isLocalMode) {
+                // Space: reveal word (press and hold) — also works during waitingForFirstReveal
+                if (e.code === 'Space' && !e.repeat) {
+                    e.preventDefault();
+                    startReveal();
                 }
-            }
-
-            // Tab: Skip phrase
-            if (e.code === 'Tab') {
-                e.preventDefault();
-                localModeSkipWord();
+                // Enter: Got it!
+                if (e.code === 'Enter') {
+                    e.preventDefault();
+                    if (!hasClaimedVictory) {
+                        localModeClaimVictory();
+                    }
+                }
+                // Tab: Skip phrase
+                if (e.code === 'Tab') {
+                    e.preventDefault();
+                    localModeSkipWord();
+                }
+            } else {
+                // Online mode: Enter = Got It, Tab = Skip (desktop only)
+                if (e.code === 'Enter') {
+                    e.preventDefault();
+                    if (!hasClaimedVictory) {
+                        hasClaimedVictory = true;
+                        claimVictory();
+                    }
+                }
+                if (e.code === 'Tab' && isHotPlayer) {
+                    e.preventDefault();
+                    skipWord();
+                }
             }
         });
 
         document.addEventListener('keyup', (e) => {
-            if (!isLocalMode || !gameActive) return;
+            if (!isLocalMode || (!gameActive && !pressRevealing)) return;
 
             // Space released: hide word
             if (e.code === 'Space') {
