@@ -2120,6 +2120,7 @@
             <div class="ready-mic-error" id="readyMicError" style="display:none"></div>
             <button class="ready-btn" id="readyOverlayBtn">Ready!</button>
             <div class="ready-status" id="readyStatus">0/0 players ready</div>
+            <div class="ready-share-invite" id="readyShareInvite" style="display:none; text-align:center; margin-top:12px;"></div>
         </div>
     </div>
 
@@ -3716,15 +3717,48 @@
             const readyCount = onlinePlayers.filter(p => p.ready).length;
             const totalCount = onlinePlayers.length;
 
-            if (myReady) {
+            // Show/hide share invite inside ready overlay
+            const readyShareEl = document.getElementById('readyShareInvite');
+            if (totalCount < 2) {
+                btn.textContent = 'Waiting for players...';
+                btn.classList.remove('is-ready');
+                btn.disabled = true;
+                statusDiv.textContent = 'Share the room link to invite players';
+                // Build share invite link inside the overlay
+                if (readyShareEl) {
+                    const roomUrl = window.location.origin + '?room=' + encodeURIComponent(currentRoomId);
+                    readyShareEl.style.display = '';
+                    readyShareEl.innerHTML = '';
+                    const link = document.createElement('span');
+                    link.className = 'share-invite';
+                    link.textContent = '📋 Tap to copy invite link';
+                    link.addEventListener('click', async () => {
+                        if (navigator.share) {
+                            try { await navigator.share({ title: 'Join my Hotwords room!', url: roomUrl }); return; } catch (e) {}
+                        }
+                        try {
+                            await navigator.clipboard.writeText(roomUrl);
+                            link.textContent = '✓ Link copied!';
+                            link.classList.add('copied');
+                            setTimeout(() => { link.textContent = '📋 Tap to copy invite link'; link.classList.remove('copied'); }, 2000);
+                        } catch (e) {}
+                    });
+                    readyShareEl.appendChild(link);
+                }
+            } else if (myReady) {
                 btn.textContent = `Waiting for others... (${readyCount}/${totalCount})`;
                 btn.classList.add('is-ready');
+                btn.disabled = false;
             } else {
                 btn.textContent = `Ready! (${readyCount}/${totalCount})`;
                 btn.classList.remove('is-ready');
+                btn.disabled = false;
             }
-            statusDiv.textContent = `${readyCount}/${totalCount} players ready`;
-            statusEl.textContent = `${readyCount}/${totalCount} players ready`;
+            if (totalCount >= 2) {
+                statusDiv.textContent = `${readyCount}/${totalCount} players ready`;
+                statusEl.textContent = `${readyCount}/${totalCount} players ready`;
+                if (readyShareEl) readyShareEl.style.display = 'none';
+            }
 
             // Wire up buttons (only once)
             if (!btn._bound) {
@@ -3962,24 +3996,15 @@
 
                     updatePlayerListUI();
 
-                    // Enable game controls when 2+ players arrive
-                    if (onlinePlayers.length >= 2 && !gameActive && !isSpectating) {
+                    // Show ready overlay as lobby when not in-game
+                    if (!gameActive && !isSpectating) {
                         listenBtn.style.display = 'none';
                         gotItBtn.disabled = true;
                         skipBtn.disabled = true;
-                        // Show ready button
                         showReadyOverlay();
-                        // Show the stored word now that we have enough players
-                        if (currentWord) {
+                        if (onlinePlayers.length >= 2 && currentWord) {
                             showNewWordOnline(currentWord, onlineRevealedWords);
                         }
-                    } else if (onlinePlayers.length < 2 && !gameActive && !isSpectating) {
-                        listenBtn.style.display = 'none';
-                        gotItBtn.disabled = true;
-                        skipBtn.disabled = true;
-                        hideReadyOverlay();
-                        wordDisplay.textContent = 'Waiting for players...';
-                        showShareInvite();
                     } else if (currentWord && !isCelebrating) {
                         // Game active with 2+ players — refresh word display based on role
                         // Skip during celebration to avoid flashing stale word before NEW_WORD arrives
@@ -5175,24 +5200,17 @@
             isHotPlayer = false;
             onlineRevealedWords = [];
 
-            // Show game screen
+            // Show game screen with ready overlay (lobby)
             showGameScreen();
             gameScreen.classList.add('online-mode');
 
-            // Initialize buttons (will be updated when role is known)
-            listenBtn.style.display = '';
-            gotItBtn.style.display = '';
-            skipBtn.style.display = '';
-
-            // Don't start timer yet — wait for 2+ players
-            wordDisplay.textContent = 'Waiting for players...';
-            showShareInvite();
-            statusEl.classList.remove('listening');
-            listenBtn.disabled = true;
+            // Hide game buttons — they'll be shown when the game starts
+            listenBtn.style.display = 'none';
             gotItBtn.disabled = true;
             skipBtn.disabled = true;
+            statusEl.classList.remove('listening');
 
-            // Connect to WebSocket
+            // Connect to WebSocket — ready overlay will be shown on PLAYER_LIST
             connect(currentRoomId);
         }
 
