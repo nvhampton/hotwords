@@ -3447,12 +3447,6 @@
             link.className = 'share-invite';
             link.textContent = '📋 Tap to copy invite link';
             link.addEventListener('click', async () => {
-                if (navigator.share) {
-                    try {
-                        await navigator.share({ title: 'Join my Hotwords room!', url: roomUrl });
-                        return;
-                    } catch (e) { /* user cancelled or not supported, fall through to copy */ }
-                }
                 try {
                     await navigator.clipboard.writeText(roomUrl);
                     link.textContent = '✓ Link copied!';
@@ -3733,9 +3727,6 @@
                     link.className = 'share-invite';
                     link.textContent = '📋 Tap to copy invite link';
                     link.addEventListener('click', async () => {
-                        if (navigator.share) {
-                            try { await navigator.share({ title: 'Join my Hotwords room!', url: roomUrl }); return; } catch (e) {}
-                        }
                         try {
                             await navigator.clipboard.writeText(roomUrl);
                             link.textContent = '✓ Link copied!';
