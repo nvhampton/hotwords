@@ -3987,8 +3987,8 @@
 
                     updatePlayerListUI();
 
-                    // Show ready overlay as lobby when not in-game
-                    if (!gameActive && !isSpectating) {
+                    // Show ready overlay as lobby when not in-game and still on game screen
+                    if (!gameActive && !isSpectating && gameScreen.classList.contains('active')) {
                         listenBtn.style.display = 'none';
                         gotItBtn.disabled = true;
                         skipBtn.disabled = true;
@@ -4664,6 +4664,13 @@
         // Show lobby, hide game screen
         function showLobby() {
             isSpectating = false;
+            // Disconnect WebSocket first to prevent message handlers from re-showing overlays
+            stopHeartbeat();
+            if (ws) {
+                isReconnecting = true;
+                ws.close();
+                ws = null;
+            }
             dismissLeaderboard();
             dismissGameSummary();
             hideReadyOverlay();
@@ -4674,14 +4681,6 @@
             // Stop any active game
             if (gameActive) {
                 endGame();
-            }
-            // Stop heartbeat
-            stopHeartbeat();
-            // Disconnect WebSocket
-            if (ws) {
-                isReconnecting = true;
-                ws.close();
-                ws = null;
             }
             // Stop listening
             if (isListening && recognition) {
