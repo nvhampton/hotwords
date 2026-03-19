@@ -966,7 +966,7 @@ Rules:
                 // Parse the JSON array from Claude's response (may have markdown wrapping)
                 val cleanJson = content.replace(Regex("```json\\s*"), "").replace(Regex("```\\s*"), "").trim()
                 val generatedPhrases = jsonLenient.decodeFromString(JsonArray.serializer(), cleanJson)
-                    .map { it.jsonPrimitive.content }
+                    .map { it.jsonPrimitive.content.replace(Regex("[^a-zA-Z0-9 ]"), " ").replace(Regex("\\s+"), " ").trim().lowercase() }
                     .filter { it.isNotBlank() }
                     .take(safeCount)
 
