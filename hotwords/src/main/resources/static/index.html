@@ -3653,8 +3653,10 @@
                 const item = document.createElement('div');
                 item.className = 'ready-player-item' + (isMe ? ' is-me' : '');
                 const isPlayerHost = player.id === hostPlayerId;
+                const micIcon = player.micEnabled ? '🎙️' : '🔇';
                 item.innerHTML = `
                     <span class="ready-player-name${isMe && !gameActive ? ' editable' : ''}">${isPlayerHost ? '<span class="host-badge" title="Host">⭐</span> ' : ''}${escapeHtml(player.name)}${isMe ? ' (you)' : ''}</span>
+                    <span class="ready-player-mic" title="${player.micEnabled ? 'Mic on' : 'Mic off'}" style="font-size: 0.85rem; margin-right: 6px; opacity: ${player.micEnabled ? '1' : '0.4'}">${micIcon}</span>
                     <span class="ready-player-check ${player.ready ? 'visible' : ''}">&#10003;</span>
                 `;
                 // Let the player click their own name to rename (only in lobby/ready phase)
@@ -3793,6 +3795,10 @@
                             micError.textContent = 'Mic permission denied. You can still play using buttons.';
                             micError.style.display = '';
                         }
+                    }
+                    // Notify server of mic status change
+                    if (ws && ws.readyState === WebSocket.OPEN) {
+                        ws.send(JSON.stringify({ type: 'SET_MIC', micEnabled: readyMicEnabled }));
                     }
                 });
             }
@@ -3950,6 +3956,9 @@
                     playerId: myPlayerId,
                     theme: getActiveThemeForServer()
                 }));
+
+                // Send initial mic status
+                ws.send(JSON.stringify({ type: 'SET_MIC', micEnabled: readyMicEnabled }));
 
                 // Send custom phrases if we have them (server will accept only if we're host)
                 if (customPhrases && customPhrases.length > 0) {

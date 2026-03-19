@@ -55,14 +55,16 @@ data class GameMessage(
     val playerOrder: List<String>? = null,
     val hostPlayerId: String? = null,
     val phrases: List<String>? = null,
-    val category: String? = null
+    val category: String? = null,
+    val micEnabled: Boolean? = null
 )
 
 @Serializable
 data class PlayerInfo(
     val id: String,
     val name: String,
-    val ready: Boolean = false
+    val ready: Boolean = false,
+    val micEnabled: Boolean = false
 )
 
 data class Player(
@@ -70,7 +72,8 @@ data class Player(
     val name: String,
     var lastHeartbeat: Long = System.currentTimeMillis(),
     val session: DefaultWebSocketServerSession,
-    var ready: Boolean = false
+    var ready: Boolean = false,
+    var micEnabled: Boolean = false
 )
 
 data class RoomState(
@@ -297,7 +300,7 @@ fun Application.module() {
                     }
 
                     // Broadcast updated player list
-                    val playerInfoList = state.players.map { PlayerInfo(it.id, it.name, it.ready) }
+                    val playerInfoList = state.players.map { PlayerInfo(it.id, it.name, it.ready, it.micEnabled) }
                     val playerListMsg = GameMessage(
                         type = "PLAYER_LIST",
                         players = playerInfoList,
@@ -348,7 +351,7 @@ fun Application.module() {
                         // Broadcast round reset to all connected sessions
                         // A fresh word will be picked when all players ready up and game starts
                         val newRoundMsg = GameMessage(type = "NEW_ROUND")
-                        val playerInfoList2 = state.players.map { PlayerInfo(it.id, it.name, it.ready) }
+                        val playerInfoList2 = state.players.map { PlayerInfo(it.id, it.name, it.ready, it.micEnabled) }
                         val playerListMsg2 = GameMessage(
                             type = "PLAYER_LIST",
                             players = playerInfoList2,
@@ -1172,7 +1175,7 @@ Rules:
                                     }
 
                                     // Broadcast player list to all active players
-                                    val playerInfoList = state.players.map { PlayerInfo(it.id, it.name, it.ready) }
+                                    val playerInfoList = state.players.map { PlayerInfo(it.id, it.name, it.ready, it.micEnabled) }
                                     val playerListMsg = GameMessage(
                                         type = "PLAYER_LIST",
                                         players = playerInfoList,
@@ -1220,7 +1223,7 @@ Rules:
                                 player.ready = !player.ready
 
                                 // Broadcast updated player list
-                                val playerInfoList = state.players.map { PlayerInfo(it.id, it.name, it.ready) }
+                                val playerInfoList = state.players.map { PlayerInfo(it.id, it.name, it.ready, it.micEnabled) }
                                 val playerListMsg = GameMessage(
                                     type = "PLAYER_LIST",
                                     players = playerInfoList,
@@ -1341,7 +1344,7 @@ Rules:
                                     type = "NEW_ROUND"
                                 )
                                 // Send updated player list (all unready) so ready overlay shows correctly
-                                val playerInfoList = state.players.map { PlayerInfo(it.id, it.name, it.ready) }
+                                val playerInfoList = state.players.map { PlayerInfo(it.id, it.name, it.ready, it.micEnabled) }
                                 val playerListMsg = GameMessage(
                                     type = "PLAYER_LIST",
                                     players = playerInfoList,
@@ -1368,6 +1371,24 @@ Rules:
                                     state.players.find { it.id == playerId }?.lastHeartbeat = ts
                                     state.pendingPlayers.find { it.id == playerId }?.lastHeartbeat = ts
                                 }
+                            }
+
+                            "SET_MIC" -> {
+                                val playerId = sessionToPlayerId[this] ?: continue
+                                val micEnabled = received.micEnabled ?: continue
+                                val player = state.players.find { it.id == playerId }
+                                    ?: state.pendingPlayers.find { it.id == playerId }
+                                    ?: continue
+                                player.micEnabled = micEnabled
+                                // Broadcast updated player list
+                                val playerInfoList = state.players.map { PlayerInfo(it.id, it.name, it.ready, it.micEnabled) }
+                                val playerListMsg = GameMessage(
+                                    type = "PLAYER_LIST",
+                                    players = playerInfoList,
+                                    hotPlayerIndex = state.currentHotPlayerIndex,
+                                    hostPlayerId = state.hostPlayerId
+                                )
+                                room.forEach { session -> session.sendSerialized(playerListMsg) }
                             }
 
                             "WORD_MATCH" -> {
@@ -1409,7 +1430,7 @@ Rules:
                                         )
 
                                         // Send updated player list with new hot player
-                                        val playerInfoList = state.players.map { PlayerInfo(it.id, it.name, it.ready) }
+                                        val playerInfoList = state.players.map { PlayerInfo(it.id, it.name, it.ready, it.micEnabled) }
                                         val playerListMsg = GameMessage(
                                             type = "PLAYER_LIST",
                                             players = playerInfoList,
@@ -1487,7 +1508,7 @@ Rules:
                                 )
 
                                 // Send updated player list with new hot player
-                                val playerInfoList = state.players.map { PlayerInfo(it.id, it.name, it.ready) }
+                                val playerInfoList = state.players.map { PlayerInfo(it.id, it.name, it.ready, it.micEnabled) }
                                 val playerListMsg = GameMessage(
                                     type = "PLAYER_LIST",
                                     players = playerInfoList,
@@ -1534,7 +1555,7 @@ Rules:
                                 )
 
                                 // Send updated player list with new hot player
-                                val playerInfoList = state.players.map { PlayerInfo(it.id, it.name, it.ready) }
+                                val playerInfoList = state.players.map { PlayerInfo(it.id, it.name, it.ready, it.micEnabled) }
                                 val playerListMsg = GameMessage(
                                     type = "PLAYER_LIST",
                                     players = playerInfoList,
@@ -1594,7 +1615,7 @@ Rules:
                                 // Restore hot player index
                                 state.currentHotPlayerIndex = state.players.indexOfFirst { it.id == hotPlayerId }.coerceAtLeast(0)
                                 // Broadcast
-                                val playerInfoList = state.players.map { PlayerInfo(it.id, it.name, it.ready) }
+                                val playerInfoList = state.players.map { PlayerInfo(it.id, it.name, it.ready, it.micEnabled) }
                                 val playerListMsg = GameMessage(type = "PLAYER_LIST", players = playerInfoList, hotPlayerIndex = state.currentHotPlayerIndex, hostPlayerId = state.hostPlayerId)
                                 room.forEach { session -> session.sendSerialized(playerListMsg) }
                             }
@@ -1624,7 +1645,7 @@ Rules:
                     }
 
                     // Broadcast updated player list
-                    val playerInfoList = state.players.map { PlayerInfo(it.id, it.name, it.ready) }
+                    val playerInfoList = state.players.map { PlayerInfo(it.id, it.name, it.ready, it.micEnabled) }
                     val playerListMsg = GameMessage(
                         type = "PLAYER_LIST",
                         players = playerInfoList,
