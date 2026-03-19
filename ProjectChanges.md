@@ -212,3 +212,50 @@ Online mode previously showed a bare "Game Over!" text with a Play Again button 
 12. **Reuse existing UI components across modes** — the game summary overlay, `timerPaused` flag, and `phraseHistory` array were all built for local mode but designed generically enough to work for online mode with minimal wiring.
 13. **Track events at the source** — adding phrase history entries in message handlers (ROUND_WON, WORD_SKIPPED, DESCRIBER_FAILED) rather than trying to reconstruct history after the fact is simpler and more reliable.
 14. **`visibilitychange` vs `blur`/`focus`** — `visibilitychange` is the correct API for detecting tab switches and app minimization. `blur`/`focus` fire for in-page focus changes (clicking between elements) which would cause false pauses.
+
+## Session: 2026-03-16
+
+### Host System for Online Rooms (v0.11.33–0.11.49)
+- Added `hostPlayerId` to `RoomState` — first player in a room becomes host
+- Auto-promotes longest-tenured player when host disconnects (TTL expiry or leave)
+- `SET_PHRASES` message: host uploads custom phrase list to server, stored in `roomCustomPhrases`
+- `getWordForRoom()` priority: custom phrases > theme > defaults
+- Theme setting (`SET_NAME`, `NEW_ROUND`) gated to host only
+- Crown badge (👑) shown next to host in player list and ready overlay
+- `PLAYER_LIST` broadcasts include `hostPlayerId` (all 9+ broadcast sites updated)
+
+### Custom Category System (v0.11.41–0.11.53)
+- 💬 overlay changed from comma-separated phrase input to single category text input
+- Server `/api/generate-phrases` accepts `category` field — generates 70 phrases for that category via Claude Haiku
+- Categories of the day: `GET/POST /api/categories` — stores category name + cached phrases for 24h
+- Played categories appear as purple-bordered topic pills on lobby, served with cached phrases (no repeat API calls)
+- Category label shown on game screen during play
+- On game end, custom category + phrases submitted to server cache
+
+### Desktop Keyboard Improvements (v0.11.33–0.11.38)
+- Enter and Tab work as Got It / Skip in online mode (not just local)
+- Key hints `[Enter]` and `[Tab]` shown on buttons for desktop users
+- Spacebar works on the "Ready for you" onboard screen to start the game
+- Skip button added to onboard ready screen (bottom-right)
+- Desktop-specific text: "Press Spacebar to reveal" instead of "Hold phone upright"
+- Desktop hint on hidden word: "Hold Spacebar to reveal"
+
+### Timer & Gameplay Improvements (v0.11.40–0.11.54)
+- **+4s bonus**: Getting a phrase right adds 4 seconds when timer is under 6s remaining
+- **Visual "+4s" animation**: Green text floats up from timer on bonus
+- **Final word shown**: When time expires, the active phrase stays visible instead of clearing
+- **Seamless word swap**: Next word loads during celebration animation, no visible delay after
+
+### Bug Fixes
+- **`gameStartTime` not reset on NEW_ROUND** (v0.11.33): Caused stale timer sync and broken ready states between rounds with >2 players
+- **Cooldowns stuck between rounds** (v0.11.39): `gotItCooldown`/`skipCooldown` never reset when game ended — timeout callback's `if (gameActive)` guard prevented re-enable. Fixed by explicit reset in GAME_STARTED and NEW_ROUND handlers
+- **`hasClaimedVictory` not reset after pass** (v0.11.38): Got It button stopped working after first use in local mode. Fixed by resetting on reveal
+- **Skip cooldown starting before reveal** (v0.11.38): `startSkipCooldown()` restarted a fresh 5s timer on reveal instead of just re-enabling. Fixed with direct reset
+- **`customizeInput` null crash** (v0.11.48): Replacing the textarea with a category input broke the old JS references, killing all page JS on load
+- **`sendPhrasesToServer` missing** (v0.11.49): Function and connect-time SET_PHRASES send were lost during revert/re-apply
+
+### Key Learnings
+15. **Cooldown state machines need explicit resets** — Relying on timeout callbacks to reset state fails when the game ends before the timeout fires. Always reset cooldowns at state transitions (round start, round end).
+16. **Revert carefully, re-apply surgically** — When reverting a file to fix lobby breakage, all incremental changes must be re-applied individually. Using an agent for bulk re-application works but risks missing items (like `sendPhrasesToServer`).
+17. **Null element references kill everything** — In a single-file app, one `null.value` crash in startup code prevents ALL subsequent JS from running. Always guard element references when refactoring HTML.
+18. **Cache AI results server-side** — Generating phrases via API on every pill click is wasteful and slow. Caching phrases alongside category names means instant loading for popular categories.

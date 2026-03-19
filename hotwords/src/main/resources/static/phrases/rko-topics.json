@@ -1,0 +1,11 @@
+[
+  {"id": "default", "label": "All RKO"},
+  {"id": "company_jargon", "label": "Company Jargon"},
+  {"id": "products_and_features", "label": "Products"},
+  {"id": "values_and_culture", "label": "Values & Culture"},
+  {"id": "executive_catchphrases", "label": "Exec Speak"},
+  {"id": "engineering_lingo", "label": "Engineering"},
+  {"id": "customer_and_industry", "label": "Industry"},
+  {"id": "meetings_and_rituals", "label": "Meetings & Rituals"},
+  {"id": "inside_jokes", "label": "Inside Jokes"}
+]

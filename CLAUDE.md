@@ -31,19 +31,23 @@ This builds the fat JAR, uploads it to EC2, and runs `deploy.sh` remotely which 
 
 ### Two-file application
 
-**Backend** — `src/main/kotlin/com/example/Application.kt` (~700 lines)
+**Backend** — `src/main/kotlin/com/example/Application.kt` (~1300 lines)
 - Ktor WebSocket server with room-based multiplayer at `/game/{roomId}`
-- REST endpoints: `POST /api/scores` (submit round), `GET /api/leaderboard` (fetch rankings)
-- All state in-memory via `ConcurrentHashMap` (rooms, players, scores) — no database
+- REST endpoints: `POST /api/scores`, `GET /api/leaderboard`, `GET/POST /api/categories`, `POST /api/generate-phrases`
+- All state in-memory via `ConcurrentHashMap` (rooms, players, scores, custom phrases, categories of the day) — no database
 - Player lifecycle: heartbeat every 10s from client, server TTL cleanup every 5s (15s expiry)
+- Host system: first player in a room becomes host, controls phrase selection; auto-promotes on disconnect
+- Custom phrases: host can upload phrases via `SET_PHRASES`; server stores per-room in `roomCustomPhrases`
+- AI phrase generation: `/api/generate-phrases` accepts either example phrases or a category name, calls Claude Haiku
+- Categories of the day: played custom categories cached with phrases for 24h, served to all players as topic pills
 - Serializable `GameMessage` data class with string `type` discriminator for all WebSocket messages
 
-**Frontend** — `src/main/resources/static/index.html` (~3700 lines)
+**Frontend** — `src/main/resources/static/index.html` (~5500 lines)
 - Single-file vanilla HTML/CSS/JS, no framework
 - Web Speech API for voice recognition (Chrome/Edge/Safari)
 - DeviceOrientation API for tilt-to-reveal on mobile (local mode)
 - Press-to-reveal as fallback/supplement (desktop and mobile)
-- Keyboard shortcuts: Space (reveal), Enter (got it), Tab (skip), Escape (lobby)
+- Keyboard shortcuts: Space (reveal), Enter (got it), Tab (skip), Escape (lobby) — work in both local and online modes on desktop
 
 ### Game modes
 
@@ -66,17 +70,19 @@ Room state is isolated per `roomId`. The server tracks: active players (with hea
 ### Key frontend patterns
 
 - **Reveal system**: `orientationEnabled` (tilt) and `tapToRevealEnabled` (press) can coexist; `pressRevealing` flag prevents orientation handler from hiding during active press; `stopReveal` defers to orientation state when in tilt mode
-- **Cooldowns**: Got It (400ms) and Skip (separate) prevent spam; both re-enabled on word reveal after passing period
+- **Cooldowns**: Got It (400ms) and Skip (5s) prevent spam; both reset on reveal (local) or on GAME_STARTED/NEW_ROUND (online). Cooldowns must be explicitly reset between rounds — the timeout callback won't fire if `gameActive` is false.
+- **Timer bonus**: +4 seconds added when getting a phrase right with <6s remaining; visual "+4s" animation floats up from timer
+- **Host system**: `hostPlayerId` tracked from PLAYER_LIST messages; crown badge shown next to host in player list and ready overlay; only host can set phrases/themes
 - **Game summary overlay** (z-index 1050) stays behind leaderboard overlay (z-index 1100); dismissing leaderboard reveals summary underneath
 - **`pendingLeaderboard` promise**: Round submitted immediately in `endGame()`, stored as promise; both Leaderboard button and any auto-show await the same promise
 
 ## Message Protocol
 
 ### Client → Server
-`SET_NAME`, `HEARTBEAT`, `WORD_MATCH`, `CLAIM_VICTORY`, `SKIP_WORD`, `DESCRIBER_SLIP`, `DESCRIBER_FAIL`, `NEW_ROUND`
+`SET_NAME`, `HEARTBEAT`, `WORD_MATCH`, `CLAIM_VICTORY`, `SKIP_WORD`, `DESCRIBER_SLIP`, `DESCRIBER_FAIL`, `NEW_ROUND`, `READY`, `SET_PHRASES`, `REORDER_PLAYERS`
 
 ### Server → Client
-`PLAYER_LIST`, `NEW_WORD`, `WORD_PROGRESS`, `ROUND_WON`, `WORD_SKIPPED`, `DESCRIBER_SLIPPED`, `DESCRIBER_FAILED`, `TIMER_SYNC`, `GAME_STARTED`
+`PLAYER_LIST` (includes `hostPlayerId`), `NEW_WORD`, `WORD_PROGRESS`, `ROUND_WON`, `WORD_SKIPPED`, `DESCRIBER_SLIPPED`, `DESCRIBER_FAILED`, `TIMER_SYNC`, `GAME_STARTED`, `NEW_ROUND`, `SCORE_UPDATE`
 
 ## Branching
 

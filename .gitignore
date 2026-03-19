@@ -1,1 +1,3 @@
 .idea/
+hotwords/deploy/*.tar
+hotwords/data/
