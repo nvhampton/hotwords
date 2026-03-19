@@ -704,6 +704,17 @@ fun Application.module() {
             call.respond(mapOf("ok" to true))
         }
 
+        // Delete a category of the day
+        delete("/api/categories/{name}") {
+            val name = call.parameters["name"]?.lowercase()?.trim()
+            if (name.isNullOrBlank()) {
+                call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Missing category name"))
+                return@delete
+            }
+            val removed = categoriesOfTheDay.remove(name) != null
+            call.respond(mapOf("ok" to true, "removed" to removed))
+        }
+
         post("/api/scores") {
             try {
                 val remoteIp = call.request.header("X-Forwarded-For")?.split(",")?.firstOrNull()?.trim()

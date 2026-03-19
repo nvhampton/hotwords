@@ -2743,7 +2743,37 @@
                             pill.textContent = catName;
                             pill.dataset.topicId = 'custom:' + catName;
                             pill.style.borderColor = 'rgba(155, 89, 182, 0.4)';
-                            pill.addEventListener('click', () => {
+                            // Long-press (6s) to delete category
+                            let longPressTimer = null;
+                            let longPressTriggered = false;
+                            const startLongPress = (e) => {
+                                longPressTriggered = false;
+                                longPressTimer = setTimeout(async () => {
+                                    longPressTriggered = true;
+                                    if (confirm(`Delete category "${catName}"?`)) {
+                                        try {
+                                            await fetch('/api/categories/' + encodeURIComponent(catName), { method: 'DELETE' });
+                                            pill.remove();
+                                            // Reset to default if this was the active selection
+                                            if (customCategory === catName) {
+                                                customPhrases = [];
+                                                customCategory = null;
+                                                selectTopic('default');
+                                            }
+                                        } catch (e) { /* ignore */ }
+                                    }
+                                }, 6000);
+                            };
+                            const cancelLongPress = () => { clearTimeout(longPressTimer); };
+                            pill.addEventListener('mousedown', startLongPress);
+                            pill.addEventListener('touchstart', startLongPress, { passive: true });
+                            pill.addEventListener('mouseup', cancelLongPress);
+                            pill.addEventListener('mouseleave', cancelLongPress);
+                            pill.addEventListener('touchend', cancelLongPress);
+                            pill.addEventListener('touchcancel', cancelLongPress);
+
+                            pill.addEventListener('click', (e) => {
+                                if (longPressTriggered) return; // Don't select after delete
                                 // Select this pill like a built-in topic
                                 document.querySelectorAll('.topic-pill').forEach(p => p.classList.remove('active'));
                                 pill.classList.add('active');
