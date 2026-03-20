@@ -1183,7 +1183,7 @@
             position: fixed;
             top: 0; left: 0; right: 0; bottom: 0;
             background: rgba(0, 0, 0, 0.8);
-            z-index: 1050;
+            z-index: 1075;
             align-items: center;
             justify-content: center;
         }
@@ -1921,6 +1921,7 @@
                 <button class="mode-btn local" id="localModeBtn">📱 Play on this device</button>
                 <div class="mode-expand" id="localExpand">
                     <div class="difficulty-toggle">
+                        <button class="diff-btn" id="diffPractice">Practice</button>
                         <button class="diff-btn active" id="diffEasy">Easy</button>
                         <button class="diff-btn" id="diffHard">Hard</button>
                     </div>
@@ -1931,7 +1932,7 @@
                         <span style="font-size: 1.5rem; font-weight: bold; min-width: 30px; text-align: center;" id="playerCountDisplay">2</span>
                         <button class="player-count-btn" id="playerCountUp">+</button>
                     </div>
-                    <div style="display: flex; align-items: center; justify-content: center; gap: 16px; padding: 12px 0;">
+                    <div id="roundTimeRow" style="display: flex; align-items: center; justify-content: center; gap: 16px; padding: 12px 0;">
                         <span style="color: #aaa; font-size: 1rem;">Round Time:</span>
                         <button class="player-count-btn" id="roundTimeDown">−</button>
                         <span style="font-size: 1.5rem; font-weight: bold; min-width: 40px; text-align: center;" id="roundTimeDisplay">30s</span>
@@ -3026,6 +3027,16 @@
             }
         }
 
+        // Start practice mode (no timer)
+        function startPracticeMode() {
+            gameActive = true;
+            localScore = 0;
+            updateScoreDisplay(0);
+            timerDisplayEl.style.display = 'none';
+            playAgainBtn.style.display = '';
+            playAgainBtn.textContent = 'Quit';
+        }
+
         // Start game timer
         function startGameTimer(serverDuration) {
             gameActive = true;
@@ -3090,7 +3101,7 @@
                 transcriptBox.classList.remove('listening');
             }
 
-            statusEl.textContent = `Time's up! Final score: ${localScore}`;
+            statusEl.textContent = isPracticeMode ? `Practice complete! Score: ${localScore}` : `Time's up! Final score: ${localScore}`;
             statusEl.classList.remove('listening');
 
             wordProgressEl.innerHTML = '';
@@ -3105,10 +3116,13 @@
                 skipBtn.disabled = true;
                 gotItBtn.disabled = true;
 
-                // Add the phrase that was active when time expired
+                // Add the phrase that was active when game ended
                 if (currentWord) {
-                    phraseHistory.push({ phrase: currentWord, status: 'timed-out', time: Math.round((Date.now() - phraseStartTime) / 1000) });
+                    phraseHistory.push({ phrase: currentWord, status: isPracticeMode ? 'skipped' : 'timed-out', time: Math.round((Date.now() - phraseStartTime) / 1000) });
                 }
+
+                // Reset quit button back to Play Again
+                playAgainBtn.textContent = 'Play Again';
 
                 // Show game summary overlay
                 showGameSummary(localScore, phraseHistory);
@@ -4545,8 +4559,13 @@
             }
         });
 
-        // Play Again button
+        // Play Again button (also serves as Quit in practice mode)
         playAgainBtn.addEventListener('click', async () => {
+            // In practice mode, "Quit" ends the active game
+            if (isPracticeMode && gameActive && playAgainBtn.textContent === 'Quit') {
+                endGame();
+                return;
+            }
             dismissLeaderboard();
             dismissGameSummary();
             playAgainBtn.style.display = 'none';
@@ -4573,9 +4592,13 @@
                 showNewWordLocalMode(word);
                 // Defer timer until first reveal
                 waitingForFirstReveal = true;
-                GAME_DURATION = getGameDuration();
-                timerDisplayEl.classList.add('active');
-                timerCountEl.textContent = GAME_DURATION;
+                if (isPracticeMode) {
+                    timerDisplayEl.style.display = 'none';
+                } else {
+                    GAME_DURATION = getGameDuration();
+                    timerDisplayEl.classList.add('active');
+                    timerCountEl.textContent = GAME_DURATION;
+                }
             } else if (ws && ws.readyState === WebSocket.OPEN) {
                 ws.send(JSON.stringify({ type: 'NEW_ROUND', theme: getActiveThemeForServer() }));
                 // Re-send custom phrases for new round (server accepts only from host)
@@ -5046,21 +5069,38 @@
         onlineStartBtn.addEventListener('click', () => startOnlineGame());
 
         // Difficulty toggle
+        const diffPractice = document.getElementById('diffPractice');
         const diffEasy = document.getElementById('diffEasy');
         const diffHard = document.getElementById('diffHard');
         const diffDesc = document.getElementById('diffDesc');
+        const roundTimeRow = document.getElementById('roundTimeRow');
 
+        diffPractice.addEventListener('click', () => {
+            isPracticeMode = true;
+            partialWordReveal = true;
+            diffPractice.classList.add('active');
+            diffEasy.classList.remove('active');
+            diffHard.classList.remove('active');
+            diffDesc.textContent = 'No timer — just practice';
+            roundTimeRow.style.display = 'none';
+        });
         diffEasy.addEventListener('click', () => {
+            isPracticeMode = false;
             partialWordReveal = true;
             diffEasy.classList.add('active');
+            diffPractice.classList.remove('active');
             diffHard.classList.remove('active');
             diffDesc.textContent = 'Words reveal as you say them';
+            roundTimeRow.style.display = '';
         });
         diffHard.addEventListener('click', () => {
+            isPracticeMode = false;
             partialWordReveal = false;
             diffHard.classList.add('active');
+            diffPractice.classList.remove('active');
             diffEasy.classList.remove('active');
             diffDesc.textContent = 'Must say the full phrase to score';
+            roundTimeRow.style.display = '';
         });
 
         // Local onboarding flow
@@ -5068,7 +5108,9 @@
 
         function showOnboardRules() {
             const duration = getGameDuration();
-            document.getElementById('onboardRulesTitle').textContent = `You have ${duration} seconds to get as many of the hot words as you can.`;
+            document.getElementById('onboardRulesTitle').textContent = isPracticeMode
+                ? 'Practice mode — no timer. Get as many hot words as you can!'
+                : `You have ${duration} seconds to get as many of the hot words as you can.`;
             document.getElementById('onboardRules').classList.add('active');
         }
         function hideOnboardRules() {
@@ -5129,7 +5171,7 @@
             if (waitingForFirstReveal) {
                 waitingForFirstReveal = false;
                 hideOnboardReady();
-                startGameTimer();
+                if (isPracticeMode) startPracticeMode(); else startGameTimer();
             }
         });
 
@@ -5176,9 +5218,13 @@
 
             // Don't start the timer yet — wait for first reveal
             waitingForFirstReveal = true;
-            GAME_DURATION = getGameDuration();
-            timerDisplayEl.classList.add('active');
-            timerCountEl.textContent = GAME_DURATION;
+            if (isPracticeMode) {
+                timerDisplayEl.style.display = 'none';
+            } else {
+                GAME_DURATION = getGameDuration();
+                timerDisplayEl.classList.add('active');
+                timerCountEl.textContent = GAME_DURATION;
+            }
         }
 
         // Start Online Game
@@ -5354,8 +5400,8 @@
             localScore++;
             updateScoreDisplay(localScore);
 
-            // Add 4 seconds when under 6s remaining
-            if (timeRemaining < 6) {
+            // Add 4 seconds when under 6s remaining (not in practice mode)
+            if (!isPracticeMode && timeRemaining < 6) {
                 timeRemaining += 4;
                 timerCountEl.textContent = timeRemaining;
                 timerDisplayEl.classList.remove('warning', 'danger');
@@ -5514,7 +5560,7 @@
                             if (waitingForFirstReveal) {
                                 waitingForFirstReveal = false;
                                 hideOnboardReady();
-                                startGameTimer();
+                                if (isPracticeMode) startPracticeMode(); else startGameTimer();
                             }
                             if (timerPaused) {
                                 timerPaused = false;
@@ -5593,7 +5639,7 @@
             if (waitingForFirstReveal) {
                 waitingForFirstReveal = false;
                 hideOnboardReady();
-                startGameTimer();
+                if (isPracticeMode) startPracticeMode(); else startGameTimer();
             }
             if (timerPaused) {
                 timerPaused = false;

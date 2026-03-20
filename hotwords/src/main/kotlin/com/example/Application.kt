@@ -320,8 +320,9 @@ fun Application.module() {
 
                 // Server-side round expiry: end stale games when timer has elapsed
                 // or all active players have left, so pending players aren't stuck forever
-                if (state.gameStartTime != null) {
-                    val elapsed = (now - state.gameStartTime!!) / 1000
+                val gameStart = state.gameStartTime
+                if (gameStart != null) {
+                    val elapsed = (now - gameStart) / 1000
                     val expired = elapsed > state.roundDuration + 10 // 10s grace period
                     val noActivePlayers = state.players.isEmpty()
 

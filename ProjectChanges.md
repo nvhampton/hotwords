@@ -259,3 +259,45 @@ Online mode previously showed a bare "Game Over!" text with a Play Again button 
 16. **Revert carefully, re-apply surgically** — When reverting a file to fix lobby breakage, all incremental changes must be re-applied individually. Using an agent for bulk re-application works but risks missing items (like `sendPhrasesToServer`).
 17. **Null element references kill everything** — In a single-file app, one `null.value` crash in startup code prevents ALL subsequent JS from running. Always guard element references when refactoring HTML.
 18. **Cache AI results server-side** — Generating phrases via API on every pill click is wasteful and slow. Caching phrases alongside category names means instant loading for popular categories.
+
+## Session: 2026-03-19
+
+### AI Phrase Generation Cleanup (v0.11.76–0.11.77)
+- Added prompt rules: no acronyms/abbreviations, no hyphens/apostrophes/punctuation, correct spelling only
+- Server-side sanitization as safety net: `replace(Regex("[^a-zA-Z0-9 ]"), " ")` strips any remaining special chars, normalizes whitespace, lowercases
+
+### Server-Side Round Expiry (v0.11.78)
+- **Bug**: No server-side mechanism to end rounds — if all players left mid-game, `gameStartTime` stayed set, new joiners stuck as spectators forever
+- **Fix**: TTL cleanup loop (every 5s) now checks: if `gameStartTime` is set AND (round duration + 10s grace elapsed OR all active players gone), auto-reset room to lobby, fold pending players into active roster, broadcast NEW_ROUND + PLAYER_LIST
+- Also: new players joining an already-expired round go straight to active roster instead of spectator mode
+
+### Category Delete via Long-Press (v0.11.79)
+- 6-second long-press on custom (purple) category pill triggers confirm dialog → DELETE /api/categories/{name}
+- `longPressTriggered` flag prevents the normal click/select from firing after a delete
+
+### Online Lobby Overhaul (v0.11.80–0.11.82)
+- **Before**: Entering online mode showed bare game screen with "Waiting for players..."
+- **After**: Immediately shows ready overlay as lobby with player list, mic settings, share invite
+- Ready button disabled with "Waiting for players..." until 2+ players join
+- Share invite (copy link) embedded directly in ready overlay when <2 players
+- Share invite changed from OS share dialog to direct clipboard copy
+- **Bug fix**: Ready overlay not dismissing on Escape/back — WebSocket PLAYER_LIST messages were re-showing it after `showLobby()` hid it. Fixed by disconnecting WS before hiding overlays and guarding PLAYER_LIST handler with `gameScreen.classList.contains('active')`
+- Z-index fix: ready overlay → 1075 (was 1050, conflicted with game summary)
+
+### Per-Player Mic Status (v0.11.83)
+- New `SET_MIC` message: client sends on connect and on mic toggle change
+- `micEnabled` field added to Player and PlayerInfo data classes
+- Ready overlay shows 🎙️ (on, full opacity) or 🔇 (off, dimmed) per player
+- Minimal traffic — only fires on explicit user action (connect + toggle)
+
+### Bug Fixes
+- **Stale game-in-progress** (v0.11.78): Rooms stuck in "game in progress" forever when all players left mid-game
+- **Ready overlay ghost** (v0.11.82): Overlay persisted after Escape/back due to WS messages re-showing it
+- **Z-index stacking** (v0.11.83): Ready overlay and game summary both at 1050, undefined layering
+- **gameStartTime double-read** (v0.11.83): TTL cleanup read volatile state twice without local capture; fixed with `val gameStart = state.gameStartTime`
+
+### Key Learnings
+19. **Server-side timers are essential for stateful rooms** — Client-side-only timers mean the server can't clean up stale game state. The TTL cleanup loop was the right place to add round expiry since it already runs every 5s.
+20. **WebSocket close is async** — Calling `ws.close()` doesn't immediately stop message handlers. If `showLobby()` hides an overlay before disconnecting, incoming messages can re-show it. Disconnect first, then clean up UI.
+21. **Fixed-position overlays need unique z-indexes** — Multiple `position: fixed; z-index: 1050` overlays create undefined stacking. Assign distinct values in a clear hierarchy.
+22. **Prompt engineering + server sanitization = defense in depth** — AI models mostly follow prompt rules but can slip. A regex strip on the server ensures no punctuation reaches clients regardless.

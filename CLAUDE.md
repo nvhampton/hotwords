@@ -33,14 +33,16 @@ This builds the fat JAR, uploads it to EC2, and runs `deploy.sh` remotely which 
 
 **Backend** — `src/main/kotlin/com/example/Application.kt` (~1300 lines)
 - Ktor WebSocket server with room-based multiplayer at `/game/{roomId}`
-- REST endpoints: `POST /api/scores`, `GET /api/leaderboard`, `GET/POST /api/categories`, `POST /api/generate-phrases`
+- REST endpoints: `POST /api/scores`, `GET /api/leaderboard`, `GET/POST /api/categories`, `DELETE /api/categories/{name}`, `POST /api/generate-phrases`
 - All state in-memory via `ConcurrentHashMap` (rooms, players, scores, custom phrases, categories of the day) — no database
 - Player lifecycle: heartbeat every 10s from client, server TTL cleanup every 5s (15s expiry)
 - Host system: first player in a room becomes host, controls phrase selection; auto-promotes on disconnect
 - Custom phrases: host can upload phrases via `SET_PHRASES`; server stores per-room in `roomCustomPhrases`
-- AI phrase generation: `/api/generate-phrases` accepts either example phrases or a category name, calls Claude Haiku
-- Categories of the day: played custom categories cached with phrases for 24h, served to all players as topic pills
+- AI phrase generation: `/api/generate-phrases` accepts either example phrases or a category name, calls Claude Haiku. Prompt enforces no acronyms, no hyphens/punctuation, correct spelling. Server-side sanitization strips non-alphanumeric chars as safety net.
+- Categories of the day: played custom categories cached with phrases for 24h, served to all players as topic pills. Long-press (6s) on a category pill to delete it.
+- Server-side round expiry: TTL cleanup loop auto-resets stale games (timer elapsed + 10s grace, or all players left), folds pending players into active roster
 - Serializable `GameMessage` data class with string `type` discriminator for all WebSocket messages
+- Player mic status tracked per-player (`micEnabled` on Player/PlayerInfo), broadcast via PLAYER_LIST
 
 **Frontend** — `src/main/resources/static/index.html` (~5500 lines)
 - Single-file vanilla HTML/CSS/JS, no framework
@@ -62,10 +64,12 @@ This builds the fat JAR, uploads it to EC2, and runs `deploy.sh` remotely which 
 - Guessers see `####` pattern, words reveal as matched via speech
 - Victory or skip rotates the describer role
 - Describer penalized for saying forbidden words
+- Room join goes directly to ready overlay (lobby), not game screen; share invite shown when <2 players
+- Mid-game joiners become pending spectators; server auto-expires stale rounds
 
 ### State flow
 
-Room state is isolated per `roomId`. The server tracks: active players (with heartbeat TTL), current hot player index, current phrase, and a boolean array of revealed words. The client manages its own speech recognition, orientation sensors, and local game timer independently.
+Room state is isolated per `roomId`. The server tracks: active players (with heartbeat TTL), pending players (mid-game joiners), current hot player index, current phrase, a boolean array of revealed words, and `gameStartTime` (null = lobby, non-null = in-game). The client manages its own speech recognition, orientation sensors, and local game timer independently. The server TTL cleanup loop (every 5s) also checks for expired rounds and auto-resets rooms to lobby state.
 
 ### Key frontend patterns
 
@@ -73,16 +77,17 @@ Room state is isolated per `roomId`. The server tracks: active players (with hea
 - **Cooldowns**: Got It (400ms) and Skip (5s) prevent spam; both reset on reveal (local) or on GAME_STARTED/NEW_ROUND (online). Cooldowns must be explicitly reset between rounds — the timeout callback won't fire if `gameActive` is false.
 - **Timer bonus**: +4 seconds added when getting a phrase right with <6s remaining; visual "+4s" animation floats up from timer
 - **Host system**: `hostPlayerId` tracked from PLAYER_LIST messages; crown badge shown next to host in player list and ready overlay; only host can set phrases/themes
-- **Game summary overlay** (z-index 1050) stays behind leaderboard overlay (z-index 1100); dismissing leaderboard reveals summary underneath
+- **Ready overlay** (z-index 1075) serves as the online lobby — shown immediately on room join, shows player list with mic status, share invite, ready button. Disabled when <2 players.
+- **Game summary overlay** (z-index 1050) stays behind ready overlay (1075) and leaderboard overlay (z-index 1100); dismissing leaderboard reveals summary underneath
 - **`pendingLeaderboard` promise**: Round submitted immediately in `endGame()`, stored as promise; both Leaderboard button and any auto-show await the same promise
 
 ## Message Protocol
 
 ### Client → Server
-`SET_NAME`, `HEARTBEAT`, `WORD_MATCH`, `CLAIM_VICTORY`, `SKIP_WORD`, `DESCRIBER_SLIP`, `DESCRIBER_FAIL`, `NEW_ROUND`, `READY`, `SET_PHRASES`, `REORDER_PLAYERS`
+`SET_NAME`, `HEARTBEAT`, `WORD_MATCH`, `CLAIM_VICTORY`, `SKIP_WORD`, `DESCRIBER_SLIP`, `DESCRIBER_FAIL`, `NEW_ROUND`, `READY`, `SET_PHRASES`, `REORDER_PLAYERS`, `SET_MIC`
 
 ### Server → Client
-`PLAYER_LIST` (includes `hostPlayerId`), `NEW_WORD`, `WORD_PROGRESS`, `ROUND_WON`, `WORD_SKIPPED`, `DESCRIBER_SLIPPED`, `DESCRIBER_FAILED`, `TIMER_SYNC`, `GAME_STARTED`, `NEW_ROUND`, `SCORE_UPDATE`
+`PLAYER_LIST` (includes `hostPlayerId`, per-player `micEnabled`), `NEW_WORD`, `WORD_PROGRESS`, `ROUND_WON`, `WORD_SKIPPED`, `DESCRIBER_SLIPPED`, `DESCRIBER_FAILED`, `TIMER_SYNC`, `GAME_STARTED`, `GAME_IN_PROGRESS`, `NEW_ROUND`, `SCORE_UPDATE`
 
 ## Branching
 
