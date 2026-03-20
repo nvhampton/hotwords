@@ -5686,9 +5686,9 @@
         function updateSoloButtonText() {
             if (!isSoloMode) return;
             if (soloCluesShown < soloClues.length) {
-                skipBtn.innerHTML = 'Hint <span class="key-hint">[Tab]</span>';
+                skipBtn.innerHTML = 'Hint <span class="key-hint">[Space]</span>';
             } else {
-                skipBtn.innerHTML = 'Give Up <span class="key-hint">[Tab]</span>';
+                skipBtn.innerHTML = 'Give Up <span class="key-hint">[Space]</span>';
             }
         }
 
@@ -6041,6 +6041,7 @@
         }
 
         function stopReveal(e) {
+            if (isSoloMode) return;
             if (!isLocalMode || !gameActive) return;
             pressRevealing = false;
             // In orientation mode, defer to current device orientation
@@ -6129,6 +6130,24 @@
             // Escape: return to lobby (or reset lobby selection)
             if (e.code === 'Escape') {
                 e.preventDefault();
+                // Dismiss overlays first (leaderboard, game summary, pause) before going to lobby
+                const leaderboardOvl = document.getElementById('leaderboardOverlay');
+                if (leaderboardOvl && leaderboardOvl.classList.contains('active')) {
+                    dismissLeaderboard();
+                    return;
+                }
+                const gameSummaryOvl = document.getElementById('gameSummaryOverlay');
+                if (gameSummaryOvl && gameSummaryOvl.classList.contains('active')) {
+                    dismissGameSummary();
+                    return;
+                }
+                const pauseOvl = document.getElementById('pauseOverlay');
+                if (pauseOvl && pauseOvl.classList.contains('active')) {
+                    timerPaused = false;
+                    timerDisplayEl.classList.remove('paused');
+                    pauseOvl.classList.remove('active');
+                    return;
+                }
                 if (gameScreen.classList.contains('active')) {
                     showLobby();
                 } else {
@@ -6143,10 +6162,14 @@
             if (!gameActive && !waitingForFirstReveal) return;
 
             if (isLocalMode) {
-                // Space: reveal word (press and hold) — also works during waitingForFirstReveal
+                // Space: solo mode = next hint, multiplayer = reveal word (press and hold)
                 if (e.code === 'Space' && !e.repeat) {
                     e.preventDefault();
-                    startReveal();
+                    if (isSoloMode) {
+                        soloModeHintOrGiveUp();
+                    } else {
+                        startReveal();
+                    }
                 }
                 // Enter: Got it!
                 if (e.code === 'Enter') {
