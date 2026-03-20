@@ -74,6 +74,15 @@
             0% { transform: scale(1.3); color: #f9ca24; }
             100% { transform: scale(1); color: #3EBECB; }
         }
+        /* Solo mode clue display */
+        .solo-clue-mode .redact-label { display: none; }
+        .solo-clues { text-align: center; padding: 10px; }
+        .solo-pattern { font-size: 2rem; letter-spacing: 3px; margin-bottom: 16px; font-family: monospace; }
+        .solo-clue { font-size: 1.1rem; color: #ccc; margin: 8px 0; padding: 8px 16px; background: rgba(255,255,255,0.05); border-radius: 8px; }
+        .solo-clue-new { color: #3EBECB; font-weight: bold; animation: soloClueIn 0.3s ease-out; }
+        .solo-clues-remaining { font-size: 0.85rem; color: #666; margin-top: 12px; }
+        .solo-answer-reveal { font-size: 2rem; color: #B4975A; font-weight: bold; text-align: center; padding: 20px; }
+        @keyframes soloClueIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
         .container {
             text-align: center;
             max-width: 500px;
@@ -347,12 +356,17 @@
             opacity: 0.5;
             cursor: not-allowed;
         }
+        button:focus-visible, a:focus-visible, .diff-btn:focus-visible {
+            outline: 2px solid #B4975A;
+            outline-offset: 2px;
+        }
         .gotit-btn {
             background: linear-gradient(135deg, #3EBECB 0%, #007485 100%);
             color: #fff;
             font-size: 1.8rem;
             padding: 50px 50px;
             border-radius: 16px;
+            touch-action: manipulation;
         }
         .gotit-btn:hover:not(:disabled) {
             transform: translateY(-2px);
@@ -365,6 +379,7 @@
             font-size: 1.8rem;
             padding: 50px 40px;
             border-radius: 16px;
+            touch-action: manipulation;
         }
         .skip-btn:hover:not(:disabled) {
             transform: translateY(-2px);
@@ -1639,9 +1654,10 @@
             background: linear-gradient(135deg, #3EBECB 0%, #007485 100%);
             color: #fff;
         }
-        .mode-btn:hover {
+        .mode-btn:hover, .mode-btn:focus-visible {
             transform: translateY(-2px);
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            outline: none;
         }
         .mode-section:not(.selected) .mode-btn {
             opacity: 0.7;
@@ -1878,10 +1894,11 @@
             user-select: none;
             -webkit-user-select: none;
         }
-        .topic-pill:hover {
+        .topic-pill:hover, .topic-pill:focus-visible {
             border-color: rgba(255, 255, 255, 0.3);
             color: rgba(255, 255, 255, 0.7);
             background: rgba(255, 255, 255, 0.1);
+            outline: none;
         }
         .topic-pill.active {
             background: linear-gradient(135deg, #B4975A 0%, #8a7040 100%);
@@ -1902,6 +1919,17 @@
             border-color: #B4975A;
             box-shadow: 0 0 12px rgba(180, 151, 90, 0.4);
             animation: none;
+        }
+        .topic-pill.add-category {
+            font-weight: bold;
+            padding: 6px 16px;
+            border-color: rgba(155, 89, 182, 0.4);
+            color: rgba(155, 89, 182, 0.8);
+        }
+        .topic-pill.add-category:hover {
+            border-color: rgba(155, 89, 182, 0.7);
+            color: rgba(155, 89, 182, 1);
+            background: rgba(155, 89, 182, 0.15);
         }
     </style>
 </head>
@@ -1959,6 +1987,9 @@
             </div>
         </div>
 
+        <div style="margin-top: 10px; text-align: center;">
+            <a href="#" id="lobbyLeaderboardLink" style="color: #B4975A; font-size: 0.85rem; font-weight: bold; text-decoration: none;">Leaderboard</a>
+        </div>
         <div class="version">v@@VERSION@@</div>
     </div>
 
@@ -2215,6 +2246,10 @@
         const gameScreen = document.getElementById('gameScreen');
         const backBtn = document.getElementById('backBtn');
         const localModeBtn = document.getElementById('localModeBtn');
+        // Swap phone emoji to laptop if on desktop (default 📱 avoids flash)
+        if (!('ontouchstart' in window) && !/Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+            localModeBtn.textContent = localModeBtn.textContent.replace('📱', '💻');
+        }
         const onlineModeBtn = document.getElementById('onlineModeBtn');
         const localSection = document.getElementById('localSection');
         const onlineSection = document.getElementById('onlineSection');
@@ -2304,6 +2339,13 @@
         let usedPhrasesThisRound = new Set();
         let phraseStartTime = 0;
 
+        // Solo mode state
+        let isSoloMode = false;
+        let soloClues = [];
+        let soloCluesShown = 0;
+        let soloNextClues = null;
+        let soloNextPhrase = null;
+
         // Game difficulty: true = individual words reveal as detected (easy), false = must match full phrase (hard)
         let partialWordReveal = true;
 
@@ -2323,6 +2365,8 @@
         let onlineRevealedWords = [];  // Which words are revealed (for guessers)
         let gotItCooldown = false;     // Prevent got-it spam
         let skipCooldown = false;      // Prevent skip spam
+        let speechResultBaseline = 0;  // Ignore speech results before this index (prevents stale matches)
+        let speechResultsLength = 0;  // Latest event.results.length from onresult
 
         // Online mode elements
         const onlinePlayerPanel = document.getElementById('onlinePlayerPanel');
@@ -2386,7 +2430,11 @@
             }
 
             if (anyNewReveals) {
-                renderWordProgress();
+                if (isSoloMode) {
+                    renderSoloClues();
+                } else {
+                    renderWordProgress();
+                }
 
                 // Check if all words revealed
                 if (revealedWords.every(r => r)) {
@@ -2728,7 +2776,10 @@
                     pill.className = 'topic-pill' + ((!activeTopic && t.id === 'default') || activeTopic === t.id ? ' active' : '');
                     pill.textContent = t.label;
                     pill.dataset.topicId = t.id;
+                    pill.tabIndex = 0;
+                    pill.setAttribute('role', 'button');
                     pill.addEventListener('click', () => selectTopic(t.id));
+                    pill.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); selectTopic(t.id); } });
                     picker.appendChild(pill);
                 });
 
@@ -2744,6 +2795,8 @@
                             pill.className = 'topic-pill';
                             pill.textContent = catName;
                             pill.dataset.topicId = 'custom:' + catName;
+                            pill.tabIndex = 0;
+                            pill.setAttribute('role', 'button');
                             pill.style.borderColor = 'rgba(155, 89, 182, 0.4)';
                             // Long-press (6s) to delete category
                             let longPressTimer = null;
@@ -2774,18 +2827,18 @@
                             pill.addEventListener('touchend', cancelLongPress);
                             pill.addEventListener('touchcancel', cancelLongPress);
 
-                            pill.addEventListener('click', (e) => {
-                                if (longPressTriggered) return; // Don't select after delete
-                                // Select this pill like a built-in topic
+                            const selectCatPill = () => {
+                                if (longPressTriggered) return;
                                 document.querySelectorAll('.topic-pill').forEach(p => p.classList.remove('active'));
                                 pill.classList.add('active');
-                                // Use cached phrases directly — no API call
                                 customPhrases = cachedPhrases;
                                 customCategory = catName;
                                 activeTopic = null;
                                 topicPhrases = null;
                                 sendPhrasesToServer();
-                            });
+                            };
+                            pill.addEventListener('click', selectCatPill);
+                            pill.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); selectCatPill(); } });
                             picker.appendChild(pill);
                         });
                     }
@@ -2806,6 +2859,17 @@
                         });
                     }
                 } catch (e) { /* top categories fetch failed — not critical */ }
+
+                // Add "+" pill to create a new category
+                const addPill = document.createElement('span');
+                addPill.className = 'topic-pill add-category';
+                addPill.textContent = '+';
+                addPill.title = 'Add a category';
+                addPill.tabIndex = 0;
+                addPill.setAttribute('role', 'button');
+                addPill.addEventListener('click', () => openCustomizeOverlay());
+                addPill.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openCustomizeOverlay(); } });
+                picker.appendChild(addPill);
             } catch (e) {
                 // If fetch fails, no topic picker — just use defaults
             }
@@ -3002,6 +3066,7 @@
         function showNewWord(word) {
             currentWord = word;
             hasClaimedVictory = false;
+            speechResultBaseline = speechResultsLength;
             wordDisplay.textContent = currentWord;
             statusEl.classList.remove('winner', 'skipped');
             similarityEl.textContent = '';
@@ -3103,6 +3168,13 @@
 
             statusEl.textContent = isPracticeMode ? `Practice complete! Score: ${localScore}` : `Time's up! Final score: ${localScore}`;
             statusEl.classList.remove('listening');
+
+            // Reset solo mode state
+            soloClues = [];
+            soloCluesShown = 0;
+            soloNextClues = null;
+            soloNextPhrase = null;
+            wordContainer.classList.remove('solo-clue-mode');
 
             wordProgressEl.innerHTML = '';
             // Show the final word that was active when time expired
@@ -3215,7 +3287,7 @@
                 const res = await fetch('/api/scores', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ score, players, mode, roomId: roomId || null, phrases: phrases || [], category: getActiveCategory() })
+                    body: JSON.stringify({ score, players, mode, roomId: roomId || null, phrases: phrases || [], category: getActiveCategory(), practice: isPracticeMode })
                 });
                 return await res.json();
             } catch (e) {
@@ -3280,19 +3352,22 @@
                     const rank = i + 1;
                     let rankClass = '';
                     let rankDisplay = rank;
-                    if (rank === 1) { rankClass = 'gold'; rankDisplay = '\u{1F947}'; }
-                    else if (rank === 2) { rankClass = 'silver'; rankDisplay = '\u{1F948}'; }
-                    else if (rank === 3) { rankClass = 'bronze'; rankDisplay = '\u{1F949}'; }
+                    if (!round.practice) {
+                        if (rank === 1) { rankClass = 'gold'; rankDisplay = '\u{1F947}'; }
+                        else if (rank === 2) { rankClass = 'silver'; rankDisplay = '\u{1F948}'; }
+                        else if (rank === 3) { rankClass = 'bronze'; rankDisplay = '\u{1F949}'; }
+                    }
 
                     const isYou = currentRoundId && round.id === currentRoundId;
                     const playerCount = round.players.length;
                     const timeAgo = formatTimeAgo(round.timestamp);
+                    const practiceLabel = round.practice ? ' · practice' : '';
                     const cat = round.category ? ` · ${round.category}` : '';
 
                     s += `<div class="leaderboard-entry${isYou ? ' is-you' : ''}">
                         <div class="leaderboard-rank ${rankClass}">${rankDisplay}</div>
                         <div class="leaderboard-details">
-                            <div class="leaderboard-players">${Number(playerCount)} player${playerCount !== 1 ? 's' : ''}${cat}${isYou ? ' (you)' : ''}</div>
+                            <div class="leaderboard-players">${Number(playerCount)} player${playerCount !== 1 ? 's' : ''}${cat}${practiceLabel}${isYou ? ' (you)' : ''}</div>
                             <div class="leaderboard-meta">
                                 <span class="leaderboard-hash">#${escapeHtml(round.sessionHash)}</span>
                                 <span class="leaderboard-time">${escapeHtml(timeAgo)}</span>
@@ -3329,7 +3404,7 @@
             let phrasesHtml = '';
             for (const entry of history) {
                 const cls = entry.status === 'got-it' ? 'got-it' : entry.status === 'timed-out' ? 'timed-out' : 'skipped';
-                const prefix = entry.status === 'got-it' ? '\u2713' : '\u2717';
+                const prefix = entry.status === 'got-it' ? '\u2713' : (entry.status === 'gave-up' ? '\u2717' : '\u2717');
                 const timeStr = entry.time != null ? `<span class="game-summary-time">${entry.time}s</span>` : '';
                 phrasesHtml += `<div class="game-summary-phrase ${cls}">${prefix} ${escapeHtml(entry.phrase)}${timeStr}</div>`;
             }
@@ -3892,6 +3967,7 @@
 
         // Show word for online mode (role-based display)
         function showNewWordOnline(word, revealed) {
+            speechResultBaseline = speechResultsLength;
             // Safety: never display phrase with < 2 players in online mode
             if (!isLocalMode && onlinePlayers.length < 2) {
                 currentWord = word;
@@ -4379,10 +4455,13 @@
             recognition.onresult = (event) => {
                 // Ignore results while timer is paused (passing device)
                 if (timerPaused) return;
-                // Only process recent results (last 3) to keep matching fast
-                const startIdx = Math.max(event.resultIndex, event.results.length - 3);
+                // Track latest results length so new-phrase can set baseline
+                speechResultsLength = event.results.length;
+                // Only process results after the baseline (set on each new phrase)
+                // and limit to last 3 for speed
+                const minIdx = Math.max(speechResultBaseline, event.results.length - 3);
                 let transcript = '';
-                for (let i = startIdx; i < event.results.length; i++) {
+                for (let i = minIdx; i < event.results.length; i++) {
                     transcript += event.results[i][0].transcript;
                 }
                 transcriptEl.textContent = transcript || '-';
@@ -4544,11 +4623,15 @@
             }
         });
 
-        // Skip button
-        skipBtn.addEventListener('click', skipWord);
+        // Skip button (online mode — local mode overrides via capture handler below)
+        skipBtn.addEventListener('pointerdown', (e) => {
+            if (!isLocalMode) { e.preventDefault(); skipWord(); }
+        });
 
         // Got It button - manual claim victory
-        gotItBtn.addEventListener('click', () => {
+        // Use pointerdown for instant response (no 300ms click delay on mobile)
+        function handleGotIt(e) {
+            if (e) e.preventDefault();
             if (isLocalMode && gameActive) {
                 localModeClaimVictory();
             } else if (!isLocalMode && gameActive) {
@@ -4557,7 +4640,10 @@
                     claimVictory();
                 }
             }
-        });
+        }
+        gotItBtn.addEventListener('pointerdown', handleGotIt);
+        // Prevent ghost click after pointerdown
+        gotItBtn.addEventListener('click', (e) => e.preventDefault());
 
         // Play Again button (also serves as Quit in practice mode)
         playAgainBtn.addEventListener('click', async () => {
@@ -4695,6 +4781,7 @@
 
         // Show lobby, hide game screen
         function showLobby() {
+            isSoloMode = false;
             isSpectating = false;
             // Disconnect WebSocket first to prevent message handlers from re-showing overlays
             stopHeartbeat();
@@ -4814,6 +4901,16 @@
         backBtn.addEventListener('click', showLobby);
 
         // Select a mode (expand) or start if already selected
+        function updateExpandTabIndex() {
+            // Make inputs/buttons in collapsed sections unfocusable
+            document.querySelectorAll('.mode-section').forEach(section => {
+                const isSelected = section.classList.contains('selected');
+                section.querySelectorAll('.mode-expand button, .mode-expand input').forEach(el => {
+                    el.tabIndex = isSelected ? 0 : -1;
+                });
+            });
+        }
+
         function selectMode(mode) {
             if (selectedMode === mode) {
                 // Already selected - each mode uses its own start button
@@ -4827,8 +4924,11 @@
                     onlineSection.classList.add('selected');
                     localSection.classList.remove('selected');
                 }
+                updateExpandTabIndex();
             }
         }
+        // Initially hide expand section controls from tab order
+        updateExpandTabIndex();
 
         // RKO easter egg — long-press 🔥 for 1.5s to toggle
         let rkoLongPressTimer = null;
@@ -4975,12 +5075,15 @@
         const customizeCategoryInput = document.getElementById('customizeCategoryInput');
         const customizeCategoryStatus = document.getElementById('customizeCategoryStatus');
 
-        customizeBalloon.addEventListener('click', (e) => {
-            e.stopPropagation();
+        function openCustomizeOverlay() {
             customizeOverlay.classList.add('active');
-            // Restore saved category
             if (customCategory) customizeCategoryInput.value = customCategory;
             customizeCategoryInput.focus();
+        }
+
+        customizeBalloon.addEventListener('click', (e) => {
+            e.stopPropagation();
+            openCustomizeOverlay();
         });
 
         customizeSave.addEventListener('click', async () => {
@@ -5003,19 +5106,23 @@
                     customCategory = category;
                     activeTopic = null;
                     topicPhrases = null;
-                    customizeBalloon.classList.add('has-custom');
-                    presetFire.classList.remove('active');
                     customizeOverlay.classList.remove('active');
-                    updateCustomActiveUI();
                     sendPhrasesToServer();
-                    // Save category + phrases to server immediately
+                    // Save category + phrases to server, then reload picker with new pill selected
                     try {
-                        fetch('/api/categories', {
+                        await fetch('/api/categories', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ category: category, phrases: data.phrases })
                         });
                     } catch (e) { /* ignore */ }
+                    // Reload topic picker so the new category appears as a pill
+                    await loadTopicPicker();
+                    // Select the new category pill
+                    const newPillId = 'custom:' + category;
+                    document.querySelectorAll('.topic-pill').forEach(p => {
+                        p.classList.toggle('active', p.dataset.topicId === newPillId);
+                    });
                 } else {
                     customizeCategoryStatus.textContent = 'No phrases generated. Try a different category.';
                 }
@@ -5057,6 +5164,12 @@
         // Local Mode button
         localModeBtn.addEventListener('click', () => selectMode('local'));
 
+        // Lobby leaderboard link
+        document.getElementById('lobbyLeaderboardLink').addEventListener('click', (e) => {
+            e.preventDefault();
+            showLeaderboardView('local');
+        });
+
         // Local Start button (inside expanded area)
         const localStartBtn = document.getElementById('localStartBtn');
         localStartBtn.addEventListener('click', () => startLocalGame());
@@ -5075,14 +5188,25 @@
         const diffDesc = document.getElementById('diffDesc');
         const roundTimeRow = document.getElementById('roundTimeRow');
 
+        function updateDiffDescriptions() {
+            if (diffPractice.classList.contains('active')) {
+                diffDesc.textContent = isSoloMode ? 'No timer — get clues, guess the word' : 'No timer — just practice';
+            } else if (diffEasy.classList.contains('active')) {
+                diffDesc.textContent = isSoloMode ? 'Clues + words reveal as you guess' : 'Words reveal as you say them';
+            } else if (diffHard.classList.contains('active')) {
+                diffDesc.textContent = isSoloMode ? 'Clues only — must say the full phrase' : 'Must say the full phrase to score';
+            }
+        }
+
         diffPractice.addEventListener('click', () => {
             isPracticeMode = true;
             partialWordReveal = true;
             diffPractice.classList.add('active');
             diffEasy.classList.remove('active');
             diffHard.classList.remove('active');
-            diffDesc.textContent = 'No timer — just practice';
+            updateDiffDescriptions();
             roundTimeRow.style.display = 'none';
+            localStorage.setItem('hotwords_difficulty', 'practice');
         });
         diffEasy.addEventListener('click', () => {
             isPracticeMode = false;
@@ -5090,8 +5214,9 @@
             diffEasy.classList.add('active');
             diffPractice.classList.remove('active');
             diffHard.classList.remove('active');
-            diffDesc.textContent = 'Words reveal as you say them';
-            roundTimeRow.style.display = '';
+            updateDiffDescriptions();
+            roundTimeRow.style.display = 'flex';
+            localStorage.setItem('hotwords_difficulty', 'easy');
         });
         diffHard.addEventListener('click', () => {
             isPracticeMode = false;
@@ -5099,18 +5224,33 @@
             diffHard.classList.add('active');
             diffPractice.classList.remove('active');
             diffEasy.classList.remove('active');
-            diffDesc.textContent = 'Must say the full phrase to score';
-            roundTimeRow.style.display = '';
+            updateDiffDescriptions();
+            roundTimeRow.style.display = 'flex';
+            localStorage.setItem('hotwords_difficulty', 'hard');
         });
+
+        // Restore saved difficulty
+        const savedDiff = localStorage.getItem('hotwords_difficulty');
+        if (savedDiff === 'practice') diffPractice.click();
+        else if (savedDiff === 'hard') diffHard.click();
+        // else default is easy (already active)
 
         // Local onboarding flow
         let waitingForFirstReveal = false;
 
         function showOnboardRules() {
             const duration = getGameDuration();
-            document.getElementById('onboardRulesTitle').textContent = isPracticeMode
-                ? 'Practice mode — no timer. Get as many hot words as you can!'
-                : `You have ${duration} seconds to get as many of the hot words as you can.`;
+            let rulesText;
+            if (isSoloMode) {
+                rulesText = isPracticeMode
+                    ? 'You\'ll receive clues — guess the word by speaking!'
+                    : `You'll get clues — guess as many as you can in ${duration} seconds!`;
+            } else {
+                rulesText = isPracticeMode
+                    ? 'Practice mode — no timer. Get as many hot words as you can!'
+                    : `You have ${duration} seconds to get as many of the hot words as you can.`;
+            }
+            document.getElementById('onboardRulesTitle').textContent = rulesText;
             document.getElementById('onboardRules').classList.add('active');
         }
         function hideOnboardRules() {
@@ -5143,7 +5283,8 @@
             localStorage.setItem('hotwords_rules_seen', Date.now().toString());
 
             // Set up local mode state
-            localModePlayers = Array.from({ length: playerCount }, (_, i) => `Player ${i + 1}`);
+            isSoloMode = (playerCount === 1);
+            localModePlayers = isSoloMode ? ['You'] : Array.from({ length: playerCount }, (_, i) => `Player ${i + 1}`);
             isLocalMode = true;
             currentPlayerIndex = 0;
             localScore = 0;
@@ -5152,14 +5293,16 @@
             currentRoomId = getRandomRoomName();
 
             // Request permissions on this user gesture (needed for iOS)
-            await enableOrientationDetection();
+            if (!isSoloMode) await enableOrientationDetection();
             await ensureMicPermission();
 
             // Set up the game behind the overlay so first reveal dismisses it
             launchLocalGame();
 
-            // Show the ready screen on top
-            showOnboardReady();
+            // Skip onboard ready for solo (no reveal mechanic)
+            if (!isSoloMode) {
+                showOnboardReady();
+            }
         }
 
         document.getElementById('onboardRulesBtn').addEventListener('click', () => proceedFromRules());
@@ -5187,7 +5330,7 @@
             }
         }
 
-        function launchLocalGame() {
+        async function launchLocalGame() {
             // Show game screen
             showGameScreen();
             gameScreen.classList.add('local-mode');
@@ -5207,23 +5350,43 @@
             listenBtn.disabled = false;
             skipBtn.disabled = false;
             gotItBtn.disabled = false;
-            const isDesktop = !('ontouchstart' in window) && navigator.maxTouchPoints === 0;
-            statusEl.textContent = isDesktop ? 'Press Spacebar to reveal!' : 'Hold upright to reveal!';
-            statusEl.classList.add('listening');
-            transcriptBox.classList.add('listening');
 
-            // Pick the first word (after orientation is set up so hiding works)
-            const word = getRandomPhrase();
-            showNewWordLocalMode(word);
+            if (isSoloMode) {
+                statusEl.textContent = 'Say your guess!';
+                statusEl.classList.add('listening');
+                transcriptBox.classList.add('listening');
 
-            // Don't start the timer yet — wait for first reveal
-            waitingForFirstReveal = true;
-            if (isPracticeMode) {
-                timerDisplayEl.style.display = 'none';
+                // Solo mode starts immediately (no reveal needed)
+                waitingForFirstReveal = false;
+                if (isPracticeMode) {
+                    startPracticeMode();
+                    timerDisplayEl.style.display = 'none';
+                } else {
+                    GAME_DURATION = getGameDuration();
+                    startGameTimer();
+                }
+
+                const word = getRandomPhrase();
+                await showNewWordSoloMode(word);
             } else {
-                GAME_DURATION = getGameDuration();
-                timerDisplayEl.classList.add('active');
-                timerCountEl.textContent = GAME_DURATION;
+                const isDesktop = !('ontouchstart' in window) && navigator.maxTouchPoints === 0;
+                statusEl.textContent = isDesktop ? 'Press Spacebar to reveal!' : 'Hold upright to reveal!';
+                statusEl.classList.add('listening');
+                transcriptBox.classList.add('listening');
+
+                // Pick the first word (after orientation is set up so hiding works)
+                const word = getRandomPhrase();
+                showNewWordLocalMode(word);
+
+                // Don't start the timer yet — wait for first reveal
+                waitingForFirstReveal = true;
+                if (isPracticeMode) {
+                    timerDisplayEl.style.display = 'none';
+                } else {
+                    GAME_DURATION = getGameDuration();
+                    timerDisplayEl.classList.add('active');
+                    timerCountEl.textContent = GAME_DURATION;
+                }
             }
         }
 
@@ -5260,16 +5423,23 @@
         }
 
         // Player count controls
+        // Restore saved player count
+        const savedPlayerCount = parseInt(localStorage.getItem('hotwords_player_count'));
+        if (savedPlayerCount >= 1 && savedPlayerCount <= 10) playerCount = savedPlayerCount;
+
         function updatePlayerCountUI() {
             playerCountDisplay.textContent = playerCount;
-            playerCountDown.disabled = playerCount <= 2;
+            playerCountDown.disabled = playerCount <= 1;
             playerCountUp.disabled = playerCount >= 10;
+            isSoloMode = (playerCount === 1);
+            updateDiffDescriptions();
+            localStorage.setItem('hotwords_player_count', playerCount);
         }
         playerCountUp.addEventListener('click', () => {
             if (playerCount < 10) { playerCount++; updatePlayerCountUI(); enforceMinRoundTime(); updateRoundTimeUI(); }
         });
         playerCountDown.addEventListener('click', () => {
-            if (playerCount > 2) {
+            if (playerCount > 1) {
                 // If round time was at the old minimum, decrease it with the player count
                 const wasAtMin = customRoundTime === minRoundTime();
                 playerCount--;
@@ -5287,6 +5457,7 @@
         const roundTimeDown = document.getElementById('roundTimeDown');
 
         function minRoundTime() {
+            if (playerCount <= 1) return 30;
             return 30 + Math.max(0, playerCount - 2) * 5;
         }
         function enforceMinRoundTime() {
@@ -5348,6 +5519,7 @@
             currentWord = word;
             hasClaimedVictory = false;
             phraseStartTime = Date.now();
+            speechResultBaseline = speechResultsLength; // ignore stale speech from previous phrase
 
             // Initialize word-by-word tracking
             currentWords = word.trim().split(/\s+/);
@@ -5380,10 +5552,205 @@
             statusEl.classList.add('listening');
         }
 
+        // ========== SOLO MODE ==========
+
+        async function showNewWordSoloMode(word) {
+            currentWord = word;
+            hasClaimedVictory = false;
+            phraseStartTime = Date.now();
+            speechResultBaseline = speechResultsLength; // ignore stale speech from previous phrase
+
+            // Initialize word-by-word tracking (needed for speech matching)
+            currentWords = word.trim().split(/\s+/);
+            revealedWords = new Array(currentWords.length).fill(false);
+
+            // Add solo-clue-mode class to hide the word text
+            wordContainer.classList.add('solo-clue-mode');
+            wordContainer.classList.remove('orientation-hidden', 'redacted');
+
+            // Check for pre-fetched clues
+            if (soloNextPhrase === word && soloNextClues) {
+                try {
+                    soloClues = await soloNextClues;
+                } catch {
+                    soloClues = generateFallbackClues(word);
+                }
+            } else {
+                // Show loading, fetch clues
+                wordDisplay.innerHTML = '<div class="solo-clues" style="color: #666;">Generating clues...</div>';
+                try {
+                    soloClues = await fetchCluesForPhrase(word);
+                } catch {
+                    soloClues = generateFallbackClues(word);
+                }
+            }
+
+            soloNextPhrase = null;
+            soloNextClues = null;
+
+            // Guard: game may have ended during async clue fetch
+            if (!gameActive) return;
+
+            soloCluesShown = Math.min(1, soloClues.length);
+            renderSoloClues();
+
+            // Pipeline: pre-fetch next phrase's clues
+            prefetchNextSoloPhrase();
+
+            statusEl.textContent = 'Listening... Say your guess!';
+            statusEl.classList.remove('winner', 'skipped');
+            statusEl.classList.add('listening');
+        }
+
+        async function fetchCluesForPhrase(phrase) {
+            const res = await fetch('/api/generate-clues', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ phrase })
+            });
+            if (!res.ok) throw new Error('API error');
+            const data = await res.json();
+            return data.clues && data.clues.length > 0 ? data.clues : generateFallbackClues(phrase);
+        }
+
+        function generateFallbackClues(phrase) {
+            const words = phrase.trim().split(/\s+/);
+            const clues = [];
+            clues.push(`This is ${words.length} word${words.length !== 1 ? 's' : ''}`);
+            clues.push(`${phrase.replace(/\s/g, '').length} letters total`);
+            clues.push('Clue generation unavailable — use the hints above!');
+            clues.push('Try saying words related to what you see');
+            clues.push('Ask for another hint or give up to skip');
+            clues.push('No more clues available');
+            return clues.slice(0, 6);
+        }
+
+        function prefetchNextSoloPhrase() {
+            const nextWord = getRandomPhrase();
+            soloNextPhrase = nextWord;
+            soloNextClues = fetchCluesForPhrase(nextWord).catch(() => generateFallbackClues(nextWord));
+        }
+
+        function renderSoloClues() {
+            // Build the #### pattern — after 4 hints reveal first letters, after 5 also last letters
+            const showFirstLetters = soloCluesShown >= 4;
+            const showLastLetters = soloCluesShown >= 5;
+            let pattern = '';
+
+            function letterPattern(w) {
+                const first = `<span style="color: #B4975A;">${escapeHtml(w[0].toUpperCase())}</span>`;
+                const last = `<span style="color: #B4975A;">${escapeHtml(w[w.length - 1].toUpperCase())}</span>`;
+                if (w.length === 1) return first;
+                if (!showLastLetters) return first + '#'.repeat(w.length - 1);
+                if (w.length === 2) return first + last;
+                return first + '#'.repeat(w.length - 2) + last;
+            }
+
+            if (partialWordReveal) {
+                pattern = currentWords.map((w, i) => {
+                    if (revealedWords && revealedWords[i]) {
+                        return `<span style="color: #3EBECB;">${escapeHtml(w)}</span>`;
+                    }
+                    if (showFirstLetters && w.length > 0) return letterPattern(w);
+                    return '#'.repeat(w.length);
+                }).join(' ');
+            } else {
+                const count = currentWords.length;
+                if (showFirstLetters) {
+                    pattern = currentWords.map(w => letterPattern(w)).join(' ');
+                } else {
+                    pattern = `${count} word${count !== 1 ? 's' : ''}`;
+                }
+            }
+
+            let html = `<div class="solo-clues">`;
+            html += `<div class="solo-pattern">${pattern}</div>`;
+
+            for (let i = 0; i < soloCluesShown && i < soloClues.length; i++) {
+                const isNewest = (i === soloCluesShown - 1);
+                html += `<div class="solo-clue${isNewest ? ' solo-clue-new' : ''}">${escapeHtml(soloClues[i])}</div>`;
+            }
+
+            const remaining = soloClues.length - soloCluesShown;
+            if (remaining > 0) {
+                html += `<div class="solo-clues-remaining">${remaining} more clue${remaining !== 1 ? 's' : ''} available</div>`;
+            }
+
+            html += `</div>`;
+            wordDisplay.innerHTML = html;
+
+            // Update button text
+            updateSoloButtonText();
+        }
+
+        function updateSoloButtonText() {
+            if (!isSoloMode) return;
+            if (soloCluesShown < soloClues.length) {
+                skipBtn.innerHTML = 'Hint <span class="key-hint">[Tab]</span>';
+            } else {
+                skipBtn.innerHTML = 'Give Up <span class="key-hint">[Tab]</span>';
+            }
+        }
+
+        function soloModeHintOrGiveUp() {
+            if (!isSoloMode || !gameActive || hasClaimedVictory) return;
+
+            if (soloCluesShown < soloClues.length) {
+                // Reveal next clue
+                soloCluesShown++;
+                renderSoloClues();
+            } else {
+                // Give up — show answer briefly, then move on
+                phraseHistory.push({ phrase: currentWord, status: 'gave-up', time: Math.round((Date.now() - phraseStartTime) / 1000) });
+                wordDisplay.innerHTML = `<div class="solo-answer-reveal">${escapeHtml(currentWord)}</div>`;
+                hasClaimedVictory = true; // prevent speech matching during reveal
+
+                setTimeout(() => {
+                    if (!gameActive) return;
+                    // Keep hasClaimedVictory=true during async load; showNewWordSoloMode resets it
+                    nextSoloPhrase();
+                }, 1500);
+            }
+        }
+
+        async function nextSoloPhrase() {
+            transcriptEl.textContent = '-';
+            similarityEl.textContent = '';
+            similarityEl.classList.remove('close');
+
+            const word = soloNextPhrase || getRandomPhrase();
+            await showNewWordSoloMode(word);
+        }
+
         // Local Mode: Claim victory
         function localModeClaimVictory() {
             if (!isLocalMode || !gameActive || hasClaimedVictory || gotItCooldown || timerPaused) return;
             hasClaimedVictory = true;
+
+            if (isSoloMode) {
+                // Solo: brief cooldown, no timer pause, no device passing
+                gotItCooldown = true;
+                gotItBtn.disabled = true;
+                setTimeout(() => { gotItCooldown = false; gotItBtn.disabled = false; }, 400);
+
+                phraseHistory.push({ phrase: currentWord, status: 'got-it', time: Math.round((Date.now() - phraseStartTime) / 1000) });
+                localScore++;
+                updateScoreDisplay(localScore);
+
+                // Add 4 seconds when under 6s remaining (not in practice mode)
+                if (!isPracticeMode && timeRemaining < 6) {
+                    timeRemaining += 4;
+                    timerCountEl.textContent = timeRemaining;
+                    timerDisplayEl.classList.remove('warning', 'danger');
+                    document.body.classList.remove('countdown-danger');
+                    showTimerBonus(4);
+                }
+
+                closeMatchOverlay.classList.remove('active');
+                showCelebrationLocal(currentWord, localScore);
+                nextSoloPhrase();
+                return;
+            }
 
             // Pause timer and mic while passing the device
             // Lock buttons immediately; timed cooldowns start when timer resumes (next player reveals)
@@ -5454,19 +5821,32 @@
         }
 
         // Override skip button for local mode
-        skipBtn.addEventListener('click', (e) => {
+        // Use pointerdown for instant response on mobile
+        skipBtn.addEventListener('pointerdown', (e) => {
             if (isLocalMode && gameActive) {
+                e.preventDefault();
                 e.stopPropagation();
-                localModeSkipWord();
+                if (isSoloMode) {
+                    soloModeHintOrGiveUp();
+                } else {
+                    localModeSkipWord();
+                }
             }
         }, true);
+        skipBtn.addEventListener('click', (e) => {
+            if (isLocalMode) e.preventDefault();
+        });
 
         // Update button text
         function updateButtonsForMode() {
             listenBtn.textContent = isListening ? 'Stop Listening' : 'Start Listening';
             listenBtn.classList.toggle('active', isListening);
             if (isLocalMode) {
-                skipBtn.innerHTML = 'Skip <span class="key-hint">[Tab]</span>';
+                if (isSoloMode) {
+                    updateSoloButtonText();
+                } else {
+                    skipBtn.innerHTML = 'Skip <span class="key-hint">[Tab]</span>';
+                }
                 gotItBtn.innerHTML = 'Got It! <span class="key-hint">[Enter]</span>';
             }
             // Online mode button text is handled by updateOnlineModeButtons()
@@ -5632,6 +6012,7 @@
         }
 
         function startReveal(e) {
+            if (isSoloMode) return;
             if (!isLocalMode || (!gameActive && !waitingForFirstReveal)) return;
             pressRevealing = true;
             deviceIsFlat = false;  // Not flat = upright = revealed
@@ -5696,6 +6077,7 @@
         }
 
         function updateWordVisibilityByOrientation() {
+            if (isSoloMode) return;
             if (!orientationEnabled && !tapToRevealEnabled) return;
 
             // Reset transition zone styles
@@ -5773,10 +6155,14 @@
                         localModeClaimVictory();
                     }
                 }
-                // Tab: Skip phrase
+                // Tab: Skip phrase (or Hint/Give Up in solo mode)
                 if (e.code === 'Tab') {
                     e.preventDefault();
-                    localModeSkipWord();
+                    if (isSoloMode) {
+                        soloModeHintOrGiveUp();
+                    } else {
+                        localModeSkipWord();
+                    }
                 }
             } else {
                 // Online mode: Enter = Got It, Tab = Skip (desktop only)
