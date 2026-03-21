@@ -399,6 +399,22 @@
             transform: translateY(-2px);
             box-shadow: 0 10px 30px rgba(0, 116, 133, 0.4);
         }
+        .skip-row {
+            text-align: center;
+            margin-bottom: 10px;
+        }
+        .skip-row .skip-btn {
+            padding: 12px 30px;
+            font-size: 1.1rem;
+        }
+        .local-mode .word-display {
+            margin-top: 10px;
+        }
+        .local-mode .button-row .gotit-btn {
+            width: 100%;
+            padding: 70px 20px;
+            font-size: 2rem;
+        }
         .button-row {
             display: flex;
             justify-content: center;
@@ -415,6 +431,17 @@
             align-items: center;
             gap: 8px;
         }
+        .listen-peek-toggle {
+            font-size: 1rem;
+            opacity: 0.8;
+            cursor: pointer;
+            display: none;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        .listen-peek-toggle.visible {
+            display: block;
+        }
         .listen-peek {
             font-size: 0.65rem;
             color: rgba(255, 255, 255, 0.3);
@@ -423,7 +450,9 @@
             text-overflow: ellipsis;
             white-space: nowrap;
             display: none;
-            pointer-events: none;
+            cursor: pointer;
+            user-select: none;
+            -webkit-user-select: none;
         }
         .listen-peek.visible {
             display: block;
@@ -1593,16 +1622,12 @@
         .mode-section {
             border-radius: 25px;
             transition: all 0.3s ease;
-            overflow: hidden;
+            padding: 15px;
+            border: 2px solid transparent;
         }
         .mode-section.selected {
             background: rgba(255, 255, 255, 0.05);
-            border: 2px solid rgba(255, 255, 255, 0.2);
-            padding: 15px;
-        }
-        .mode-section:not(.selected) {
-            border: 2px solid transparent;
-            padding: 0;
+            border-color: rgba(255, 255, 255, 0.2);
         }
         .mode-expand {
             max-height: 0;
@@ -1954,17 +1979,19 @@
                         <button class="diff-btn" id="diffHard">Hard</button>
                     </div>
                     <div class="difficulty-desc" id="diffDesc">Words reveal as you say them</div>
-                    <div style="display: flex; align-items: center; justify-content: center; gap: 16px; padding: 12px 0;">
-                        <span style="color: #aaa; font-size: 1rem;">Players:</span>
-                        <button class="player-count-btn" id="playerCountDown">−</button>
-                        <span style="font-size: 1.5rem; font-weight: bold; min-width: 30px; text-align: center;" id="playerCountDisplay">2</span>
-                        <button class="player-count-btn" id="playerCountUp">+</button>
-                    </div>
-                    <div id="roundTimeRow" style="display: flex; align-items: center; justify-content: center; gap: 16px; padding: 12px 0;">
-                        <span style="color: #aaa; font-size: 1rem;">Round Time:</span>
-                        <button class="player-count-btn" id="roundTimeDown">−</button>
-                        <span style="font-size: 1.5rem; font-weight: bold; min-width: 40px; text-align: center;" id="roundTimeDisplay">30s</span>
-                        <button class="player-count-btn" id="roundTimeUp">+</button>
+                    <div style="display: grid; grid-template-columns: auto auto; gap: 8px 16px; align-items: center; justify-content: center; padding: 12px 0;">
+                        <span style="color: #aaa; font-size: 1rem; text-align: right;">Players:</span>
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <button class="player-count-btn" id="playerCountDown">−</button>
+                            <span style="font-size: 1.5rem; font-weight: bold; min-width: 30px; text-align: center;" id="playerCountDisplay">2</span>
+                            <button class="player-count-btn" id="playerCountUp">+</button>
+                        </div>
+                        <span id="roundTimeLabel" style="color: #aaa; font-size: 1rem; text-align: right;">Round Time:</span>
+                        <div id="roundTimeRow" style="display: flex; align-items: center; gap: 10px;">
+                            <button class="player-count-btn" id="roundTimeDown">−</button>
+                            <span style="font-size: 1.5rem; font-weight: bold; min-width: 30px; text-align: center;" id="roundTimeDisplay">30s</span>
+                            <button class="player-count-btn" id="roundTimeUp">+</button>
+                        </div>
                     </div>
                     <button class="local-start-btn" id="localStartBtn">▶ Start Game</button>
                 </div>
@@ -2010,6 +2037,7 @@
     <!-- Game Screen -->
     <div class="container game-screen" id="gameScreen">
         <div class="category-label" id="categoryLabel"></div>
+        <div class="skip-row" id="skipRow"></div>
         <div class="word-progress" id="wordProgress"></div>
 
         <!-- Online Player Panel -->
@@ -2047,6 +2075,7 @@
         </div>
         <div class="listen-row">
             <button class="listen-btn" id="listenBtn" disabled>🎤 Start Listening</button>
+            <span class="listen-peek-toggle" id="listenPeekToggle">💬</span>
             <span class="listen-peek" id="listenPeek"></span>
         </div>
 
@@ -3098,8 +3127,7 @@
             localScore = 0;
             updateScoreDisplay(0);
             timerDisplayEl.style.display = 'none';
-            playAgainBtn.style.display = '';
-            playAgainBtn.textContent = 'Quit';
+            playAgainBtn.style.display = 'none';
         }
 
         // Start game timer
@@ -3164,6 +3192,9 @@
                 listenBtn.textContent = 'Start Listening';
                 listenBtn.classList.remove('active');
                 transcriptBox.classList.remove('listening');
+                listenPeekToggle.classList.remove('visible');
+                listenPeek.classList.remove('visible');
+                listenPeekExpanded = false;
             }
 
             statusEl.textContent = isPracticeMode ? `Practice complete! Score: ${localScore}` : `Time's up! Final score: ${localScore}`;
@@ -3193,8 +3224,7 @@
                     phraseHistory.push({ phrase: currentWord, status: isPracticeMode ? 'skipped' : 'timed-out', time: Math.round((Date.now() - phraseStartTime) / 1000) });
                 }
 
-                // Reset quit button back to Play Again
-                playAgainBtn.textContent = 'Play Again';
+                playAgainBtn.style.display = 'none';
 
                 // Show game summary overlay
                 showGameSummary(localScore, phraseHistory);
@@ -3348,14 +3378,16 @@
             function renderSection(label, data) {
                 if (!data.topRounds || data.topRounds.length === 0) return '';
                 let s = `<div style="font-size: 0.85rem; color: #888; text-transform: uppercase; letter-spacing: 1px; margin: 12px 0 8px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.1);">${label}</div>`;
+                let nonPracticeRank = 0;
                 data.topRounds.forEach((round, i) => {
                     const rank = i + 1;
                     let rankClass = '';
                     let rankDisplay = rank;
                     if (!round.practice) {
-                        if (rank === 1) { rankClass = 'gold'; rankDisplay = '\u{1F947}'; }
-                        else if (rank === 2) { rankClass = 'silver'; rankDisplay = '\u{1F948}'; }
-                        else if (rank === 3) { rankClass = 'bronze'; rankDisplay = '\u{1F949}'; }
+                        nonPracticeRank++;
+                        if (nonPracticeRank === 1) { rankClass = 'gold'; rankDisplay = '\u{1F947}'; }
+                        else if (nonPracticeRank === 2) { rankClass = 'silver'; rankDisplay = '\u{1F948}'; }
+                        else if (nonPracticeRank === 3) { rankClass = 'bronze'; rankDisplay = '\u{1F949}'; }
                     }
 
                     const isYou = currentRoundId && round.id === currentRoundId;
@@ -3367,10 +3399,10 @@
                     s += `<div class="leaderboard-entry${isYou ? ' is-you' : ''}">
                         <div class="leaderboard-rank ${rankClass}">${rankDisplay}</div>
                         <div class="leaderboard-details">
-                            <div class="leaderboard-players">${Number(playerCount)} player${playerCount !== 1 ? 's' : ''}${cat}${practiceLabel}${isYou ? ' (you)' : ''}</div>
+                            <div class="leaderboard-players">${Number(playerCount)} player${playerCount !== 1 ? 's' : ''}${cat}${isYou ? ' (you)' : ''}</div>
                             <div class="leaderboard-meta">
                                 <span class="leaderboard-hash">#${escapeHtml(round.sessionHash)}</span>
-                                <span class="leaderboard-time">${escapeHtml(timeAgo)}</span>
+                                <span class="leaderboard-time">${escapeHtml(timeAgo)}${practiceLabel}</span>
                             </div>
                         </div>
                         <div class="leaderboard-score">${Number(round.score)}</div>
@@ -4255,6 +4287,7 @@
                             silentStart();
                             listenBtn.textContent = 'Stop Listening';
                             listenBtn.classList.add('active');
+                            listenPeekToggle.classList.add('visible');
                             statusEl.textContent = 'Listening... Say the phrase!';
                             statusEl.classList.add('listening');
                             transcriptBox.classList.add('listening');
@@ -4271,6 +4304,7 @@
                                     silentStart();
                                     listenBtn.textContent = 'Stop Listening';
                                     listenBtn.classList.add('active');
+                                    listenPeekToggle.classList.add('visible');
                                     statusEl.textContent = 'Listening... Say the phrase!';
                                     statusEl.classList.add('listening');
                                     transcriptBox.classList.add('listening');
@@ -4530,6 +4564,9 @@
                     listenBtn.disabled = false;
                     statusEl.classList.remove('listening');
                     transcriptBox.classList.remove('listening');
+                    listenPeekToggle.classList.remove('visible');
+                    listenPeek.classList.remove('visible');
+                    listenPeekExpanded = false;
                 } else if (event.error !== 'aborted') {
                     console.log('Speech recognition error:', event.error);
                 }
@@ -4571,25 +4608,21 @@
         }
 
         // Toggle listening
-        // Long-press listen button to toggle transcript peek
-        let listenPeekTimer = null;
-        let listenPeekWasToggled = false;
-        listenBtn.addEventListener('pointerdown', () => {
-            listenPeekWasToggled = false;
-            listenPeekTimer = setTimeout(() => {
-                listenPeekWasToggled = true;
-                listenPeek.classList.toggle('visible');
-            }, 300);
+        const listenPeekToggle = document.getElementById('listenPeekToggle');
+        let listenPeekExpanded = false;
+
+        listenPeekToggle.addEventListener('click', () => {
+            listenPeekExpanded = true;
+            listenPeekToggle.classList.remove('visible');
+            listenPeek.classList.add('visible');
         });
-        function cancelListenPeekTimer() {
-            if (listenPeekTimer) { clearTimeout(listenPeekTimer); listenPeekTimer = null; }
-        }
-        listenBtn.addEventListener('pointerup', cancelListenPeekTimer);
-        listenBtn.addEventListener('pointerleave', cancelListenPeekTimer);
-        listenBtn.addEventListener('pointercancel', cancelListenPeekTimer);
+        listenPeek.addEventListener('click', () => {
+            listenPeekExpanded = false;
+            listenPeek.classList.remove('visible');
+            listenPeekToggle.classList.add('visible');
+        });
 
         listenBtn.addEventListener('click', async () => {
-            if (listenPeekWasToggled) return;
             if (!recognition) {
                 await ensureMicPermission();
                 initSpeechRecognition();
@@ -4604,6 +4637,10 @@
                 statusEl.classList.remove('listening');
                 transcriptBox.classList.remove('listening');
                 closeMatchOverlay.classList.remove('active');
+                // Hide peek toggle and text
+                listenPeekToggle.classList.remove('visible');
+                listenPeek.classList.remove('visible');
+                listenPeekExpanded = false;
                 // End game if manually stopped (online mode only)
                 if (gameActive && !isLocalMode) {
                     endGame();
@@ -4613,6 +4650,8 @@
                 silentStart();
                 listenBtn.textContent = 'Stop Listening';
                 listenBtn.classList.add('active');
+                // Show peek toggle emoji
+                listenPeekToggle.classList.add('visible');
                 statusEl.textContent = 'Listening... Say the phrase!';
                 statusEl.classList.add('listening');
                 transcriptBox.classList.add('listening');
@@ -4674,6 +4713,7 @@
                 silentStart();
                 listenBtn.textContent = 'Stop Listening';
                 listenBtn.classList.add('active');
+                listenPeekToggle.classList.add('visible');
                 const word = getRandomPhrase();
                 showNewWordLocalMode(word);
                 // Defer timer until first reveal
@@ -4823,6 +4863,9 @@
             wordContainer.classList.remove('orientation-hidden');
             document.body.classList.remove('countdown-danger');
             disableOrientationDetection();
+
+            // Move skip button back to button-row
+            document.querySelector('.button-row').insertBefore(skipBtn, playAgainBtn);
 
             // Reset button visibility
             listenBtn.style.display = '';
@@ -5187,6 +5230,7 @@
         const diffHard = document.getElementById('diffHard');
         const diffDesc = document.getElementById('diffDesc');
         const roundTimeRow = document.getElementById('roundTimeRow');
+        const roundTimeLabel = document.getElementById('roundTimeLabel');
 
         function updateDiffDescriptions() {
             if (diffPractice.classList.contains('active')) {
@@ -5206,6 +5250,7 @@
             diffHard.classList.remove('active');
             updateDiffDescriptions();
             roundTimeRow.style.display = 'none';
+            roundTimeLabel.style.display = 'none';
             localStorage.setItem('hotwords_difficulty', 'practice');
         });
         diffEasy.addEventListener('click', () => {
@@ -5216,6 +5261,7 @@
             diffHard.classList.remove('active');
             updateDiffDescriptions();
             roundTimeRow.style.display = 'flex';
+            roundTimeLabel.style.display = '';
             localStorage.setItem('hotwords_difficulty', 'easy');
         });
         diffHard.addEventListener('click', () => {
@@ -5226,6 +5272,7 @@
             diffEasy.classList.remove('active');
             updateDiffDescriptions();
             roundTimeRow.style.display = 'flex';
+            roundTimeLabel.style.display = '';
             localStorage.setItem('hotwords_difficulty', 'hard');
         });
 
@@ -5347,9 +5394,13 @@
             silentStart();
             listenBtn.textContent = 'Stop Listening';
             listenBtn.classList.add('active');
+            listenPeekToggle.classList.add('visible');
             listenBtn.disabled = false;
             skipBtn.disabled = false;
             gotItBtn.disabled = false;
+
+            // Move skip/hint button above the word box in local mode
+            document.getElementById('skipRow').appendChild(skipBtn);
 
             if (isSoloMode) {
                 statusEl.textContent = 'Say your guess!';
@@ -5576,13 +5627,17 @@
                     soloClues = generateFallbackClues(word);
                 }
             } else {
-                // Show loading, fetch clues
-                wordDisplay.innerHTML = '<div class="solo-clues" style="color: #666;">Generating clues...</div>';
+                // Show loading, hide buttons while generating
+                wordDisplay.innerHTML = '<div class="solo-clues" style="color: #888;">Generating clues, please wait...</div>';
+                gotItBtn.style.display = 'none';
+                skipBtn.style.display = 'none';
                 try {
                     soloClues = await fetchCluesForPhrase(word);
                 } catch {
                     soloClues = generateFallbackClues(word);
                 }
+                gotItBtn.style.display = '';
+                skipBtn.style.display = '';
             }
 
             soloNextPhrase = null;
@@ -6015,6 +6070,8 @@
             if (isSoloMode) return;
             if (!isLocalMode || (!gameActive && !waitingForFirstReveal)) return;
             pressRevealing = true;
+            revealStartTime = Date.now();
+            if (minRevealTimer) { clearTimeout(minRevealTimer); minRevealTimer = null; }
             deviceIsFlat = false;  // Not flat = upright = revealed
             wordContainer.classList.remove('orientation-hidden');
             if (waitingForFirstReveal) {
@@ -6035,6 +6092,8 @@
         }
 
         let pressRevealing = false;
+        let revealStartTime = 0;
+        let minRevealTimer = null;
 
         function preventContextMenu(e) {
             e.preventDefault();
@@ -6047,6 +6106,20 @@
             // In orientation mode, defer to current device orientation
             if (orientationEnabled) {
                 updateWordVisibilityByOrientation();
+                return;
+            }
+            // Ensure minimum 1s reveal duration
+            const elapsed = Date.now() - revealStartTime;
+            if (elapsed < 1000) {
+                if (minRevealTimer) clearTimeout(minRevealTimer);
+                minRevealTimer = setTimeout(() => {
+                    minRevealTimer = null;
+                    if (!pressRevealing && gameActive) {
+                        deviceIsFlat = true;
+                        wordContainer.classList.add('orientation-hidden');
+                        redactLabelEl.innerHTML = getHiddenLabel();
+                    }
+                }, 1000 - elapsed);
                 return;
             }
             deviceIsFlat = true;  // Flat = hidden
@@ -6105,6 +6178,7 @@
             deviceIsFlat = false;
             tapToRevealEnabled = false;
             pressRevealing = false;
+            if (minRevealTimer) { clearTimeout(minRevealTimer); minRevealTimer = null; }
             if (orientationHandler) {
                 window.removeEventListener('deviceorientation', orientationHandler);
                 orientationHandler = null;
@@ -6138,7 +6212,7 @@
                 }
                 const gameSummaryOvl = document.getElementById('gameSummaryOverlay');
                 if (gameSummaryOvl && gameSummaryOvl.classList.contains('active')) {
-                    dismissGameSummary();
+                    showLobby();
                     return;
                 }
                 const pauseOvl = document.getElementById('pauseOverlay');

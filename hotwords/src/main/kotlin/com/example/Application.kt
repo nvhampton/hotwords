@@ -107,8 +107,12 @@ data class RoundEntry(
     val roomId: String? = null,
     val sessionHash: String,
     val timestamp: Long,
-    val category: String = "classic"
+    val category: String = "classic",
+    val practice: Boolean = false
 )
+
+@Serializable
+data class CachedCategory(val timestamp: Long, val phrases: List<String>)
 
 @Serializable
 data class PhraseEvent(
@@ -124,7 +128,8 @@ data class RoundSubmission(
     val mode: String,
     val roomId: String? = null,
     val phrases: List<PhraseEvent> = emptyList(),
-    val category: String = "classic"
+    val category: String = "classic",
+    val practice: Boolean = false
 )
 
 @Serializable
@@ -157,7 +162,8 @@ data class RoundLog(
     val sessionHash: String,
     val playerCount: Int,
     val score: Int,
-    val phrases: List<PhraseEvent>
+    val phrases: List<PhraseEvent>,
+    val practice: Boolean = false
 )
 
 @Serializable
@@ -196,7 +202,41 @@ private val dataDir = if (File("/opt/hotwords/data").exists()) File("/opt/hotwor
 private val roundLogFile = File(dataDir, "rounds.jsonl")
 private val roundLogLock = Any()
 private val jsonLenient = Json { ignoreUnknownKeys = true }
+
+// Persistence file for leaderboard and categories
+private val leaderboardFile = File(dataDir, "state.json")
+private val persistLock = Any()
 private val validStatuses = setOf("got-it", "skipped", "timed-out")
+
+@Serializable
+data class PersistedState(
+    val leaderboard: List<RoundEntry> = emptyList(),
+    val categories: Map<String, CachedCategory> = emptyMap()
+)
+
+fun saveState(roundEntries: ConcurrentHashMap<String, RoundEntry>, categoriesOfTheDay: ConcurrentHashMap<String, CachedCategory>) {
+    synchronized(persistLock) {
+        try {
+            val state = PersistedState(
+                leaderboard = roundEntries.values.toList(),
+                categories = categoriesOfTheDay.toMap()
+            )
+            leaderboardFile.writeText(Json.encodeToString(PersistedState.serializer(), state))
+        } catch (_: Exception) {}
+    }
+}
+
+fun loadState(roundEntries: ConcurrentHashMap<String, RoundEntry>, categoriesOfTheDay: ConcurrentHashMap<String, CachedCategory>) {
+    try {
+        if (leaderboardFile.exists()) {
+            val state = jsonLenient.decodeFromString(PersistedState.serializer(), leaderboardFile.readText())
+            state.leaderboard.forEach { roundEntries[it.id] = it }
+            state.categories.forEach { (k, v) -> categoriesOfTheDay[k] = v }
+        }
+    } catch (_: Exception) {
+        // Corrupted file — start fresh
+    }
+}
 
 fun main(args: Array<String>): Unit = io.ktor.server.netty.EngineMain.main(args)
 
@@ -225,11 +265,20 @@ fun Application.module() {
     val sessionToPlayerId = ConcurrentHashMap<DefaultWebSocketServerSession, String>()  // Session to player ID mapping
 
     // Categories of the week: category name -> (timestamp, cached phrases) — resets Monday 3am PT
-    data class CachedCategory(val timestamp: Long, val phrases: List<String>)
     val categoriesOfTheDay = ConcurrentHashMap<String, CachedCategory>()
+
+    // Load persisted leaderboard and categories from disk
+    loadState(roundEntries, categoriesOfTheDay)
+    log.info("Loaded ${roundEntries.size} leaderboard entries and ${categoriesOfTheDay.size} categories from disk")
 
     // Rate limiting for POST /api/scores: IP -> list of timestamps
     val scoreRateLimit = ConcurrentHashMap<String, MutableList<Long>>()
+
+    // Rate limiting for POST /api/generate-clues: IP -> list of timestamps
+    val clueRateLimit = ConcurrentHashMap<String, MutableList<Long>>()
+
+    // Clue cache: normalized phrase -> list of clues (avoids re-generating for same phrase)
+    val clueCache = ConcurrentHashMap<String, List<String>>()
 
     // Track when rooms became empty for cleanup
     val roomEmptySince = ConcurrentHashMap<String, Long>()
@@ -255,11 +304,18 @@ fun Application.module() {
     }
 
     // TTL cleanup coroutine - removes inactive players every 5 seconds
+    var lastPersistTime = System.currentTimeMillis()
     val cleanupJob = CoroutineScope(Dispatchers.Default).launch {
         while (isActive) {
             delay(5000)
             val now = System.currentTimeMillis()
             val ttlMs = 15000L  // 15 seconds TTL
+
+            // Persist leaderboard and categories every 60 seconds
+            if (now - lastPersistTime >= 60_000L) {
+                lastPersistTime = now
+                saveState(roundEntries, categoriesOfTheDay)
+            }
 
             // Clean up round entries older than weekly reset (Monday 3am PT)
             val weeklyReset = weeklyResetTimestamp()
@@ -399,11 +455,17 @@ fun Application.module() {
                 timestamps.removeIf { now - it > 60_000L }
                 timestamps.isEmpty()
             }
+            clueRateLimit.entries.removeIf { (_, timestamps) ->
+                timestamps.removeIf { now - it > 60_000L }
+                timestamps.isEmpty()
+            }
         }
     }
 
     environment.monitor.subscribe(ApplicationStopped) {
         cleanupJob.cancel()
+        // Persist state before shutdown
+        saveState(roundEntries, categoriesOfTheDay)
     }
     // Kid-friendly phrases saved in phrases/kid-phrases.txt
     val gameWords = listOf(
@@ -769,7 +831,8 @@ fun Application.module() {
                     roomId = submission.roomId?.take(30),
                     sessionHash = sessionHash,
                     timestamp = now,
-                    category = submission.category.trim().split("\\s+".toRegex()).take(3).joinToString(" ").lowercase().ifEmpty { "classic" }
+                    category = submission.category.trim().split("\\s+".toRegex()).take(3).joinToString(" ").lowercase().ifEmpty { "classic" },
+                    practice = submission.practice
                 )
                 roundEntries[roundId] = entry
 
@@ -790,7 +853,8 @@ fun Application.module() {
                         sessionHash = sessionHash,
                         playerCount = validatedPlayers.size,
                         score = validatedScore,
-                        phrases = validatedPhrases
+                        phrases = validatedPhrases,
+                        practice = submission.practice
                     )
                     try {
                         synchronized(roundLogLock) {
@@ -839,34 +903,14 @@ fun Application.module() {
 
             val totalRounds = filtered.size
 
-            if (totalRounds <= 10) {
-                // Show all individually, no grouping needed
-                call.respond(LeaderboardResponse(
-                    topRounds = filtered,
-                    grouped = emptyList(),
-                    totalRounds = totalRounds
-                ))
-            } else {
-                // Top 10 individually, but extend for ties at the boundary
-                val cutoffScore = filtered.getOrNull(9)?.score ?: 0
-                val topRounds = filtered.takeWhile { it.score > cutoffScore } +
-                    filtered.filter { it.score == cutoffScore }
-                val cappedTop = topRounds.take(15)
-                val topIds = cappedTop.map { it.id }.toSet()
+            // Return top 10 individually
+            val top10 = filtered.take(10)
 
-                // Group remaining scores
-                val remaining = filtered.filter { it.id !in topIds }
-                val grouped = remaining
-                    .groupBy { it.score }
-                    .map { (score, rounds) -> GroupedScore(score, rounds.size) }
-                    .sortedByDescending { it.score }
-
-                call.respond(LeaderboardResponse(
-                    topRounds = cappedTop,
-                    grouped = grouped,
-                    totalRounds = totalRounds
-                ))
-            }
+            call.respond(LeaderboardResponse(
+                topRounds = top10,
+                grouped = emptyList(),
+                totalRounds = totalRounds
+            ))
         }
 
         get("/api/analytics/phrases") {
@@ -1040,6 +1084,110 @@ Rules:
             } catch (e: Exception) {
                 application.log.error("Claude API error: ${e.message}", e)
                 call.respond(HttpStatusCode.InternalServerError, mapOf("error" to (e.message ?: "Generation failed")))
+            }
+        }
+
+        // Generate clues for a phrase (solo mode)
+        post("/api/generate-clues") {
+            if (claudeApiKey.isBlank()) {
+                call.respond(HttpStatusCode.ServiceUnavailable, mapOf("error" to "API key not configured"))
+                return@post
+            }
+
+            // Rate limit: 10/min/IP
+            val remoteIp = call.request.header("X-Forwarded-For")?.split(",")?.firstOrNull()?.trim()
+                    ?: call.request.local.remoteHost
+            val now = System.currentTimeMillis()
+            val timestamps = clueRateLimit.computeIfAbsent(remoteIp) { mutableListOf() }
+            val rateLimited = synchronized(timestamps) {
+                timestamps.removeIf { now - it > 60_000L }
+                if (timestamps.size >= 10) true
+                else { timestamps.add(now); false }
+            }
+            if (rateLimited) {
+                call.respond(HttpStatusCode.TooManyRequests, mapOf("error" to "Rate limit exceeded"))
+                return@post
+            }
+
+            val body = call.receiveText()
+            val request = jsonLenient.decodeFromString(JsonObject.serializer(), body)
+            val phrase = request["phrase"]?.jsonPrimitive?.contentOrNull ?: ""
+
+            if (phrase.isBlank()) {
+                call.respond(mapOf("clues" to emptyList<String>()))
+                return@post
+            }
+
+            val safePhrase = phrase.take(200).replace(Regex("[^a-zA-Z0-9 ]"), " ").replace(Regex("\\s+"), " ").trim()
+            val cacheKey = safePhrase.lowercase()
+
+            // Return cached clues if available
+            val cached = clueCache[cacheKey]
+            if (cached != null) {
+                call.respond(mapOf("clues" to cached))
+                return@post
+            }
+
+            val phraseWords = safePhrase.lowercase().split(Regex("\\s+")).filter { it.length >= 2 }
+
+            val prompt = """Generate exactly 6 clues for the word/phrase "$safePhrase" for a guessing game. The clues should be ordered from vague/hard to specific/easy.
+
+Rules:
+- NEVER use any word from the phrase itself in any clue. Forbidden words: ${phraseWords.joinToString(", ")}
+- Each clue should be 1 short sentence (under 15 words)
+- Clue 1-2: very vague, could apply to many things
+- Clue 3-4: more specific, narrows it down
+- Clue 5-6: very specific, almost gives it away
+- Do NOT give letter-based hints like "starts with X" or "has N letters"
+- Return ONLY a JSON array of 6 strings, no other text
+- Example format: ["vague clue", "slightly less vague", "getting warmer", "pretty specific", "very specific", "almost giving it away"]"""
+
+            try {
+                val response = claudeClient.post("https://api.anthropic.com/v1/messages") {
+                    header("x-api-key", claudeApiKey)
+                    header("anthropic-version", "2023-06-01")
+                    contentType(ContentType.Application.Json)
+                    setBody(buildJsonObject {
+                        put("model", "claude-haiku-4-5-20251001")
+                        put("max_tokens", 512)
+                        putJsonArray("messages") {
+                            addJsonObject {
+                                put("role", "user")
+                                put("content", prompt)
+                            }
+                        }
+                    }.toString())
+                }
+
+                val responseBody = response.bodyAsText()
+                if (response.status.value != 200) {
+                    application.log.error("Claude API error for clues: $responseBody")
+                    call.respond(mapOf("clues" to emptyList<String>()))
+                    return@post
+                }
+                val responseJson = jsonLenient.decodeFromString(JsonObject.serializer(), responseBody)
+                val content = responseJson["content"]?.jsonArray?.firstOrNull()?.jsonObject?.get("text")?.jsonPrimitive?.content ?: "[]"
+                val cleanJson = content.replace(Regex("```json\\s*"), "").replace(Regex("```\\s*"), "").trim()
+                val clues = jsonLenient.decodeFromString(JsonArray.serializer(), cleanJson)
+                    .map { it.jsonPrimitive.content }
+                    .take(6)
+
+                // Post-process: drop any clue containing words from the phrase (>=3 chars)
+                val forbiddenWords = phraseWords.filter { it.length >= 3 }.map { it.lowercase() }
+                val filteredClues = clues.filter { clue ->
+                    val clueWords = clue.lowercase().split(Regex("\\W+"))
+                    !forbiddenWords.any { fw -> clueWords.any { cw -> cw == fw } }
+                }
+
+                // Cache the result (cap at 5000 entries)
+                if (clueCache.size < 5000) {
+                    clueCache[cacheKey] = filteredClues
+                }
+
+                call.respond(mapOf("clues" to filteredClues))
+            } catch (e: Exception) {
+                application.log.error("Claude API error (clues): ${e.message}", e)
+                call.respond(mapOf("clues" to emptyList<String>()))
             }
         }
 
