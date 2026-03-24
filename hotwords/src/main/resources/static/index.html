@@ -324,6 +324,40 @@
         .status.skipped {
             color: #f9ca24;
         }
+        .type-answer-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            justify-content: center;
+            margin-bottom: 12px;
+        }
+        .type-answer-input {
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 8px;
+            color: #fff;
+            font-size: 1rem;
+            padding: 8px 12px;
+            width: 220px;
+            outline: none;
+        }
+        .type-answer-input:focus {
+            border-color: #3EBECB;
+            box-shadow: 0 0 0 2px rgba(62,190,203,0.2);
+        }
+        .type-answer-btn {
+            background: #3EBECB;
+            color: #1a1a2e;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            padding: 8px 16px;
+            cursor: pointer;
+        }
+        .type-answer-btn:hover {
+            background: #5ac7d4;
+        }
         .share-invite {
             color: #3EBECB;
             cursor: pointer;
@@ -1987,7 +2021,7 @@
                         <span style="color: #aaa; font-size: 1rem; text-align: right;">Players:</span>
                         <div style="display: flex; align-items: center; gap: 10px;">
                             <button class="player-count-btn" id="playerCountDown">−</button>
-                            <span style="font-size: 1.5rem; font-weight: bold; min-width: 30px; text-align: center;" id="playerCountDisplay">2</span>
+                            <span style="font-size: 1.5rem; font-weight: bold; min-width: 30px; text-align: center;" id="playerCountDisplay">1</span>
                             <button class="player-count-btn" id="playerCountUp">+</button>
                         </div>
                         <span id="roundTimeLabel" style="color: #aaa; font-size: 1rem; text-align: right;">Round Time:</span>
@@ -2071,6 +2105,10 @@
         </div>
 
         <div class="status" id="status">Click the button to start listening</div>
+        <div class="type-answer-row" id="typeAnswerRow" style="display: none;">
+            <input type="text" id="typeAnswerInput" class="type-answer-input" placeholder="Type your answer..." autocomplete="off" />
+            <button class="type-answer-btn" id="typeAnswerBtn">Check</button>
+        </div>
 
         <div class="button-row">
             <button class="gotit-btn" id="gotItBtn" disabled>Got It! <span class="key-hint">[Enter]</span></button>
@@ -2150,7 +2188,7 @@
         <div class="onboard-card">
             <div class="onboard-emoji">🔥</div>
             <div class="onboard-title" id="onboardRulesTitle">You have 30 seconds to get as many of the hot words as you can.</div>
-            <div class="onboard-hint">Timer starts when you reveal the first clue.</div>
+            <div class="onboard-hint" id="onboardRulesHint">Timer starts when you reveal the first clue.</div>
             <button class="onboard-btn play" id="onboardRulesBtn">Got it!</button>
         </div>
         <button class="onboard-back" id="onboardRulesBack">&larr; Back</button>
@@ -2341,7 +2379,7 @@
         const playerCountDisplay = document.getElementById('playerCountDisplay');
         const playerCountUp = document.getElementById('playerCountUp');
         const playerCountDown = document.getElementById('playerCountDown');
-        let playerCount = 2;
+        let playerCount = 1;
 
         // State
         let currentWord = '';
@@ -2378,6 +2416,9 @@
         let soloCluesShown = 0;
         let soloNextClues = null;
         let soloNextPhrase = null;
+
+        // Manual claim flag: true when Got It pressed manually (lighter celebration)
+        let manualClaim = false;
 
         // Game difficulty: true = individual words reveal as detected (easy), false = must match full phrase (hard)
         let partialWordReveal = true;
@@ -2971,43 +3012,48 @@
             celebrationInfoEl.textContent = '';
             celebrationEl.classList.add('active');
 
-            // Create flash effect
-            const flash = document.createElement('div');
-            flash.className = 'celebration-flash';
-            celebrationEl.appendChild(flash);
+            const isManual = manualClaim;
+            const delay = isManual ? 600 : CELEBRATION_DELAY;
 
-            // Create explosion particles
-            const colors = ['#B4975A', '#3EBECB', '#007485', '#f9ca24', '#fff', '#5ac7d4'];
-            const centerX = window.innerWidth / 2;
-            const centerY = window.innerHeight / 2;
+            if (!isManual) {
+                // Create flash effect
+                const flash = document.createElement('div');
+                flash.className = 'celebration-flash';
+                celebrationEl.appendChild(flash);
 
-            for (let i = 0; i < 50; i++) {
-                const particle = document.createElement('div');
-                particle.className = 'particle';
-                particle.style.left = centerX + 'px';
-                particle.style.top = centerY + 'px';
-                particle.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                // Create explosion particles
+                const colors = ['#B4975A', '#3EBECB', '#007485', '#f9ca24', '#fff', '#5ac7d4'];
+                const centerX = window.innerWidth / 2;
+                const centerY = window.innerHeight / 2;
 
-                const angle = (Math.PI * 2 * i) / 50 + Math.random() * 0.5;
-                const distance = 100 + Math.random() * 300;
-                const tx = Math.cos(angle) * distance;
-                const ty = Math.sin(angle) * distance;
-                particle.style.setProperty('--tx', tx + 'px');
-                particle.style.setProperty('--ty', ty + 'px');
+                for (let i = 0; i < 50; i++) {
+                    const particle = document.createElement('div');
+                    particle.className = 'particle';
+                    particle.style.left = centerX + 'px';
+                    particle.style.top = centerY + 'px';
+                    particle.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
 
-                celebrationEl.appendChild(particle);
-            }
+                    const angle = (Math.PI * 2 * i) / 50 + Math.random() * 0.5;
+                    const distance = 100 + Math.random() * 300;
+                    const tx = Math.cos(angle) * distance;
+                    const ty = Math.sin(angle) * distance;
+                    particle.style.setProperty('--tx', tx + 'px');
+                    particle.style.setProperty('--ty', ty + 'px');
 
-            // Create confetti
-            for (let i = 0; i < 60; i++) {
-                const confetti = document.createElement('div');
-                confetti.className = 'confetti';
-                confetti.style.left = Math.random() * 100 + '%';
-                confetti.style.top = '-20px';
-                confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
-                confetti.style.animationDelay = Math.random() * 0.5 + 's';
-                confetti.style.animationDuration = (1.5 + Math.random()) + 's';
-                celebrationEl.appendChild(confetti);
+                    celebrationEl.appendChild(particle);
+                }
+
+                // Create confetti
+                for (let i = 0; i < 60; i++) {
+                    const confetti = document.createElement('div');
+                    confetti.className = 'confetti';
+                    confetti.style.left = Math.random() * 100 + '%';
+                    confetti.style.top = '-20px';
+                    confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                    confetti.style.animationDelay = Math.random() * 0.5 + 's';
+                    confetti.style.animationDuration = (1.5 + Math.random()) + 's';
+                    celebrationEl.appendChild(confetti);
+                }
             }
 
             // End celebration after delay
@@ -3036,7 +3082,7 @@
                     }
                     pendingWord = null;
                 }
-            }, CELEBRATION_DELAY);
+            }, delay);
         }
 
         // Celebration animation for local mode (shows score)
@@ -3047,43 +3093,48 @@
             celebrationInfoEl.innerHTML = `<div style="font-size: 2.5rem; margin-bottom: 10px;">${score}${fires}</div>`;
             celebrationEl.classList.add('active');
 
-            // Create flash effect
-            const flash = document.createElement('div');
-            flash.className = 'celebration-flash';
-            celebrationEl.appendChild(flash);
+            const isManual = manualClaim;
+            const delay = isManual ? 600 : CELEBRATION_DELAY;
 
-            // Create explosion particles
-            const colors = ['#B4975A', '#3EBECB', '#007485', '#f9ca24', '#fff', '#5ac7d4'];
-            const centerX = window.innerWidth / 2;
-            const centerY = window.innerHeight / 2;
+            if (!isManual) {
+                // Create flash effect
+                const flash = document.createElement('div');
+                flash.className = 'celebration-flash';
+                celebrationEl.appendChild(flash);
 
-            for (let i = 0; i < 50; i++) {
-                const particle = document.createElement('div');
-                particle.className = 'particle';
-                particle.style.left = centerX + 'px';
-                particle.style.top = centerY + 'px';
-                particle.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                // Create explosion particles
+                const colors = ['#B4975A', '#3EBECB', '#007485', '#f9ca24', '#fff', '#5ac7d4'];
+                const centerX = window.innerWidth / 2;
+                const centerY = window.innerHeight / 2;
 
-                const angle = (Math.PI * 2 * i) / 50 + Math.random() * 0.5;
-                const distance = 100 + Math.random() * 300;
-                const tx = Math.cos(angle) * distance;
-                const ty = Math.sin(angle) * distance;
-                particle.style.setProperty('--tx', tx + 'px');
-                particle.style.setProperty('--ty', ty + 'px');
+                for (let i = 0; i < 50; i++) {
+                    const particle = document.createElement('div');
+                    particle.className = 'particle';
+                    particle.style.left = centerX + 'px';
+                    particle.style.top = centerY + 'px';
+                    particle.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
 
-                celebrationEl.appendChild(particle);
-            }
+                    const angle = (Math.PI * 2 * i) / 50 + Math.random() * 0.5;
+                    const distance = 100 + Math.random() * 300;
+                    const tx = Math.cos(angle) * distance;
+                    const ty = Math.sin(angle) * distance;
+                    particle.style.setProperty('--tx', tx + 'px');
+                    particle.style.setProperty('--ty', ty + 'px');
 
-            // Create confetti
-            for (let i = 0; i < 60; i++) {
-                const confetti = document.createElement('div');
-                confetti.className = 'confetti';
-                confetti.style.left = Math.random() * 100 + '%';
-                confetti.style.top = '-20px';
-                confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
-                confetti.style.animationDelay = Math.random() * 0.5 + 's';
-                confetti.style.animationDuration = (1.5 + Math.random()) + 's';
-                celebrationEl.appendChild(confetti);
+                    celebrationEl.appendChild(particle);
+                }
+
+                // Create confetti
+                for (let i = 0; i < 60; i++) {
+                    const confetti = document.createElement('div');
+                    confetti.className = 'confetti';
+                    confetti.style.left = Math.random() * 100 + '%';
+                    confetti.style.top = '-20px';
+                    confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                    confetti.style.animationDelay = Math.random() * 0.5 + 's';
+                    confetti.style.animationDuration = (1.5 + Math.random()) + 's';
+                    celebrationEl.appendChild(confetti);
+                }
             }
 
             // End celebration after delay
@@ -3100,9 +3151,12 @@
         function showNewWord(word) {
             currentWord = word;
             hasClaimedVictory = false;
+            manualClaim = false;
             speechResultBaseline = speechResultsLength;
             wordDisplay.textContent = currentWord;
             statusEl.classList.remove('winner', 'skipped');
+            const tar = document.getElementById('typeAnswerRow');
+            if (tar) { tar.style.display = 'none'; }
             similarityEl.textContent = '';
             similarityEl.classList.remove('close');
             closeMatchOverlay.classList.remove('active');
@@ -3121,7 +3175,7 @@
             }, REDACT_DELAY);
 
             if (isListening) {
-                statusEl.textContent = 'Listening... Say the phrase!';
+                statusEl.textContent = 'Listening... Say your guess! (or click here to type)';
                 statusEl.classList.add('listening');
             }
         }
@@ -3182,6 +3236,8 @@
         // End game
         function endGame() {
             gameActive = false;
+            const tar = document.getElementById('typeAnswerRow');
+            if (tar) { tar.style.display = 'none'; }
             if (gameTimer) {
                 clearInterval(gameTimer);
                 gameTimer = null;
@@ -4004,6 +4060,9 @@
 
         // Show word for online mode (role-based display)
         function showNewWordOnline(word, revealed) {
+            manualClaim = false;
+            const tar = document.getElementById('typeAnswerRow');
+            if (tar) { tar.style.display = 'none'; }
             speechResultBaseline = speechResultsLength;
             // Safety: never display phrase with < 2 players in online mode
             if (!isLocalMode && onlinePlayers.length < 2) {
@@ -4040,7 +4099,7 @@
             closeMatchOverlay.classList.remove('active');
 
             if (isListening && !isHotPlayer) {
-                statusEl.textContent = 'Listening... Say the phrase!';
+                statusEl.textContent = 'Listening... Say your guess! (or click here to type)';
                 statusEl.classList.add('listening');
             } else if (isHotPlayer && isListening) {
                 statusEl.textContent = 'Describe it! (Monitoring for slips...)';
@@ -4284,6 +4343,7 @@
                         gotItCooldown = false;
                         skipCooldown = false;
                         hasClaimedVictory = false;
+                        manualClaim = false;
                         startGameTimer(msg.timeRemaining);
                         updateOnlineModeButtons();
                         // Start mic only if player enabled it in the ready overlay
@@ -4293,7 +4353,7 @@
                             listenBtn.textContent = 'Stop Listening';
                             listenBtn.classList.add('active');
                             listenPeekToggle.classList.add('visible');
-                            statusEl.textContent = 'Listening... Say the phrase!';
+                            statusEl.textContent = 'Listening... Say your guess! (or click here to type)';
                             statusEl.classList.add('listening');
                             transcriptBox.classList.add('listening');
                         } else if (!readyMicEnabled) {
@@ -4310,7 +4370,7 @@
                                     listenBtn.textContent = 'Stop Listening';
                                     listenBtn.classList.add('active');
                                     listenPeekToggle.classList.add('visible');
-                                    statusEl.textContent = 'Listening... Say the phrase!';
+                                    statusEl.textContent = 'Listening... Say your guess! (or click here to type)';
                                     statusEl.classList.add('listening');
                                     transcriptBox.classList.add('listening');
                                 } catch (e) {
@@ -4658,7 +4718,7 @@
                 listenBtn.classList.add('active');
                 // Show peek toggle emoji
                 listenPeekToggle.classList.add('visible');
-                statusEl.textContent = 'Listening... Say the phrase!';
+                statusEl.textContent = 'Listening... Say your guess! (or click here to type)';
                 statusEl.classList.add('listening');
                 transcriptBox.classList.add('listening');
                 // In online mode, enable buttons if game is already active
@@ -4677,6 +4737,7 @@
         // Use pointerdown for instant response (no 300ms click delay on mobile)
         function handleGotIt(e) {
             if (e) e.preventDefault();
+            manualClaim = true;
             if (isLocalMode && gameActive) {
                 localModeClaimVictory();
             } else if (!isLocalMode && gameActive) {
@@ -4689,6 +4750,72 @@
         gotItBtn.addEventListener('pointerdown', handleGotIt);
         // Prevent ghost click after pointerdown
         gotItBtn.addEventListener('click', (e) => e.preventDefault());
+
+        // Type-to-answer: click "Listening..." status to show text input
+        const typeAnswerRow = document.getElementById('typeAnswerRow');
+        const typeAnswerInput = document.getElementById('typeAnswerInput');
+        const typeAnswerBtn = document.getElementById('typeAnswerBtn');
+
+        statusEl.addEventListener('click', () => {
+            if (!gameActive && !waitingForFirstReveal) return;
+            if (!isLocalMode && isHotPlayer) return; // describer can't type answers
+            if (typeAnswerRow.style.display === 'none') {
+                typeAnswerRow.style.display = 'flex';
+                typeAnswerInput.focus();
+            } else {
+                typeAnswerRow.style.display = 'none';
+            }
+        });
+
+        function processTypedAnswer() {
+            if (timerPaused) return;
+            if (!gameActive || hasClaimedVictory) return;
+            if (!isLocalMode && isHotPlayer) return;
+            const text = typeAnswerInput.value.trim();
+            if (!text) return;
+
+            // Run through same matching pipeline as speech
+            if (partialWordReveal && isLocalMode) {
+                updateRevealedWords(text);
+                if (hasClaimedVictory) { typeAnswerInput.value = ''; return; }
+            }
+            if (partialWordReveal && !isLocalMode && !isHotPlayer) {
+                updateRevealedWordsOnline(text);
+                if (onlineRevealedWords.every(r => r)) { typeAnswerInput.value = ''; return; }
+            }
+
+            const result = checkMatch(text);
+            if (result.similarity > 0 && result.similarity < 1) {
+                const pct = Math.round(result.similarity * 100);
+                similarityEl.textContent = `${pct}% match`;
+                similarityEl.classList.toggle('close', result.similarity >= 0.7);
+            } else {
+                similarityEl.textContent = '';
+            }
+
+            if (result.matched && !hasClaimedVictory) {
+                if (isLocalMode) {
+                    localModeClaimVictory();
+                } else {
+                    hasClaimedVictory = true;
+                    claimVictory();
+                }
+            }
+            typeAnswerInput.value = '';
+        }
+
+        typeAnswerBtn.addEventListener('click', processTypedAnswer);
+        typeAnswerInput.addEventListener('keydown', (e) => {
+            if (e.code === 'Enter') {
+                e.preventDefault();
+                processTypedAnswer();
+            }
+        });
+
+        function hideTypeAnswerRow() {
+            typeAnswerRow.style.display = 'none';
+            typeAnswerInput.value = '';
+        }
 
         // Play Again button (also serves as Quit in practice mode)
         playAgainBtn.addEventListener('click', async () => {
@@ -4829,6 +4956,7 @@
         function showLobby() {
             isSoloMode = false;
             isSpectating = false;
+            hideTypeAnswerRow();
             // Disconnect WebSocket first to prevent message handlers from re-showing overlays
             stopHeartbeat();
             if (ws) {
@@ -5305,16 +5433,24 @@
         function showOnboardRules() {
             const duration = getGameDuration();
             let rulesText;
+            let hintText;
             if (isSoloMode) {
                 rulesText = isPracticeMode
-                    ? 'You\'ll receive clues — guess the word by speaking!'
+                    ? 'You\'ll receive clues — guess the phrase by speaking or typing!'
                     : `You'll get clues — guess as many as you can in ${duration} seconds!`;
+                hintText = isPracticeMode
+                    ? 'Click "Listening..." to type answers instead.'
+                    : 'Timer starts when you reveal the first clue.';
             } else {
                 rulesText = isPracticeMode
                     ? 'Practice mode — no timer. Get as many hot words as you can!'
                     : `You have ${duration} seconds to get as many of the hot words as you can.`;
+                hintText = isPracticeMode
+                    ? 'Speak or click "Listening..." to type answers.'
+                    : 'Timer starts when you reveal the first clue.';
             }
             document.getElementById('onboardRulesTitle').textContent = rulesText;
+            document.getElementById('onboardRulesHint').textContent = hintText;
             document.getElementById('onboardRules').classList.add('active');
         }
         function hideOnboardRules() {
@@ -5591,6 +5727,9 @@
         function showNewWordLocalMode(word) {
             currentWord = word;
             hasClaimedVictory = false;
+            manualClaim = false;
+            const tar = document.getElementById('typeAnswerRow');
+            if (tar) { tar.style.display = 'none'; }
             phraseStartTime = Date.now();
             speechResultBaseline = speechResultsLength; // ignore stale speech from previous phrase
 
@@ -5620,7 +5759,7 @@
             // Sync box height so it doesn't jump between states
             syncWordDisplayHeight();
 
-            statusEl.textContent = 'Listening... Say the phrase!';
+            statusEl.textContent = 'Listening... Say your guess! (or click here to type)';
             statusEl.classList.remove('winner', 'skipped');
             statusEl.classList.add('listening');
         }
@@ -6223,6 +6362,9 @@
 
         // Keyboard shortcuts
         document.addEventListener('keydown', (e) => {
+            // Don't intercept game shortcuts while typing in the answer input
+            if (document.activeElement === typeAnswerInput) return;
+
             // Escape: return to lobby (or reset lobby selection)
             if (e.code === 'Escape') {
                 e.preventDefault();
@@ -6271,6 +6413,7 @@
                 if (e.code === 'Enter') {
                     e.preventDefault();
                     if (!hasClaimedVictory) {
+                        manualClaim = true;
                         localModeClaimVictory();
                     }
                 }
@@ -6288,6 +6431,7 @@
                 if (e.code === 'Enter') {
                     e.preventDefault();
                     if (!hasClaimedVictory) {
+                        manualClaim = true;
                         hasClaimedVictory = true;
                         claimVictory();
                     }
