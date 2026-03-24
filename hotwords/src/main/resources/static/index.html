@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Hotwords</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='42' font-size='48'>🔥</text><text x='36' y='90' font-size='48'>💬</text></svg>">
+    <link rel="preconnect" href="/">
+    <link rel="dns-prefetch" href="/">
     <style>
         * {
             box-sizing: border-box;
@@ -438,6 +441,7 @@
             display: none;
             user-select: none;
             -webkit-user-select: none;
+            margin-left: 6px;
         }
         .listen-peek-toggle.visible {
             display: block;
@@ -2812,82 +2816,81 @@
                     picker.appendChild(pill);
                 });
 
-                // Load categories of the day
-                try {
-                    const catRes = await fetch('/api/categories');
-                    const catData = await catRes.json();
-                    if (catData.categories && catData.categories.length > 0) {
-                        catData.categories.forEach(catEntry => {
-                            const catName = catEntry.name;
-                            const cachedPhrases = catEntry.phrases || [];
-                            const pill = document.createElement('span');
-                            pill.className = 'topic-pill';
-                            pill.textContent = catName;
-                            pill.dataset.topicId = 'custom:' + catName;
-                            pill.tabIndex = 0;
-                            pill.setAttribute('role', 'button');
-                            pill.style.borderColor = 'rgba(155, 89, 182, 0.4)';
-                            // Long-press (6s) to delete category
-                            let longPressTimer = null;
-                            let longPressTriggered = false;
-                            const startLongPress = (e) => {
-                                longPressTriggered = false;
-                                longPressTimer = setTimeout(async () => {
-                                    longPressTriggered = true;
-                                    if (confirm(`Delete category "${catName}"?`)) {
-                                        try {
-                                            await fetch('/api/categories/' + encodeURIComponent(catName), { method: 'DELETE' });
-                                            pill.remove();
-                                            // Reset to default if this was the active selection
-                                            if (customCategory === catName) {
-                                                customPhrases = [];
-                                                customCategory = null;
-                                                selectTopic('default');
-                                            }
-                                        } catch (e) { /* ignore */ }
-                                    }
-                                }, 6000);
-                            };
-                            const cancelLongPress = () => { clearTimeout(longPressTimer); };
-                            pill.addEventListener('mousedown', startLongPress);
-                            pill.addEventListener('touchstart', startLongPress, { passive: true });
-                            pill.addEventListener('mouseup', cancelLongPress);
-                            pill.addEventListener('mouseleave', cancelLongPress);
-                            pill.addEventListener('touchend', cancelLongPress);
-                            pill.addEventListener('touchcancel', cancelLongPress);
+                // Load categories and top-categories in parallel
+                const [catResult, topResult] = await Promise.all([
+                    fetch('/api/categories').then(r => r.json()).catch(() => null),
+                    fetch('/api/top-categories').then(r => r.json()).catch(() => null)
+                ]);
 
-                            const selectCatPill = () => {
-                                if (longPressTriggered) return;
-                                document.querySelectorAll('.topic-pill').forEach(p => p.classList.remove('active'));
-                                pill.classList.add('active');
-                                customPhrases = cachedPhrases;
-                                customCategory = catName;
-                                activeTopic = null;
-                                topicPhrases = null;
-                                sendPhrasesToServer();
-                            };
-                            pill.addEventListener('click', selectCatPill);
-                            pill.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); selectCatPill(); } });
-                            picker.appendChild(pill);
-                        });
-                    }
-                } catch (e) { /* categories fetch failed — not critical */ }
+                // Render category pills
+                if (catResult && catResult.categories && catResult.categories.length > 0) {
+                    catResult.categories.forEach(catEntry => {
+                        const catName = catEntry.name;
+                        const cachedPhrases = catEntry.phrases || [];
+                        const pill = document.createElement('span');
+                        pill.className = 'topic-pill';
+                        pill.textContent = catName;
+                        pill.dataset.topicId = 'custom:' + catName;
+                        pill.tabIndex = 0;
+                        pill.setAttribute('role', 'button');
+                        pill.style.borderColor = 'rgba(155, 89, 182, 0.4)';
+                        // Long-press (6s) to delete category
+                        let longPressTimer = null;
+                        let longPressTriggered = false;
+                        const startLongPress = (e) => {
+                            longPressTriggered = false;
+                            longPressTimer = setTimeout(async () => {
+                                longPressTriggered = true;
+                                if (confirm(`Delete category "${catName}"?`)) {
+                                    try {
+                                        await fetch('/api/categories/' + encodeURIComponent(catName), { method: 'DELETE' });
+                                        pill.remove();
+                                        // Reset to default if this was the active selection
+                                        if (customCategory === catName) {
+                                            customPhrases = [];
+                                            customCategory = null;
+                                            selectTopic('default');
+                                        }
+                                    } catch (e) { /* ignore */ }
+                                }
+                            }, 6000);
+                        };
+                        const cancelLongPress = () => { clearTimeout(longPressTimer); };
+                        pill.addEventListener('mousedown', startLongPress);
+                        pill.addEventListener('touchstart', startLongPress, { passive: true });
+                        pill.addEventListener('mouseup', cancelLongPress);
+                        pill.addEventListener('mouseleave', cancelLongPress);
+                        pill.addEventListener('touchend', cancelLongPress);
+                        pill.addEventListener('touchcancel', cancelLongPress);
+
+                        const selectCatPill = () => {
+                            if (longPressTriggered) return;
+                            document.querySelectorAll('.topic-pill').forEach(p => p.classList.remove('active'));
+                            pill.classList.add('active');
+                            customPhrases = cachedPhrases;
+                            customCategory = catName;
+                            activeTopic = null;
+                            topicPhrases = null;
+                            localStorage.setItem('hotwords_category', 'custom:' + catName);
+                            sendPhrasesToServer();
+                        };
+                        pill.addEventListener('click', selectCatPill);
+                        pill.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); selectCatPill(); } });
+                        picker.appendChild(pill);
+                    });
+                }
 
                 // Highlight top 2 categories by highest score this week
-                try {
-                    const topRes = await fetch('/api/top-categories');
-                    const topData = await topRes.json();
-                    if (topData.top && topData.top.length > 0) {
-                        const topNames = topData.top.map(t => t.category.toLowerCase());
-                        picker.querySelectorAll('.topic-pill').forEach(pill => {
-                            const pillId = (pill.dataset.topicId || '').replace('custom:', '').toLowerCase();
-                            const pillText = pill.textContent.toLowerCase();
-                            if (topNames.includes(pillId) || topNames.includes(pillText)) {
-                                pill.classList.add('hot-category');
-                            }
-                        });
-                    }
-                } catch (e) { /* top categories fetch failed — not critical */ }
+                if (topResult && topResult.top && topResult.top.length > 0) {
+                    const topNames = topResult.top.map(t => t.category.toLowerCase());
+                    picker.querySelectorAll('.topic-pill').forEach(pill => {
+                        const pillId = (pill.dataset.topicId || '').replace('custom:', '').toLowerCase();
+                        const pillText = pill.textContent.toLowerCase();
+                        if (topNames.includes(pillId) || topNames.includes(pillText)) {
+                            pill.classList.add('hot-category');
+                        }
+                    });
+                }
 
                 // Add "+" pill to create a new category
                 const addPill = document.createElement('span');
@@ -2928,6 +2931,8 @@
                     topicPhrases = null;
                 }
             }
+            // Remember selection across sessions
+            localStorage.setItem('hotwords_category', topicId);
             // Broadcast updated category to room
             sendPhrasesToServer();
         }
@@ -4569,6 +4574,7 @@
                     listenPeekExpanded = false;
                 } else if (event.error !== 'aborted') {
                     console.log('Speech recognition error:', event.error);
+                    recognitionRunning = false;
                 }
             };
 
@@ -5199,9 +5205,20 @@
             }
         });
 
-        // Load topic picker, default to Company Jargon in RKO mode
+        // Load topic picker, restore last selected category
         loadTopicPicker().then(() => {
-            if (rkoTakeoverActive) selectTopic('company_jargon');
+            if (rkoTakeoverActive) {
+                selectTopic('company_jargon');
+            } else {
+                const saved = localStorage.getItem('hotwords_category');
+                if (saved && saved !== 'default') {
+                    // Check if the saved pill exists in the picker
+                    const pill = document.querySelector(`.topic-pill[data-topic-id="${CSS.escape(saved)}"]`);
+                    if (pill) {
+                        pill.click();
+                    }
+                }
+            }
         });
 
         // Local Mode button
@@ -5409,6 +5426,12 @@
 
                 // Solo mode starts immediately (no reveal needed)
                 waitingForFirstReveal = false;
+                gameActive = true;
+
+                const word = getRandomPhrase();
+                await showNewWordSoloMode(word);
+
+                // Start timer after clues are ready so generation time doesn't count
                 if (isPracticeMode) {
                     startPracticeMode();
                     timerDisplayEl.style.display = 'none';
@@ -5416,9 +5439,6 @@
                     GAME_DURATION = getGameDuration();
                     startGameTimer();
                 }
-
-                const word = getRandomPhrase();
-                await showNewWordSoloMode(word);
             } else {
                 const isDesktop = !('ontouchstart' in window) && navigator.maxTouchPoints === 0;
                 statusEl.textContent = isDesktop ? 'Press Spacebar to reveal!' : 'Hold upright to reveal!';
@@ -5533,36 +5553,38 @@
 
         // Sync the word-display box height so it doesn't jump between revealed/hidden
         function syncWordDisplayHeight() {
-            // Save current state
-            const wasHidden = wordContainer.classList.contains('orientation-hidden');
-            const wasRedacted = wordContainer.classList.contains('redacted');
+            requestAnimationFrame(() => {
+                // Save current state
+                const wasHidden = wordContainer.classList.contains('orientation-hidden');
+                const wasRedacted = wordContainer.classList.contains('redacted');
 
-            // Disable transitions so measurements are instant (not mid-animation)
-            wordContainer.style.transition = 'none';
+                // Disable transitions so measurements are instant (not mid-animation)
+                wordContainer.style.transition = 'none';
 
-            // Temporarily remove constraints to measure
-            wordContainer.style.minHeight = '';
-            wordContainer.classList.remove('orientation-hidden', 'redacted');
+                // Temporarily remove constraints to measure
+                wordContainer.style.minHeight = '';
+                wordContainer.classList.remove('orientation-hidden', 'redacted');
 
-            // Force reflow so cleared styles take effect immediately
-            wordContainer.offsetHeight;
+                // Force reflow so cleared styles take effect immediately
+                wordContainer.offsetHeight;
 
-            // Measure revealed state height
-            const revealedHeight = wordContainer.scrollHeight;
+                // Measure revealed state height
+                const revealedHeight = wordContainer.scrollHeight;
 
-            // Measure hidden state: redact-label is absolute, so measure its content directly
-            const labelHeight = redactLabelEl.scrollHeight + 40; // padding
+                // Measure hidden state: redact-label is absolute, so measure its content directly
+                const labelHeight = redactLabelEl.scrollHeight + 40; // padding
 
-            // Use the larger of the two
-            const maxHeight = Math.max(revealedHeight, labelHeight, 140);
-            wordContainer.style.minHeight = maxHeight + 'px';
+                // Use the larger of the two
+                const maxHeight = Math.max(revealedHeight, labelHeight, 140);
+                wordContainer.style.minHeight = maxHeight + 'px';
 
-            // Restore state
-            if (wasHidden) wordContainer.classList.add('orientation-hidden');
-            if (wasRedacted) wordContainer.classList.add('redacted');
+                // Restore state
+                if (wasHidden) wordContainer.classList.add('orientation-hidden');
+                if (wasRedacted) wordContainer.classList.add('redacted');
 
-            // Re-enable transitions
-            wordContainer.style.transition = '';
+                // Re-enable transitions
+                wordContainer.style.transition = '';
+            });
         }
 
         // Show new word in local mode (hidden until revealed)

@@ -9,8 +9,8 @@ plugins {
     application
 }
 
-group = "com.example"
-version = "0.12.32"
+group = "com.hotwords"
+version = "0.12.44"
 
 // This is what the Shadow plugin was looking for
 application {
@@ -32,6 +32,8 @@ dependencies {
     implementation("io.ktor:ktor-server-websockets-jvm") // Ensure this is present
     implementation("io.ktor:ktor-server-host-common-jvm")
 
+    // Compression
+    implementation("io.ktor:ktor-server-compression-jvm")
     // HTTP client for Claude API calls
     implementation("io.ktor:ktor-client-core-jvm")
     implementation("io.ktor:ktor-client-cio-jvm")

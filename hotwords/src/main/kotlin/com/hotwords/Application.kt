@@ -1,10 +1,11 @@
-package com.example
+package com.hotwords
 
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.*
 import io.ktor.serialization.kotlinx.json.*
 import io.ktor.server.application.*
 import io.ktor.server.http.content.*
+import io.ktor.server.plugins.compression.*
 import io.ktor.server.plugins.contentnegotiation.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
@@ -96,6 +97,17 @@ data class CategoryEntry(
 @Serializable
 data class CategoriesResponse(
     val categories: List<CategoryEntry>
+)
+
+@Serializable
+data class TopCategoryEntry(
+    val category: String,
+    val score: Int
+)
+
+@Serializable
+data class TopCategoriesResponse(
+    val top: List<TopCategoryEntry>
 )
 
 @Serializable
@@ -249,6 +261,22 @@ fun Application.module() {
     }
     install(ContentNegotiation) {
         json()
+    }
+    install(Compression) {
+        gzip {
+            priority = 1.0
+        }
+    }
+    intercept(ApplicationCallPipeline.Plugins) {
+        call.response.pipeline.intercept(io.ktor.server.response.ApplicationSendPipeline.After) {
+            val path = call.request.path()
+            when {
+                path == "/" || path.endsWith(".html") ->
+                    call.response.header(HttpHeaders.CacheControl, "max-age=300, must-revalidate")
+                path.startsWith("/phrases/") ->
+                    call.response.header(HttpHeaders.CacheControl, "max-age=86400, public")
+            }
+        }
     }
 
     // Round-based leaderboard storage (key: UUID -> round entry)
@@ -712,6 +740,7 @@ fun Application.module() {
 
 
     val appVersion = Application::class.java.`package`?.implementationVersion ?: "dev"
+    val log = environment.log
 
     routing {
         staticResources("/", "static") {
@@ -724,9 +753,9 @@ fun Application.module() {
 
         // Categories of the day — returns recently played custom categories
         get("/api/categories") {
-            val weeklyReset = weeklyResetTimestamp()
-            // Clean up entries from before this week's reset
-            categoriesOfTheDay.entries.removeIf { it.value.timestamp < weeklyReset }
+            val oneWeekAgo = System.currentTimeMillis() - 7 * 24 * 60 * 60 * 1000L
+            // Clean up entries older than 7 days
+            categoriesOfTheDay.entries.removeIf { it.value.timestamp < oneWeekAgo }
             // Return sorted by most recent, include cached phrases
             val categories = categoriesOfTheDay.entries
                 .sortedByDescending { it.value.timestamp }
@@ -746,8 +775,8 @@ fun Application.module() {
                 .entries
                 .sortedByDescending { it.value }
                 .take(2)
-                .map { mapOf("category" to it.key, "score" to it.value) }
-            call.respond(mapOf("top" to categoryScores))
+                .map { TopCategoryEntry(category = it.key, score = it.value) }
+            call.respond(TopCategoriesResponse(top = categoryScores))
         }
 
         // Add a category of the day (with cached phrases)
@@ -835,6 +864,7 @@ fun Application.module() {
                     practice = submission.practice
                 )
                 roundEntries[roundId] = entry
+                log.info("Score submitted: mode=${submission.mode}, score=$validatedScore, players=${validatedPlayers.joinToString(",")}, category=${entry.category}, practice=${submission.practice}")
 
                 // Persist phrase-level data to JSONL
                 if (submission.phrases.isNotEmpty()) {
@@ -1217,6 +1247,7 @@ Rules:
 
             room.add(this)
             roomEmptySince.remove(roomId)
+            log.info("WS connect: room=$roomId, sessions=${room.size}, totalRooms=${rooms.size}")
 
             try {
                 // Initialize room word if needed, or get existing
@@ -1287,6 +1318,7 @@ Rules:
 
                                 val player = Player(playerId, playerName, System.currentTimeMillis(), this)
                                 sessionToPlayerId[this] = playerId
+                                log.info("Player join: name=$playerName, room=$roomId, new=$isNewPlayer, players=${state.players.size + state.pendingPlayers.size}")
 
                                 // Mid-game new joiners go to pending list — not added to active roster
                                 // But if the timer has already expired, treat as normal join
@@ -1398,6 +1430,9 @@ Rules:
                                             roomWords[roomId] = startWord
                                             state.currentWord = startWord
                                             state.revealedWords = startWord.split(" ").map { false }.toMutableList()
+
+                                            val category = roomCategories[roomId] ?: "classic"
+                                            log.info("Game started: room=$roomId, players=${state.players.size}, duration=${state.roundDuration}s, category=$category")
 
                                             val startWordMsg = GameMessage(
                                                 type = "NEW_WORD",
@@ -1697,6 +1732,7 @@ Rules:
                                 state.revealedWords = newWord.split(" ").map { false }.toMutableList()
 
                                 val newScore = roomScores.merge(roomId, 1, Int::plus) ?: 1
+                                log.info("Phrase guessed: room=$roomId, by=${received.player ?: "?"}, score=$newScore")
                                 val winnerMsg = GameMessage(
                                     type = "ROUND_WON",
                                     player = received.player ?: "A Player",
@@ -1778,6 +1814,8 @@ Rules:
                 wsMessageTimestamps.remove(this)
                 // Remove player from state (active or pending)
                 val playerId = sessionToPlayerId.remove(this)
+                val playerName = playerId?.let { pid -> state.players.find { it.id == pid }?.name ?: state.pendingPlayers.find { it.id == pid }?.name }
+                log.info("WS disconnect: room=$roomId, player=${playerName ?: "unknown"}, remaining=${room.size}")
                 if (playerId != null) {
                     state.players.removeIf { it.id == playerId }
                     state.pendingPlayers.removeIf { it.id == playerId }
