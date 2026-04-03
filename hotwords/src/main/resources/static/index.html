@@ -1782,15 +1782,29 @@
             transform: none;
             box-shadow: none;
         }
-        .mode-subtitle {
-            color: #777;
-            font-size: 0.8rem;
-            margin-top: 4px;
-            text-align: center;
-            transition: all 0.2s ease;
+        .mode-btn-title {
+            display: block;
         }
-        .mode-section.selected .mode-subtitle {
+        .mode-btn-sub {
+            display: block;
+            font-size: 0.7rem;
+            font-weight: normal;
+            color: #999;
+            margin-top: 2px;
+        }
+        .mode-section.selected .mode-btn-sub {
             display: none;
+        }
+        .mode-detail {
+            display: none;
+            color: #888;
+            font-size: 0.8rem;
+            text-align: center;
+            margin-top: 4px;
+            line-height: 1.4;
+        }
+        .mode-section.selected .mode-detail {
+            display: block;
         }
         .back-btn {
             position: fixed;
@@ -2064,22 +2078,31 @@
         <div class="mode-buttons">
             <!-- Party Mode Section -->
             <div class="mode-section" id="partySection">
-                <button class="mode-btn party" id="partyModeBtn">🎉 Party Mode</button>
-                <div class="mode-subtitle">Everyone sees the clues — shout out your guesses!</div>
+                <button class="mode-btn party" id="partyModeBtn">
+                    <span class="mode-btn-title">🎉 Party Mode</span>
+                    <span class="mode-btn-sub">Everyone sees the clues — shout out answers!</span>
+                </button>
+                <div class="mode-detail">Get clues on screen and race to guess the words. No passing needed — everyone plays together!</div>
                 <div class="mode-expand" id="partyExpand"></div>
             </div>
 
             <!-- Pass & Play Section -->
             <div class="mode-section" id="passPlaySection">
-                <button class="mode-btn passplay" id="passPlayModeBtn">🤳 Pass &amp; Play</button>
-                <div class="mode-subtitle">Pass the phone and give clues to your friends</div>
+                <button class="mode-btn passplay" id="passPlayModeBtn">
+                    <span class="mode-btn-title">🤳 Pass &amp; Play</span>
+                    <span class="mode-btn-sub">Pass the phone, give clues to your friends</span>
+                </button>
+                <div class="mode-detail">Reveal the word and give clues. Got it? Pass like hot potato! Skip or time's up? Drink!</div>
                 <div class="mode-expand" id="passPlayExpand"></div>
             </div>
 
             <!-- Online Mode Section -->
             <div class="mode-section" id="onlineSection">
-                <button class="mode-btn online" id="onlineModeBtn">🌐 Online</button>
-                <div class="mode-subtitle">Play with friends anywhere</div>
+                <button class="mode-btn online" id="onlineModeBtn">
+                    <span class="mode-btn-title">🌐 Online</span>
+                    <span class="mode-btn-sub">Play with friends anywhere</span>
+                </button>
+                <div class="mode-detail">Join a room and ready up with other players. Each player takes turns getting everyone to guess the words, using their own device.</div>
                 <div class="mode-expand" id="onlineExpand">
                     <label>Your Name</label>
                     <input type="text" class="name-input" id="onlineNameInput" placeholder="Enter your name" maxlength="20">
