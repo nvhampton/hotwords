@@ -1674,18 +1674,13 @@
         .mode-buttons {
             display: flex;
             flex-direction: column;
-            gap: 15px;
+            gap: 8px;
             margin-top: 20px;
         }
         .mode-section {
-            border-radius: 25px;
+            border-radius: 18px;
             transition: all 0.3s ease;
-            padding: 15px;
-            border: 2px solid transparent;
-        }
-        .mode-section.selected {
-            background: rgba(255, 255, 255, 0.05);
-            border-color: rgba(255, 255, 255, 0.2);
+            padding: 0;
         }
         .mode-expand {
             max-height: 0;
@@ -1697,7 +1692,7 @@
         .mode-section.selected .mode-expand {
             max-height: 400px;
             opacity: 1;
-            padding-top: 15px;
+            padding-top: 10px;
         }
         .mode-expand label {
             display: block;
@@ -1720,10 +1715,10 @@
             border-color: #3EBECB;
         }
         .mode-btn {
-            font-size: 1.3rem;
-            padding: 20px 40px;
+            font-size: 1.2rem;
+            padding: 16px 32px;
             border: none;
-            border-radius: 50px;
+            border-radius: 16px;
             cursor: pointer;
             transition: all 0.3s ease;
             font-weight: bold;
@@ -1743,30 +1738,23 @@
         }
         .mode-btn:hover, .mode-btn:focus-visible {
             transform: translateY(-2px);
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
             outline: none;
         }
         .mode-section:not(.selected) .mode-btn {
-            opacity: 0.7;
+            opacity: 0.5;
+            font-size: 1rem;
+            padding: 12px 24px;
         }
         .mode-section.selected .mode-btn {
             opacity: 1;
-            font-size: 1rem;
-            padding: 12px 24px;
-            background: rgba(255, 255, 255, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            box-shadow: none;
-        }
-        .mode-section.selected .mode-btn:hover {
-            transform: none;
-            box-shadow: none;
         }
         .mode-subtitle {
-            color: #888;
-            font-size: 0.85rem;
-            margin-top: 6px;
+            color: #777;
+            font-size: 0.8rem;
+            margin-top: 4px;
             text-align: center;
-            transition: all 0.3s ease;
+            transition: all 0.2s ease;
         }
         .mode-section.selected .mode-subtitle {
             display: none;
