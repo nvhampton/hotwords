@@ -955,20 +955,25 @@
         }
 
         /* Player Count Selector */
+        .settings-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 4px;
+        }
         .difficulty-toggle {
             display: flex;
-            justify-content: center;
+            flex: 1;
             gap: 0;
-            margin-bottom: 6px;
             background: rgba(255, 255, 255, 0.05);
-            border-radius: 12px;
+            border-radius: 8px;
             overflow: hidden;
             border: 1px solid rgba(255, 255, 255, 0.1);
         }
         .diff-btn {
             flex: 1;
-            padding: 10px 0;
-            font-size: 1rem;
+            padding: 7px 0;
+            font-size: 0.8rem;
             font-weight: bold;
             border: none;
             background: transparent;
@@ -984,11 +989,30 @@
             color: #aaa;
             background: rgba(255, 255, 255, 0.05);
         }
+        .round-time-group {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            white-space: nowrap;
+        }
+        .round-time-val {
+            font-size: 1rem;
+            font-weight: bold;
+            min-width: 28px;
+            text-align: center;
+        }
         .difficulty-desc {
             text-align: center;
-            font-size: 0.75rem;
-            color: #888;
-            margin-bottom: 4px;
+            font-size: 0.7rem;
+            color: #777;
+            margin-bottom: 2px;
+        }
+        .player-count-row {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 4px 0;
         }
         .local-start-btn {
             width: 100%;
@@ -1019,6 +1043,12 @@
             display: flex;
             align-items: center;
             justify-content: center;
+        }
+        .player-count-btn.sm {
+            width: 30px;
+            height: 30px;
+            font-size: 1rem;
+            border-width: 1.5px;
         }
         .player-count-btn:hover {
             background: rgba(0, 116, 133, 0.25);
@@ -2064,28 +2094,27 @@
 
         <!-- Shared local settings (moved between party/passplay via JS) -->
         <div id="localSettings" style="display: none;">
-            <div class="difficulty-toggle">
-                <button class="diff-btn" id="diffPractice">Practice</button>
-                <button class="diff-btn active" id="diffEasy">Easy</button>
-                <button class="diff-btn" id="diffHard">Hard</button>
+            <div class="settings-row">
+                <div class="difficulty-toggle">
+                    <button class="diff-btn" id="diffPractice">Practice</button>
+                    <button class="diff-btn active" id="diffEasy">Easy</button>
+                    <button class="diff-btn" id="diffHard">Hard</button>
+                </div>
+                <div id="roundTimeGroup" class="round-time-group">
+                    <button class="player-count-btn sm" id="roundTimeDown">−</button>
+                    <span class="round-time-val" id="roundTimeDisplay">60s</span>
+                    <button class="player-count-btn sm" id="roundTimeUp">+</button>
+                </div>
             </div>
             <div class="difficulty-desc" id="diffDesc">Words reveal as you say them</div>
-            <div style="display: grid; grid-template-columns: auto auto; gap: 8px 16px; align-items: center; justify-content: center; padding: 12px 0;">
-                <div id="playerCountRow" style="display: contents;">
-                    <span style="color: #aaa; font-size: 1rem; text-align: right;">Players:</span>
-                    <div style="display: flex; align-items: center; gap: 10px;">
-                        <button class="player-count-btn" id="playerCountDown">−</button>
-                        <span style="font-size: 1.5rem; font-weight: bold; min-width: 30px; text-align: center;" id="playerCountDisplay">1</span>
-                        <button class="player-count-btn" id="playerCountUp">+</button>
-                    </div>
-                </div>
-                <span id="roundTimeLabel" style="color: #aaa; font-size: 1rem; text-align: right;">Round Time:</span>
-                <div id="roundTimeRow" style="display: flex; align-items: center; gap: 10px;">
-                    <button class="player-count-btn" id="roundTimeDown">−</button>
-                    <span style="font-size: 1.5rem; font-weight: bold; min-width: 30px; text-align: center;" id="roundTimeDisplay">60s</span>
-                    <button class="player-count-btn" id="roundTimeUp">+</button>
-                </div>
+            <div id="playerCountRow" class="player-count-row">
+                <span style="color: #aaa; font-size: 0.85rem;">Players:</span>
+                <button class="player-count-btn sm" id="playerCountDown">−</button>
+                <span style="font-size: 1.1rem; font-weight: bold; min-width: 24px; text-align: center;" id="playerCountDisplay">1</span>
+                <button class="player-count-btn sm" id="playerCountUp">+</button>
             </div>
+            <span id="roundTimeLabel" style="display:none;">Round Time:</span>
+            <div id="roundTimeRow" style="display:none;"></div>
             <button class="local-start-btn" id="localStartBtn">▶ Start Game</button>
         </div>
 
@@ -5465,6 +5494,7 @@
         const diffDesc = document.getElementById('diffDesc');
         const roundTimeRow = document.getElementById('roundTimeRow');
         const roundTimeLabel = document.getElementById('roundTimeLabel');
+        const roundTimeGroup = document.getElementById('roundTimeGroup');
 
         function updateDiffDescriptions() {
             if (diffPractice.classList.contains('active')) {
@@ -5483,7 +5513,7 @@
             diffEasy.classList.remove('active');
             diffHard.classList.remove('active');
             updateDiffDescriptions();
-            roundTimeRow.style.display = 'none';
+            roundTimeGroup.style.display = 'none';
             roundTimeLabel.style.display = 'none';
             localStorage.setItem('hotwords_difficulty', 'practice');
         });
@@ -5494,7 +5524,7 @@
             diffPractice.classList.remove('active');
             diffHard.classList.remove('active');
             updateDiffDescriptions();
-            roundTimeRow.style.display = 'flex';
+            roundTimeGroup.style.display = '';
             roundTimeLabel.style.display = '';
             localStorage.setItem('hotwords_difficulty', 'easy');
         });
@@ -5505,7 +5535,7 @@
             diffPractice.classList.remove('active');
             diffEasy.classList.remove('active');
             updateDiffDescriptions();
-            roundTimeRow.style.display = 'flex';
+            roundTimeGroup.style.display = '';
             roundTimeLabel.style.display = '';
             localStorage.setItem('hotwords_difficulty', 'hard');
         });
