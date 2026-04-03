@@ -5202,10 +5202,9 @@
                 // Move local settings into passplay expand
                 document.getElementById('passPlayExpand').appendChild(localSettings);
                 localSettings.style.display = '';
-                // Pass & Play: show player count, min 2
-                playerCountRow.style.display = '';
-                const savedPP = parseInt(localStorage.getItem('hotwords_pp_player_count'));
-                playerCount = (savedPP >= 2 && savedPP <= 10) ? savedPP : 2;
+                // Pass & Play: hide player count, default 2 players
+                playerCountRow.style.display = 'none';
+                playerCount = 2;
                 isSoloMode = false;
                 updatePlayerCountUI();
                 // Restore passplay-specific round time
