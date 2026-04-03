@@ -1724,17 +1724,10 @@
             font-weight: bold;
             width: 100%;
         }
-        .mode-btn.party {
-            background: linear-gradient(135deg, #007485 0%, #005a68 100%);
-            color: #fff;
-        }
-        .mode-btn.passplay {
-            background: linear-gradient(135deg, #1a6b5a 0%, #0d4a3e 100%);
-            color: #fff;
-        }
-        .mode-btn.online {
-            background: linear-gradient(135deg, #3EBECB 0%, #007485 100%);
-            color: #fff;
+        .mode-section:not(.selected) .mode-btn {
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            color: #ccc;
         }
         .mode-btn:hover, .mode-btn:focus-visible {
             transform: translateY(-2px);
@@ -1742,7 +1735,6 @@
             outline: none;
         }
         .mode-section:not(.selected) .mode-btn {
-            opacity: 0.5;
             font-size: 1rem;
             padding: 12px 24px;
         }
