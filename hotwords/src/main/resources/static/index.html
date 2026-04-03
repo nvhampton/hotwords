@@ -1729,8 +1729,12 @@
             font-weight: bold;
             width: 100%;
         }
-        .mode-btn.local {
+        .mode-btn.party {
             background: linear-gradient(135deg, #007485 0%, #005a68 100%);
+            color: #fff;
+        }
+        .mode-btn.passplay {
+            background: linear-gradient(135deg, #1a6b5a 0%, #0d4a3e 100%);
             color: #fff;
         }
         .mode-btn.online {
@@ -1756,6 +1760,16 @@
         .mode-section.selected .mode-btn:hover {
             transform: none;
             box-shadow: none;
+        }
+        .mode-subtitle {
+            color: #888;
+            font-size: 0.85rem;
+            margin-top: 6px;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+        .mode-section.selected .mode-subtitle {
+            display: none;
         }
         .back-btn {
             position: fixed;
@@ -2027,37 +2041,24 @@
         <div class="topic-picker" id="topicPicker"></div>
 
         <div class="mode-buttons">
-            <!-- Local Mode Section -->
-            <div class="mode-section" id="localSection">
-                <button class="mode-btn local" id="localModeBtn">📱 Play on this device</button>
-                <div class="mode-expand" id="localExpand">
-                    <div class="difficulty-toggle">
-                        <button class="diff-btn" id="diffPractice">Practice</button>
-                        <button class="diff-btn active" id="diffEasy">Easy</button>
-                        <button class="diff-btn" id="diffHard">Hard</button>
-                    </div>
-                    <div class="difficulty-desc" id="diffDesc">Words reveal as you say them</div>
-                    <div style="display: grid; grid-template-columns: auto auto; gap: 8px 16px; align-items: center; justify-content: center; padding: 12px 0;">
-                        <span style="color: #aaa; font-size: 1rem; text-align: right;">Players:</span>
-                        <div style="display: flex; align-items: center; gap: 10px;">
-                            <button class="player-count-btn" id="playerCountDown">−</button>
-                            <span style="font-size: 1.5rem; font-weight: bold; min-width: 30px; text-align: center;" id="playerCountDisplay">1</span>
-                            <button class="player-count-btn" id="playerCountUp">+</button>
-                        </div>
-                        <span id="roundTimeLabel" style="color: #aaa; font-size: 1rem; text-align: right;">Round Time:</span>
-                        <div id="roundTimeRow" style="display: flex; align-items: center; gap: 10px;">
-                            <button class="player-count-btn" id="roundTimeDown">−</button>
-                            <span style="font-size: 1.5rem; font-weight: bold; min-width: 30px; text-align: center;" id="roundTimeDisplay">60s</span>
-                            <button class="player-count-btn" id="roundTimeUp">+</button>
-                        </div>
-                    </div>
-                    <button class="local-start-btn" id="localStartBtn">▶ Start Game</button>
-                </div>
+            <!-- Party Mode Section -->
+            <div class="mode-section" id="partySection">
+                <button class="mode-btn party" id="partyModeBtn">🎉 Party Mode</button>
+                <div class="mode-subtitle">Everyone sees the clues — shout out your guesses!</div>
+                <div class="mode-expand" id="partyExpand"></div>
+            </div>
+
+            <!-- Pass & Play Section -->
+            <div class="mode-section" id="passPlaySection">
+                <button class="mode-btn passplay" id="passPlayModeBtn">🤳 Pass &amp; Play</button>
+                <div class="mode-subtitle">Pass the phone and give clues to your friends</div>
+                <div class="mode-expand" id="passPlayExpand"></div>
             </div>
 
             <!-- Online Mode Section -->
             <div class="mode-section" id="onlineSection">
-                <button class="mode-btn online" id="onlineModeBtn">🌐 Join a room</button>
+                <button class="mode-btn online" id="onlineModeBtn">🌐 Online</button>
+                <div class="mode-subtitle">Play with friends anywhere</div>
                 <div class="mode-expand" id="onlineExpand">
                     <label>Your Name</label>
                     <input type="text" class="name-input" id="onlineNameInput" placeholder="Enter your name" maxlength="20">
@@ -2070,6 +2071,33 @@
                     <button class="local-start-btn" id="onlineStartBtn">▶ Join</button>
                 </div>
             </div>
+        </div>
+
+        <!-- Shared local settings (moved between party/passplay via JS) -->
+        <div id="localSettings" style="display: none;">
+            <div class="difficulty-toggle">
+                <button class="diff-btn" id="diffPractice">Practice</button>
+                <button class="diff-btn active" id="diffEasy">Easy</button>
+                <button class="diff-btn" id="diffHard">Hard</button>
+            </div>
+            <div class="difficulty-desc" id="diffDesc">Words reveal as you say them</div>
+            <div style="display: grid; grid-template-columns: auto auto; gap: 8px 16px; align-items: center; justify-content: center; padding: 12px 0;">
+                <div id="playerCountRow" style="display: contents;">
+                    <span style="color: #aaa; font-size: 1rem; text-align: right;">Players:</span>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <button class="player-count-btn" id="playerCountDown">−</button>
+                        <span style="font-size: 1.5rem; font-weight: bold; min-width: 30px; text-align: center;" id="playerCountDisplay">1</span>
+                        <button class="player-count-btn" id="playerCountUp">+</button>
+                    </div>
+                </div>
+                <span id="roundTimeLabel" style="color: #aaa; font-size: 1rem; text-align: right;">Round Time:</span>
+                <div id="roundTimeRow" style="display: flex; align-items: center; gap: 10px;">
+                    <button class="player-count-btn" id="roundTimeDown">−</button>
+                    <span style="font-size: 1.5rem; font-weight: bold; min-width: 30px; text-align: center;" id="roundTimeDisplay">60s</span>
+                    <button class="player-count-btn" id="roundTimeUp">+</button>
+                </div>
+            </div>
+            <button class="local-start-btn" id="localStartBtn">▶ Start Game</button>
         </div>
 
         <div style="margin-top: 10px; text-align: center;">
@@ -2336,18 +2364,17 @@
         const lobbyScreen = document.getElementById('lobbyScreen');
         const gameScreen = document.getElementById('gameScreen');
         const backBtn = document.getElementById('backBtn');
-        const localModeBtn = document.getElementById('localModeBtn');
-        // Swap phone emoji to laptop if on desktop (default 📱 avoids flash)
-        if (!('ontouchstart' in window) && !/Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
-            localModeBtn.textContent = localModeBtn.textContent.replace('📱', '💻');
-        }
+        const partyModeBtn = document.getElementById('partyModeBtn');
+        const passPlayModeBtn = document.getElementById('passPlayModeBtn');
         const onlineModeBtn = document.getElementById('onlineModeBtn');
-        const localSection = document.getElementById('localSection');
+        const partySection = document.getElementById('partySection');
+        const passPlaySection = document.getElementById('passPlaySection');
         const onlineSection = document.getElementById('onlineSection');
-        const localExpand = document.getElementById('localExpand');
-        const onlineExpand = document.getElementById('onlineExpand');
+        const localSettings = document.getElementById('localSettings');
+        const playerCountRow = document.getElementById('playerCountRow');
+        const allModeSections = [partySection, passPlaySection, onlineSection];
 
-        // Track which mode is selected (null, 'local', or 'online')
+        // Track which mode is selected (null, 'party', 'passplay', or 'online')
         let selectedMode = null;
 
         // Game elements
@@ -5055,10 +5082,11 @@
             url.searchParams.delete('name');
             window.history.replaceState({}, '', url.pathname);
 
-            // Reset mode selection
+            // Reset mode selection and re-select last used
             selectedMode = null;
-            localSection.classList.remove('selected');
-            onlineSection.classList.remove('selected');
+            allModeSections.forEach(s => s.classList.remove('selected'));
+            const lastMode = localStorage.getItem('hotwords_last_mode') || 'party';
+            selectMode(lastMode);
 
             // Refresh topic picker (picks up new categories of the day)
             loadTopicPicker();
@@ -5132,20 +5160,49 @@
         }
 
         function selectMode(mode) {
-            if (selectedMode === mode) {
-                // Already selected - each mode uses its own start button
-            } else {
-                // Select this mode
-                selectedMode = mode;
-                if (mode === 'local') {
-                    localSection.classList.add('selected');
-                    onlineSection.classList.remove('selected');
-                } else {
-                    onlineSection.classList.add('selected');
-                    localSection.classList.remove('selected');
-                }
-                updateExpandTabIndex();
+            if (selectedMode === mode) return;
+            selectedMode = mode;
+            allModeSections.forEach(s => s.classList.remove('selected'));
+
+            if (mode === 'party') {
+                partySection.classList.add('selected');
+                // Move local settings into party expand
+                document.getElementById('partyExpand').appendChild(localSettings);
+                localSettings.style.display = '';
+                // Party mode: hide player count, force 1 player (solo/group guessing)
+                playerCountRow.style.display = 'none';
+                playerCount = 1;
+                isSoloMode = true;
+                updatePlayerCountUI();
+                // Restore party-specific round time
+                const savedTime = parseInt(localStorage.getItem('hotwords_party_round_time'));
+                customRoundTime = (savedTime >= 30 && savedTime <= 120) ? savedTime : 60;
+                enforceMinRoundTime();
+                updateRoundTimeUI();
+                updateDiffDescriptions();
+            } else if (mode === 'passplay') {
+                passPlaySection.classList.add('selected');
+                // Move local settings into passplay expand
+                document.getElementById('passPlayExpand').appendChild(localSettings);
+                localSettings.style.display = '';
+                // Pass & Play: show player count, min 2
+                playerCountRow.style.display = 'contents';
+                const savedPP = parseInt(localStorage.getItem('hotwords_pp_player_count'));
+                playerCount = (savedPP >= 2 && savedPP <= 10) ? savedPP : 2;
+                isSoloMode = false;
+                updatePlayerCountUI();
+                // Restore passplay-specific round time
+                const savedTime = parseInt(localStorage.getItem('hotwords_pp_round_time'));
+                customRoundTime = (savedTime >= minRoundTime() && savedTime <= 120) ? savedTime : minRoundTime();
+                enforceMinRoundTime();
+                updateRoundTimeUI();
+                updateDiffDescriptions();
+            } else if (mode === 'online') {
+                onlineSection.classList.add('selected');
+                localSettings.style.display = 'none';
             }
+            localStorage.setItem('hotwords_last_mode', mode);
+            updateExpandTabIndex();
         }
         // Initially hide expand section controls from tab order
         updateExpandTabIndex();
@@ -5392,8 +5449,9 @@
             }
         });
 
-        // Local Mode button
-        localModeBtn.addEventListener('click', () => selectMode('local'));
+        // Mode buttons
+        partyModeBtn.addEventListener('click', () => selectMode('party'));
+        passPlayModeBtn.addEventListener('click', () => selectMode('passplay'));
 
         // Lobby leaderboard link
         document.getElementById('lobbyLeaderboardLink').addEventListener('click', (e) => {
@@ -5405,7 +5463,6 @@
         const localStartBtn = document.getElementById('localStartBtn');
         localStartBtn.addEventListener('click', () => startLocalGame());
 
-        // Online Mode button
         onlineModeBtn.addEventListener('click', () => selectMode('online'));
 
         // Online Start button (inside expanded area)
@@ -5684,23 +5741,30 @@
         }
 
         // Player count controls
-        // Restore saved player count
-        const savedPlayerCount = parseInt(localStorage.getItem('hotwords_player_count'));
-        if (savedPlayerCount >= 1 && savedPlayerCount <= 10) playerCount = savedPlayerCount;
+        // Migrate old localStorage key
+        const oldPC = localStorage.getItem('hotwords_player_count');
+        if (oldPC && !localStorage.getItem('hotwords_pp_player_count')) {
+            const v = parseInt(oldPC);
+            if (v >= 2) localStorage.setItem('hotwords_pp_player_count', v);
+            localStorage.removeItem('hotwords_player_count');
+        }
 
         function updatePlayerCountUI() {
             playerCountDisplay.textContent = playerCount;
-            playerCountDown.disabled = playerCount <= 1;
+            playerCountDown.disabled = playerCount <= (selectedMode === 'passplay' ? 2 : 1);
             playerCountUp.disabled = playerCount >= 10;
             isSoloMode = (playerCount === 1);
             updateDiffDescriptions();
-            localStorage.setItem('hotwords_player_count', playerCount);
+            if (selectedMode === 'passplay') {
+                localStorage.setItem('hotwords_pp_player_count', playerCount);
+            }
         }
         playerCountUp.addEventListener('click', () => {
             if (playerCount < 10) { playerCount++; updatePlayerCountUI(); enforceMinRoundTime(); updateRoundTimeUI(); }
         });
         playerCountDown.addEventListener('click', () => {
-            if (playerCount > 1) {
+            const minPlayers = selectedMode === 'passplay' ? 2 : 1;
+            if (playerCount > minPlayers) {
                 // If round time was at the old minimum, decrease it with the player count
                 const wasAtMin = customRoundTime === minRoundTime();
                 playerCount--;
@@ -5732,14 +5796,21 @@
             roundTimeDown.disabled = customRoundTime <= minRoundTime();
             roundTimeUp.disabled = customRoundTime >= 120;
         }
+        function saveRoundTimeForMode() {
+            if (selectedMode === 'party') localStorage.setItem('hotwords_party_round_time', customRoundTime);
+            else if (selectedMode === 'passplay') localStorage.setItem('hotwords_pp_round_time', customRoundTime);
+        }
         roundTimeUp.addEventListener('click', () => {
-            if (customRoundTime < 120) { customRoundTime += 15; updateRoundTimeUI(); }
+            if (customRoundTime < 120) { customRoundTime += 15; updateRoundTimeUI(); saveRoundTimeForMode(); }
         });
         roundTimeDown.addEventListener('click', () => {
-            if (customRoundTime > minRoundTime()) { customRoundTime -= 15; enforceMinRoundTime(); updateRoundTimeUI(); }
+            if (customRoundTime > minRoundTime()) { customRoundTime -= 15; enforceMinRoundTime(); updateRoundTimeUI(); saveRoundTimeForMode(); }
         });
         updateRoundTimeUI();
 
+        // Initial mode selection on page load
+        const initialMode = localStorage.getItem('hotwords_last_mode') || 'party';
+        selectMode(initialMode);
 
         // Sync the word-display box height so it doesn't jump between revealed/hidden
         function syncWordDisplayHeight() {
@@ -6466,8 +6537,7 @@
                 } else {
                     // In lobby - reset selection
                     selectedMode = null;
-                    localSection.classList.remove('selected');
-                    onlineSection.classList.remove('selected');
+                    allModeSections.forEach(s => s.classList.remove('selected'));
                 }
                 return;
             }
@@ -6551,9 +6621,9 @@
                 }
 
                 // Auto-select online mode and start
-                selectedMode = 'online';
-                onlineSection.classList.add('selected');
-                localSection.classList.remove('selected');
+                selectedMode = null;
+                allModeSections.forEach(s => s.classList.remove('selected'));
+                selectMode('online');
 
                 // Small delay to let UI update, then auto-start
                 setTimeout(() => {
