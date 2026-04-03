@@ -4,6 +4,7 @@ hotwords.xyz {
         X-Frame-Options DENY
         Referrer-Policy strict-origin-when-cross-origin
         Permissions-Policy "camera=(), microphone=(self), geolocation=()"
+        Content-Security-Policy "default-src 'self'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'self' wss://hotwords.xyz; img-src 'self' data:"
     }
     reverse_proxy localhost:8080
 }

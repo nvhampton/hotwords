@@ -120,11 +120,12 @@ data class RoundEntry(
     val sessionHash: String,
     val timestamp: Long,
     val category: String = "classic",
-    val practice: Boolean = false
+    val practice: Boolean = false,
+    val duration: Int? = null
 )
 
 @Serializable
-data class CachedCategory(val timestamp: Long, val phrases: List<String>)
+data class CachedCategory(val timestamp: Long, val phrases: List<String>, @kotlinx.serialization.Transient val creatorIp: String = "")
 
 @Serializable
 data class PhraseEvent(
@@ -141,7 +142,8 @@ data class RoundSubmission(
     val roomId: String? = null,
     val phrases: List<PhraseEvent> = emptyList(),
     val category: String = "classic",
-    val practice: Boolean = false
+    val practice: Boolean = false,
+    val duration: Int? = null
 )
 
 @Serializable
@@ -175,7 +177,8 @@ data class RoundLog(
     val playerCount: Int,
     val score: Int,
     val phrases: List<PhraseEvent>,
-    val practice: Boolean = false
+    val practice: Boolean = false,
+    val duration: Int? = null
 )
 
 @Serializable
@@ -202,11 +205,12 @@ data class AnalyticsResponse(
     val dateRange: DateRange
 )
 
+private val sessionSalt = UUID.randomUUID().toString()
+
 fun generateSessionHash(remoteHost: String): String {
-    val salt = "hotwords-session-salt"
     val digest = MessageDigest.getInstance("SHA-256")
-    val hash = digest.digest("$salt:$remoteHost".toByteArray())
-    return hash.take(3).joinToString("") { "%02x".format(it) }
+    val hash = digest.digest("$sessionSalt:$remoteHost".toByteArray())
+    return hash.take(8).joinToString("") { "%02x".format(it) }
 }
 
 // JSONL persistence for phrase analytics
@@ -304,6 +308,16 @@ fun Application.module() {
 
     // Rate limiting for POST /api/generate-clues: IP -> list of timestamps
     val clueRateLimit = ConcurrentHashMap<String, MutableList<Long>>()
+
+    // Rate limiting for POST /api/generate-phrases: IP -> list of timestamps
+    val phraseRateLimit = ConcurrentHashMap<String, MutableList<Long>>()
+
+    // Rate limiting for GET endpoints: IP -> list of timestamps
+    val getRateLimit = ConcurrentHashMap<String, MutableList<Long>>()
+
+    // Global daily cap on Claude API calls (~$2-3/day at Haiku pricing)
+    val dailyClaudeCallCount = java.util.concurrent.atomic.AtomicInteger(0)
+    var dailyClaudeCallResetTime = System.currentTimeMillis()
 
     // Clue cache: normalized phrase -> list of clues (avoids re-generating for same phrase)
     val clueCache = ConcurrentHashMap<String, List<String>>()
@@ -486,6 +500,30 @@ fun Application.module() {
             clueRateLimit.entries.removeIf { (_, timestamps) ->
                 timestamps.removeIf { now - it > 60_000L }
                 timestamps.isEmpty()
+            }
+            phraseRateLimit.entries.removeIf { (_, timestamps) ->
+                timestamps.removeIf { now - it > 60_000L }
+                timestamps.isEmpty()
+            }
+            getRateLimit.entries.removeIf { (_, timestamps) ->
+                timestamps.removeIf { now - it > 60_000L }
+                timestamps.isEmpty()
+            }
+
+            // Reset daily Claude API call counter every 24h
+            if (now - dailyClaudeCallResetTime > 86_400_000L) {
+                dailyClaudeCallCount.set(0)
+                dailyClaudeCallResetTime = now
+            }
+
+            // Clean up old JSONL archives (>90 days) — check once per hour
+            if (now % 3_600_000L < 5_000L) {
+                try {
+                    val ninetyDaysAgo = now - 90L * 24 * 60 * 60 * 1000
+                    dataDir.listFiles()?.filter { it.name.startsWith("rounds.") && it.name.endsWith(".jsonl") && it.name != "rounds.jsonl" }
+                        ?.filter { it.lastModified() < ninetyDaysAgo }
+                        ?.forEach { it.delete() }
+                } catch (_: Exception) {}
             }
         }
     }
@@ -742,6 +780,27 @@ fun Application.module() {
     val appVersion = Application::class.java.`package`?.implementationVersion ?: "dev"
     val log = environment.log
 
+    // Reusable rate-limit check: returns true if rate limited
+    fun checkRateLimit(rateLimitMap: ConcurrentHashMap<String, MutableList<Long>>, ip: String, maxPerMinute: Int): Boolean {
+        val now = System.currentTimeMillis()
+        val timestamps = rateLimitMap.computeIfAbsent(ip) { mutableListOf() }
+        return synchronized(timestamps) {
+            timestamps.removeIf { now - it > 60_000L }
+            if (timestamps.size >= maxPerMinute) true
+            else { timestamps.add(now); false }
+        }
+    }
+
+    // Check global daily Claude API cap; returns true if cap exceeded
+    fun checkDailyClaudeCap(): Boolean {
+        val now = System.currentTimeMillis()
+        if (now - dailyClaudeCallResetTime > 86_400_000L) {
+            dailyClaudeCallCount.set(0)
+            dailyClaudeCallResetTime = now
+        }
+        return dailyClaudeCallCount.incrementAndGet() > 500
+    }
+
     routing {
         staticResources("/", "static") {
             default("index.html")
@@ -753,6 +812,12 @@ fun Application.module() {
 
         // Categories of the day — returns recently played custom categories
         get("/api/categories") {
+            val remoteIp = call.request.header("X-Forwarded-For")?.split(",")?.firstOrNull()?.trim()
+                ?: call.request.local.remoteHost
+            if (checkRateLimit(getRateLimit, remoteIp, 60)) {
+                call.respond(HttpStatusCode.TooManyRequests, mapOf("error" to "Rate limit exceeded"))
+                return@get
+            }
             val oneWeekAgo = System.currentTimeMillis() - 7 * 24 * 60 * 60 * 1000L
             // Clean up entries older than 7 days
             categoriesOfTheDay.entries.removeIf { it.value.timestamp < oneWeekAgo }
@@ -766,6 +831,12 @@ fun Application.module() {
 
         // Top categories by highest score this week
         get("/api/top-categories") {
+            val remoteIp = call.request.header("X-Forwarded-For")?.split(",")?.firstOrNull()?.trim()
+                ?: call.request.local.remoteHost
+            if (checkRateLimit(getRateLimit, remoteIp, 60)) {
+                call.respond(HttpStatusCode.TooManyRequests, mapOf("error" to "Rate limit exceeded"))
+                return@get
+            }
             val weeklyReset = weeklyResetTimestamp()
             // Group rounds by category, find max score per category
             val categoryScores = roundEntries.values
@@ -781,6 +852,8 @@ fun Application.module() {
 
         // Add a category of the day (with cached phrases)
         post("/api/categories") {
+            val remoteIp = call.request.header("X-Forwarded-For")?.split(",")?.firstOrNull()?.trim()
+                ?: call.request.local.remoteHost
             val body = call.receiveText()
             val request = jsonLenient.decodeFromString(JsonObject.serializer(), body)
             val rawCategory = request["category"]?.jsonPrimitive?.contentOrNull?.trim()?.take(100)
@@ -788,7 +861,7 @@ fun Application.module() {
             val category = rawCategory?.split("\\s+".toRegex())?.take(3)?.joinToString(" ")?.lowercase()
             val phrases = request["phrases"]?.jsonArray?.map { it.jsonPrimitive.content } ?: emptyList()
             if (!category.isNullOrBlank() && phrases.isNotEmpty()) {
-                categoriesOfTheDay[category] = CachedCategory(System.currentTimeMillis(), phrases.take(200))
+                categoriesOfTheDay[category] = CachedCategory(System.currentTimeMillis(), phrases.take(200), creatorIp = remoteIp)
             } else if (!category.isNullOrBlank()) {
                 // Update timestamp but keep existing phrases if any
                 val existing = categoriesOfTheDay[category]
@@ -799,11 +872,18 @@ fun Application.module() {
             call.respond(mapOf("ok" to true))
         }
 
-        // Delete a category of the day
+        // Delete a category of the day (only creator IP or blank creator allowed)
         delete("/api/categories/{name}") {
             val name = call.parameters["name"]?.lowercase()?.trim()
             if (name.isNullOrBlank()) {
                 call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Missing category name"))
+                return@delete
+            }
+            val remoteIp = call.request.header("X-Forwarded-For")?.split(",")?.firstOrNull()?.trim()
+                ?: call.request.local.remoteHost
+            val existing = categoriesOfTheDay[name]
+            if (existing != null && existing.creatorIp.isNotBlank() && existing.creatorIp != remoteIp) {
+                call.respond(HttpStatusCode.Forbidden, mapOf("error" to "Only the creator can delete this category"))
                 return@delete
             }
             val removed = categoriesOfTheDay.remove(name) != null
@@ -852,6 +932,8 @@ fun Application.module() {
                 val sessionHash = generateSessionHash(remoteIp)
                 val roundId = UUID.randomUUID().toString()
 
+                val validatedDuration = submission.duration?.coerceIn(5, 600)
+
                 val entry = RoundEntry(
                     id = roundId,
                     score = validatedScore,
@@ -860,8 +942,11 @@ fun Application.module() {
                     roomId = submission.roomId?.take(30),
                     sessionHash = sessionHash,
                     timestamp = now,
-                    category = submission.category.trim().split("\\s+".toRegex()).take(3).joinToString(" ").lowercase().ifEmpty { "classic" },
-                    practice = submission.practice
+                    category = submission.category.trim().split("\\s+".toRegex()).take(3)
+                        .joinToString(" ") { it.replace(Regex("[^a-zA-Z0-9]"), "") }
+                        .lowercase().ifEmpty { "classic" },
+                    practice = submission.practice,
+                    duration = validatedDuration
                 )
                 roundEntries[roundId] = entry
                 log.info("Score submitted: mode=${submission.mode}, score=$validatedScore, players=${validatedPlayers.joinToString(",")}, category=${entry.category}, practice=${submission.practice}")
@@ -884,11 +969,17 @@ fun Application.module() {
                         playerCount = validatedPlayers.size,
                         score = validatedScore,
                         phrases = validatedPhrases,
-                        practice = submission.practice
+                        practice = submission.practice,
+                        duration = validatedDuration
                     )
                     try {
                         synchronized(roundLogLock) {
                             roundLogFile.appendText(Json.encodeToString(RoundLog.serializer(), roundLog) + "\n")
+                            // Rotate if file exceeds 50MB
+                            if (roundLogFile.length() > 50 * 1024 * 1024) {
+                                val archiveName = "rounds.${System.currentTimeMillis()}.jsonl"
+                                roundLogFile.renameTo(File(dataDir, archiveName))
+                            }
                         }
                     } catch (e: Exception) {
                         // Log but don't fail the request
@@ -921,6 +1012,12 @@ fun Application.module() {
         }
 
         get("/api/leaderboard") {
+            val remoteIp = call.request.header("X-Forwarded-For")?.split(",")?.firstOrNull()?.trim()
+                ?: call.request.local.remoteHost
+            if (checkRateLimit(getRateLimit, remoteIp, 60)) {
+                call.respond(HttpStatusCode.TooManyRequests, mapOf("error" to "Rate limit exceeded"))
+                return@get
+            }
             val mode = call.request.queryParameters["mode"] ?: "local"
             val room = call.request.queryParameters["room"]
             val weeklyReset = weeklyResetTimestamp()
@@ -944,6 +1041,12 @@ fun Application.module() {
         }
 
         get("/api/analytics/phrases") {
+            val remoteIp = call.request.header("X-Forwarded-For")?.split(",")?.firstOrNull()?.trim()
+                ?: call.request.local.remoteHost
+            if (checkRateLimit(getRateLimit, remoteIp, 60)) {
+                call.respond(HttpStatusCode.TooManyRequests, mapOf("error" to "Rate limit exceeded"))
+                return@get
+            }
             try {
                 if (!roundLogFile.exists()) {
                     call.respond(AnalyticsResponse(
@@ -958,10 +1061,13 @@ fun Application.module() {
                 val limit = (call.request.queryParameters["limit"]?.toIntOrNull() ?: 50).coerceIn(1, 500)
 
                 val rounds = synchronized(roundLogLock) {
-                    roundLogFile.readLines()
-                }.mapNotNull { line ->
-                    try { jsonLenient.decodeFromString(RoundLog.serializer(), line) } catch (e: Exception) { null }
-                }.filter { it.timestamp >= since }
+                    if (!roundLogFile.exists()) emptyList()
+                    else roundLogFile.useLines { lines ->
+                        lines.take(50_000).mapNotNull { line ->
+                            try { jsonLenient.decodeFromString(RoundLog.serializer(), line) } catch (e: Exception) { null }
+                        }.filter { it.timestamp >= since }.toList()
+                    }
+                }
 
                 if (rounds.isEmpty()) {
                     call.respond(AnalyticsResponse(
@@ -1023,11 +1129,30 @@ fun Application.module() {
             install(ClientContentNegotiation) {
                 json(Json { ignoreUnknownKeys = true })
             }
+            install(io.ktor.client.plugins.HttpTimeout) {
+                requestTimeoutMillis = 30_000
+                connectTimeoutMillis = 5_000
+                socketTimeoutMillis = 30_000
+            }
         }
 
         post("/api/generate-phrases") {
             if (claudeApiKey.isBlank()) {
                 call.respond(HttpStatusCode.ServiceUnavailable, mapOf("error" to "API key not configured"))
+                return@post
+            }
+
+            // Rate limit: 10/min/IP
+            val remoteIp = call.request.header("X-Forwarded-For")?.split(",")?.firstOrNull()?.trim()
+                ?: call.request.local.remoteHost
+            if (checkRateLimit(phraseRateLimit, remoteIp, 10)) {
+                call.respond(HttpStatusCode.TooManyRequests, mapOf("error" to "Rate limit exceeded"))
+                return@post
+            }
+
+            // Global daily cap on Claude API calls
+            if (checkDailyClaudeCap()) {
+                call.respond(HttpStatusCode.TooManyRequests, mapOf("error" to "Daily API limit reached"))
                 return@post
             }
 
@@ -1139,6 +1264,8 @@ Rules:
                 return@post
             }
 
+            // Global daily cap on Claude API calls (checked after cache, but before API call we check below)
+
             val body = call.receiveText()
             val request = jsonLenient.decodeFromString(JsonObject.serializer(), body)
             val phrase = request["phrase"]?.jsonPrimitive?.contentOrNull ?: ""
@@ -1155,6 +1282,12 @@ Rules:
             val cached = clueCache[cacheKey]
             if (cached != null) {
                 call.respond(mapOf("clues" to cached))
+                return@post
+            }
+
+            // Global daily cap on Claude API calls
+            if (checkDailyClaudeCap()) {
+                call.respond(HttpStatusCode.TooManyRequests, mapOf("error" to "Daily API limit reached"))
                 return@post
             }
 
@@ -1287,7 +1420,7 @@ Rules:
                                 val playerId = received.playerId ?: UUID.randomUUID().toString()
                                 // Sanitize player name: trim, cap at 20 chars, strip HTML tags
                                 val rawName = (received.player ?: "Anonymous").trim().take(20)
-                                val playerName = rawName.replace(Regex("<[^>]*>"), "").ifEmpty { "Anonymous" }
+                                val playerName = rawName.replace(Regex("[^\\p{L}\\p{N} _\\-.]"), "").trim().ifEmpty { "Anonymous" }
 
                                 // Set room theme if provided (only host or first player can set)
                                 val theme = received.theme
