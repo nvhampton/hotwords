@@ -5203,7 +5203,7 @@
                 document.getElementById('passPlayExpand').appendChild(localSettings);
                 localSettings.style.display = '';
                 // Pass & Play: show player count, min 2
-                playerCountRow.style.display = 'contents';
+                playerCountRow.style.display = '';
                 const savedPP = parseInt(localStorage.getItem('hotwords_pp_player_count'));
                 playerCount = (savedPP >= 2 && savedPP <= 10) ? savedPP : 2;
                 isSoloMode = false;
