@@ -3529,6 +3529,9 @@
 
                     const isYou = currentRoundId && round.id === currentRoundId;
                     const playerCount = round.players.length;
+                    const modeLabel = round.mode === 'online'
+                        ? `${playerCount} player${playerCount !== 1 ? 's' : ''}`
+                        : playerCount <= 1 ? 'Party' : 'Pass & Play';
                     const timeAgo = formatTimeAgo(round.timestamp);
                     const practiceLabel = round.practice ? ' · practice' : '';
                     const durationLabel = !round.practice && round.duration ? ` · ${round.duration}s` : '';
@@ -3537,7 +3540,7 @@
                     s += `<div class="leaderboard-entry${isYou ? ' is-you' : ''}">
                         <div class="leaderboard-rank ${rankClass}">${rankDisplay}</div>
                         <div class="leaderboard-details">
-                            <div class="leaderboard-players">${Number(playerCount)} player${playerCount !== 1 ? 's' : ''}${cat}${isYou ? ' (you)' : ''}</div>
+                            <div class="leaderboard-players">${modeLabel}${cat}${isYou ? ' (you)' : ''}</div>
                             <div class="leaderboard-meta">
                                 <span class="leaderboard-hash">#${escapeHtml(round.sessionHash)}</span>
                                 <span class="leaderboard-time">${escapeHtml(timeAgo)}${practiceLabel}${durationLabel}</span>
