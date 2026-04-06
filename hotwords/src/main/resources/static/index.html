@@ -2200,8 +2200,8 @@
         </div>
 
         <div class="button-row">
-            <button class="gotit-btn btn-inactive" id="gotItBtn">Got It! <span class="key-hint">[Enter]</span></button>
-            <button class="skip-btn btn-inactive" id="skipBtn">Skip <span class="key-hint">[Tab]</span></button>
+            <button class="gotit-btn btn-inactive" id="gotItBtn">Got It!</button>
+            <button class="skip-btn btn-inactive" id="skipBtn">Skip</button>
             <button class="play-again-btn" id="playAgainBtn" style="display: none;">Play Again</button>
         </div>
         <div class="listen-row">
@@ -4648,9 +4648,12 @@
         // Suppress Chrome's speech recognition chime:
         // - Use abort() instead of stop() (skips the end chime)
         // - Track running state to avoid redundant start() calls (each triggers a chime)
+        // - Debounce restarts to reduce Android "ding" from frequent onend cycles
         let recognitionRunning = false;
+        let recognitionRestartTimer = null;
 
         function silentStart() {
+            if (recognitionRestartTimer) { clearTimeout(recognitionRestartTimer); recognitionRestartTimer = null; }
             if (!recognition || recognitionRunning) return;
             try {
                 recognition.start();
@@ -4662,6 +4665,7 @@
         }
 
         function silentStop() {
+            if (recognitionRestartTimer) { clearTimeout(recognitionRestartTimer); recognitionRestartTimer = null; }
             if (!recognition || !recognitionRunning) return;
             try {
                 recognition.abort(); // abort() doesn't play the end chime
@@ -4685,6 +4689,10 @@
                 if (timerPaused) return;
                 // Track latest results length so new-phrase can set baseline
                 speechResultsLength = event.results.length;
+                // Reset baseline if it exceeds results (recognition restarted)
+                if (speechResultBaseline > event.results.length) {
+                    speechResultBaseline = 0;
+                }
                 // Only process results after the baseline (set on each new phrase)
                 // and limit to last 3 for speed
                 const minIdx = Math.max(speechResultBaseline, event.results.length - 3);
@@ -4769,9 +4777,19 @@
 
             recognition.onend = () => {
                 recognitionRunning = false;
-                // Restart if still supposed to be listening
+                // Reset baseline — recognition.results resets on restart,
+                // so stale baseline would cause all new results to be skipped
+                speechResultBaseline = 0;
+                speechResultsLength = 0;
+                // Debounced restart: wait 2s before restarting to avoid rapid
+                // onend→start cycles on Android (each start() plays a "ding").
+                // If recognition fires onend again during the wait, timer resets.
                 if (isListening) {
-                    silentStart();
+                    if (recognitionRestartTimer) clearTimeout(recognitionRestartTimer);
+                    recognitionRestartTimer = setTimeout(() => {
+                        recognitionRestartTimer = null;
+                        if (isListening) silentStart();
+                    }, 2000);
                 }
             };
         }
@@ -6082,10 +6100,11 @@
 
         function updateSoloButtonText() {
             if (!isSoloMode) return;
+            const isDesktop = !('ontouchstart' in window) && navigator.maxTouchPoints === 0;
             if (soloCluesShown < soloClues.length) {
-                skipBtn.innerHTML = 'Hint <span class="key-hint">[Space]</span>';
+                skipBtn.innerHTML = 'Hint' + (isDesktop ? ' <span class="key-hint">[Space]</span>' : '');
             } else {
-                skipBtn.innerHTML = 'Give Up <span class="key-hint">[Space]</span>';
+                skipBtn.innerHTML = 'Give Up' + (isDesktop ? ' <span class="key-hint">[Space]</span>' : '');
             }
         }
 
@@ -6240,12 +6259,13 @@
             listenBtn.textContent = isListening ? 'Stop Listening' : 'Start Listening';
             listenBtn.classList.toggle('active', isListening);
             if (isLocalMode) {
+                const isDesktop = !('ontouchstart' in window) && navigator.maxTouchPoints === 0;
                 if (isSoloMode) {
                     updateSoloButtonText();
                 } else {
-                    skipBtn.innerHTML = 'Skip <span class="key-hint">[Tab]</span>';
+                    skipBtn.innerHTML = 'Skip' + (isDesktop ? ' <span class="key-hint">[Tab]</span>' : '');
                 }
-                gotItBtn.innerHTML = 'Got It! <span class="key-hint">[Enter]</span>';
+                gotItBtn.innerHTML = 'Got It!' + (isDesktop ? ' <span class="key-hint">[Enter]</span>' : '');
             }
             // Online mode button text is handled by updateOnlineModeButtons()
         }
