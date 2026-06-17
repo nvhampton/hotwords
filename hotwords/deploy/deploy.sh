@@ -94,7 +94,7 @@ After=network.target
 Type=simple
 User=hotwords
 EnvironmentFile=-/opt/hotwords/.env
-ExecStart=/usr/bin/java -jar /opt/hotwords/game-server.jar
+ExecStart=/usr/bin/java -Djava.net.preferIPv6Addresses=true -jar /opt/hotwords/game-server.jar
 WorkingDirectory=/opt/hotwords
 Restart=always
 RestartSec=5
