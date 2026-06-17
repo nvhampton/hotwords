@@ -301,3 +301,41 @@ Online mode previously showed a bare "Game Over!" text with a Play Again button 
 20. **WebSocket close is async** — Calling `ws.close()` doesn't immediately stop message handlers. If `showLobby()` hides an overlay before disconnecting, incoming messages can re-show it. Disconnect first, then clean up UI.
 21. **Fixed-position overlays need unique z-indexes** — Multiple `position: fixed; z-index: 1050` overlays create undefined stacking. Assign distinct values in a clear hierarchy.
 22. **Prompt engineering + server sanitization = defense in depth** — AI models mostly follow prompt rules but can slip. A regex strip on the server ensures no punctuation reaches clients regardless.
+
+## Session: 2026-04-06
+
+### Android Voice Recognition Improvements (v0.13.19)
+Three coordinated changes to narrow the gap between desktop Chrome and Android Chrome speech recognition. Android STT is genuinely worse (lower-accuracy on-device model, dropped words after restarts, ~5–10s silence auto-end), so the fix is to be more forgiving on Android and waste fewer hypotheses.
+
+- **`maxAlternatives = 5`**: Web Speech API only returns 1 hypothesis by default. We now request 5 and run match logic against all of them, taking the best similarity. Especially valuable on Android where the top hypothesis is often noisier than the runner-up. The describer slip check still uses only the top hypothesis to avoid false positives from low-confidence alternatives.
+- **Android-only fuzzy threshold drop**: `IS_ANDROID` UA detection lowers `FUZZY_THRESHOLD` and `WORD_FUZZY_THRESHOLD` from 0.85 → 0.75 on Android only. Desktop remains strict.
+- **Pre-warm in online mode**: On Ready click, recognition is started immediately with new `isPrewarming` flag so `onresult` ignores results during the lobby wait. The first ~300ms of dropped audio (Android's Web Speech API quirk) happens during the ready wait instead of mid-round. `GAME_STARTED` clears `isPrewarming` and recognition begins processing. `hideReadyOverlay()` cancels the warm-up if the player backs out before the game starts. (Local mode already had effective pre-warming via `launchLocalGame`.)
+
+### Key Learnings
+23. **Web Speech API alternatives are free accuracy** — `maxAlternatives` defaults to 1 but is essentially free to bump to 5. The runner-up hypotheses are often what the speaker actually said, especially on lower-quality STT backends like Android Chrome's. Run match logic against all of them, not just the top.
+24. **STT quality is per-platform, not per-browser** — Desktop Chrome and Android Chrome are both "Chrome" but use entirely different speech models. Treat them as separate STT engines with separate tuning constants.
+25. **Pre-warming matters because the first ~300ms of recognition is unreliable** — Web Speech on Android frequently drops the first words after `start()`. Starting recognition during a UI wait state (lobby, ready overlay) and gating result processing with a flag eats the cost without affecting gameplay.
+
+## Session: 2026-06-16
+
+### IPv6-only origin + EC2 Instance Connect Endpoint (deploy)
+Migrate the EC2 instance off its auto-assigned public IPv4 to eliminate the ~$3.65/mo IPv4 hourly charge. Cloudflare's proxied edge already does dual-stack at the front; the origin only needs IPv6.
+
+- **VPC/subnet**: Amazon-provided IPv6 `2600:1f13:24a:2e00::/56` on VPC; `/64` on subnet; `::/0 → igw` on the route table; `AssignIpv6AddressOnCreation=true` for future launches.
+- **Instance ENI**: assigned `2600:1f13:24a:2e00:bea1:ce28:6e4a:a17c`. Security group gained `tcp/80` and `tcp/443` from `::/0` (existing v4 rules kept while Cloudflare still has the A record).
+- **SSH path replacement**: residential ISPs are typically v4-only, so dropping the public IPv4 would kill direct SSH. Solution: EC2 Instance Connect Endpoint (`eice-0babd0133d83c9794`) in the same subnet with its own SG (`sg-011c8c012893d5f55`), and a new ingress rule on the instance SG allowing tcp/22 from the EICE SG. SSH/scp go through `aws ec2-instance-connect open-tunnel --instance-id %h` as a `ProxyCommand`, keeping the existing keypair.
+- **Deploy script** (`deploy/build-and-deploy.sh`): default `HOST` switched from `184.32.87.58` to the instance ID. When `HOST` matches `i-*` the script appends the EICE ProxyCommand. `SSH_OPTS` refactored from string to bash array so options containing spaces (the ProxyCommand value) survive expansion.
+- **Caddy unchanged**: it was already binding `*:80`/`*:443` (dual-stack), so it serves on the IPv6 with no Caddyfile change. Verified end-to-end with `curl --resolve` from inside the instance against `[ipv6]:443` → 200.
+
+### Cutover
+- Cloudflare: added AAAA `hotwords.xyz` → `2600:1f13:24a:2e00:bea1:ce28:6e4a:a17c` (proxied), kept A in place initially.
+- Tried `modify-subnet-attribute --no-map-public-ip-on-launch` + stop/start; the stop/start gave the ENI a *new* auto-assigned public IPv4 (`34.222.177.254`) anyway — the subnet flag only affects new launches, not existing ENIs.
+- Fix: `aws ec2 modify-network-interface-attribute --no-associate-public-ip-address` on the existing ENI. The public IPv4 was released immediately with no stop/start required and no impact to the IPv6 / SSH-via-EICE / running service. Verified `PublicIpAddress: null` and Cloudflare → origin still 200.
+- Cloudflare A record now stale (points at `184.32.87.58`, no longer ours) — leaving deletion to a follow-up since proxied A doesn't matter when the origin only listens on v6.
+
+### Key Learnings
+26. **AWS bills for every attached public IPv4, EIP or not** — Since Feb 2024, the $0.005/hr charge applies to auto-assigned public IPv4s too. "Elastic IPs: none" is not the same as "no public IPv4."
+27. **`modify-network-interface-attribute --no-associate-public-ip-address` works on running ENIs** — Older AWS docs imply you need to swap the ENI or relaunch the instance to drop an auto-assigned public IPv4. Not anymore: the API call releases it in-place, no downtime. Try this first before any ENI surgery.
+28. **Subnet `MapPublicIpOnLaunch` is launch-time only** — Setting it to false does NOT affect existing ENIs across stop/start. They keep their per-ENI "associate public IP" attribute baked in at launch, and a fresh public IP is assigned on every start until you flip the ENI attribute.
+29. **Bash arrays beat option strings for ssh/scp wrappers** — `SSH_OPTS="-o Foo=$X"` used unquoted (`scp $SSH_OPTS …`) breaks the moment `$X` contains a space, because re-expansion does word-splitting but not quote-removal. Use `SSH_OPTS+=(-o "Foo=$X")` and `scp "${SSH_OPTS[@]}" …`.
+30. **EC2 Instance Connect Endpoint takes ~5 minutes to provision** — Creation returns immediately but `State` stays `create-in-progress` for around 5 min before becoming `create-complete`. Plan automation around this; don't assume it's ready right after the API call.

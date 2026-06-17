@@ -11,17 +11,24 @@
 
 set -e
 
-HOST="${1:-${HOTWORDS_HOST:-184.32.87.58}}"
-SSH_OPTS="-o ConnectTimeout=10"
+HOST="${1:-${HOTWORDS_HOST:-i-00497c5fdaad90b82}}"
+AWS_REGION="${HOTWORDS_AWS_REGION:-us-west-2}"
+SSH_OPTS=(-o ConnectTimeout=10)
 
 # If a key is provided (arg or env), use it; otherwise rely on SSH config
 SSH_KEY="${2:-${HOTWORDS_SSH_KEY:-$HOME/.ssh/mysecurekeypair.pem}}"
+SSH_KEY="${SSH_KEY/#\~/$HOME}"  # expand literal ~ from env vars
 if [ -n "$SSH_KEY" ]; then
-    SSH_OPTS="$SSH_OPTS -i $SSH_KEY"
+    SSH_OPTS+=(-i "$SSH_KEY")
     SSH_TARGET="ec2-user@$HOST"
 else
     SSH_TARGET="$HOST"
 fi
+
+# Instance IDs (i-...) route through EC2 Instance Connect Endpoint — no public IPv4 needed.
+case "$HOST" in
+    i-*) SSH_OPTS+=(-o "ProxyCommand=aws ec2-instance-connect open-tunnel --instance-id %h --region $AWS_REGION") ;;
+esac
 
 REMOTE_DIR="~/hotwords/hotwords/deploy"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -43,11 +50,11 @@ JAR="$PROJECT_DIR/build/libs/game-server.jar"
 echo "JAR size: $(du -h "$JAR" | cut -f1)"
 
 echo "=== Uploading JAR + deploy files to $HOST ==="
-scp $SSH_OPTS "$JAR" "$SSH_TARGET:$REMOTE_DIR/game-server.jar"
-scp $SSH_OPTS "$SCRIPT_DIR/deploy.sh" "$SCRIPT_DIR/Caddyfile" "$SSH_TARGET:$REMOTE_DIR/"
+scp "${SSH_OPTS[@]}" "$JAR" "$SSH_TARGET:$REMOTE_DIR/game-server.jar"
+scp "${SSH_OPTS[@]}" "$SCRIPT_DIR/deploy.sh" "$SCRIPT_DIR/Caddyfile" "$SSH_TARGET:$REMOTE_DIR/"
 
 echo "=== Deploying on $HOST ==="
-ssh $SSH_OPTS "$SSH_TARGET" "cd $REMOTE_DIR && chmod +x deploy.sh && ./deploy.sh"
+ssh "${SSH_OPTS[@]}" "$SSH_TARGET" "cd $REMOTE_DIR && chmod +x deploy.sh && ./deploy.sh"
 
 echo ""
 echo "=== Done! ==="
