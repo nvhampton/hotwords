@@ -99,6 +99,22 @@
         .solo-clue { font-size: 1.1rem; color: #ccc; margin: 8px 0; padding: 8px 16px; background: rgba(255,255,255,0.05); border-radius: 8px; }
         .solo-clue-new { color: #3EBECB; font-weight: bold; animation: soloClueIn 0.3s ease-out; }
         .solo-clues-remaining { font-size: 0.85rem; color: #666; margin-top: 12px; }
+        .solo-hint-inline {
+            display: inline-block;
+            margin-left: 10px;
+            padding: 6px 14px;
+            background: #2a2a2a;
+            border: 1px solid #B4975A;
+            border-radius: 16px;
+            color: #B4975A;
+            font-size: 0.85rem;
+            font-weight: bold;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .solo-hint-inline:active { background: #B4975A; color: #1a1a1a; }
+        .solo-hint-inline.give-up { border-color: #c75; color: #c75; margin-top: 12px; margin-left: 0; display: block; }
+        .solo-hint-inline.give-up:active { background: #c75; color: #1a1a1a; }
         .solo-answer-reveal { font-size: 2rem; color: #B4975A; font-weight: bold; text-align: center; padding: 20px; }
         @keyframes soloClueIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
         .container {
@@ -412,7 +428,7 @@
             opacity: 0.5;
             cursor: not-allowed;
         }
-        button:focus-visible, a:focus-visible, .diff-btn:focus-visible {
+        button:focus-visible, a:focus-visible {
             outline: 2px solid #B4975A;
             outline-offset: 2px;
         }
@@ -530,9 +546,40 @@
             color: #fff;
         }
         .listen-btn.active {
-            background: rgba(180, 151, 90, 0.2);
-            border-color: rgba(180, 151, 90, 0.4);
-            color: #B4975A;
+            background: rgba(62, 190, 203, 0.25);
+            border-color: #3EBECB;
+            color: #3EBECB;
+            box-shadow: 0 0 14px rgba(62, 190, 203, 0.55), inset 0 0 8px rgba(62, 190, 203, 0.25);
+            animation: listenBtnPulse 1.4s ease-in-out infinite;
+        }
+        @keyframes listenBtnPulse {
+            0%, 100% { box-shadow: 0 0 14px rgba(62, 190, 203, 0.55), inset 0 0 8px rgba(62, 190, 203, 0.25); }
+            50%      { box-shadow: 0 0 22px rgba(62, 190, 203, 0.9),  inset 0 0 14px rgba(62, 190, 203, 0.45); }
+        }
+        /* Listening indicator — applied to the phrase box itself (not viewport) */
+        .word-display {
+            border: 2px solid transparent;
+            transition: border-color 0.25s ease, box-shadow 0.25s ease, background 0.25s ease;
+        }
+        /* Mic open but no recent voice — dim sustained glow */
+        body.is-listening .word-display {
+            border-color: rgba(62, 190, 203, 0.55);
+            box-shadow: 0 0 18px rgba(62, 190, 203, 0.35), inset 0 0 14px rgba(62, 190, 203, 0.18);
+        }
+        /* Voice just heard — bright flash, fades back to dim */
+        body.is-hearing .word-display {
+            border-color: #3EBECB;
+            box-shadow: 0 0 36px rgba(62, 190, 203, 0.85), inset 0 0 24px rgba(62, 190, 203, 0.4);
+            transition: border-color 0.05s ease, box-shadow 0.05s ease;
+        }
+        /* Mic affordance — when idle (not listening), gently pulse the mic button
+           so the player knows it's tappable (tap = speak once, long-press = continuous) */
+        body:not(.is-listening) .listen-btn:not(:disabled) {
+            animation: pttIdlePulse 2.4s ease-in-out infinite;
+        }
+        @keyframes pttIdlePulse {
+            0%, 100% { box-shadow: 0 0 0 rgba(180, 151, 90, 0); }
+            50%      { box-shadow: 0 0 18px rgba(180, 151, 90, 0.55); }
         }
         .transcript {
             margin-top: 30px;
@@ -954,66 +1001,6 @@
             color: rgba(255, 255, 255, 0.7);
         }
 
-        /* Player Count Selector */
-        .settings-row {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            margin-bottom: 4px;
-        }
-        .difficulty-toggle {
-            display: flex;
-            flex: 1;
-            gap: 0;
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 8px;
-            overflow: hidden;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-        .diff-btn {
-            flex: 1;
-            padding: 7px 0;
-            font-size: 0.8rem;
-            font-weight: bold;
-            border: none;
-            background: transparent;
-            color: #666;
-            cursor: pointer;
-            transition: all 0.25s ease;
-        }
-        .diff-btn.active {
-            background: linear-gradient(135deg, #007485 0%, #005a68 100%);
-            color: #fff;
-        }
-        .diff-btn:not(.active):hover {
-            color: #aaa;
-            background: rgba(255, 255, 255, 0.05);
-        }
-        .round-time-group {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            white-space: nowrap;
-        }
-        .round-time-val {
-            font-size: 1rem;
-            font-weight: bold;
-            min-width: 28px;
-            text-align: center;
-        }
-        .difficulty-desc {
-            text-align: center;
-            font-size: 0.7rem;
-            color: #777;
-            margin-bottom: 2px;
-        }
-        .player-count-row {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            padding: 4px 0;
-        }
         .local-start-btn {
             width: 100%;
             padding: 16px;
@@ -1031,52 +1018,6 @@
             transform: translateY(-2px);
             box-shadow: 0 8px 25px rgba(0, 116, 133, 0.4);
         }
-        .player-count-btn {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            border: 2px solid rgba(0, 116, 133, 0.5);
-            background: rgba(0, 116, 133, 0.1);
-            color: #007485;
-            font-size: 1.3rem;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        .player-count-btn.sm {
-            width: 28px;
-            height: 28px;
-            min-width: 28px;
-            font-size: 0.9rem;
-            border-width: 1.5px;
-        }
-        .player-count-btn:hover {
-            background: rgba(0, 116, 133, 0.25);
-        }
-        .player-count-btn:disabled {
-            opacity: 0.3;
-            cursor: not-allowed;
-        }
-        .start-pass-game-btn {
-            margin-top: 10px;
-            font-size: 1rem;
-            padding: 10px 20px;
-            background: linear-gradient(135deg, #007485 0%, #005a68 100%);
-            color: #fff;
-            border: none;
-            border-radius: 25px;
-            cursor: pointer;
-            width: 100%;
-        }
-        .start-pass-game-btn:hover {
-            box-shadow: 0 5px 20px rgba(0, 116, 133, 0.4);
-        }
-        .start-pass-game-btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-
         /* Online Player List Panel */
         .online-player-panel {
             display: none;
@@ -1708,6 +1649,39 @@
             gap: 8px;
             margin-top: 20px;
         }
+        .home-toggle {
+            display: flex;
+            gap: 0;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 14px;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .home-toggle-btn {
+            flex: 1;
+            padding: 16px 0;
+            font-size: 1.05rem;
+            font-weight: bold;
+            border: none;
+            background: transparent;
+            color: #888;
+            cursor: pointer;
+            transition: all 0.25s ease;
+        }
+        .home-toggle-btn.active {
+            background: linear-gradient(135deg, #007485 0%, #005a68 100%);
+            color: #fff;
+        }
+        .home-toggle-btn:not(.active):hover {
+            color: #ccc;
+            background: rgba(255, 255, 255, 0.05);
+        }
+        .home-toggle-desc {
+            text-align: center;
+            font-size: 0.85rem;
+            color: #999;
+            margin: 2px 0 4px;
+        }
         .mode-section {
             border-radius: 18px;
             transition: all 0.3s ease;
@@ -2065,7 +2039,7 @@
         }
     </style>
 </head>
-<body>
+<body></div>
     <!-- Back Button -->
     <button class="back-btn" id="backBtn">← Back</button>
 
@@ -2075,70 +2049,33 @@
 
         <div class="topic-picker" id="topicPicker"></div>
 
-        <div class="mode-buttons">
-            <!-- Party Mode Section -->
-            <div class="mode-section" id="partySection">
-                <button class="mode-btn party" id="partyModeBtn">
-                    <span class="mode-btn-title">🎉 Party Mode</span>
-                    <span class="mode-btn-sub">Everyone sees the clues — shout out answers!</span>
-                </button>
-                <div class="mode-detail">Get clues on screen and race to guess the words. No passing needed — everyone plays together!</div>
-                <div class="mode-expand" id="partyExpand"></div>
+        <div class="mode-buttons" id="homeButtons">
+            <div class="home-toggle" id="homeToggle">
+                <button class="home-toggle-btn active" id="freePlayToggle">🎯 Free Play</button>
+                <button class="home-toggle-btn" id="timedToggle">⏱️ Timed</button>
             </div>
-
-            <!-- Pass & Play Section -->
-            <div class="mode-section" id="passPlaySection">
-                <button class="mode-btn passplay" id="passPlayModeBtn">
-                    <span class="mode-btn-title">🤳 Pass &amp; Play</span>
-                    <span class="mode-btn-sub">Pass the phone, give clues to your friends</span>
-                </button>
-                <div class="mode-detail">Reveal the word and give clues. Got it? Pass like hot potato! Skip or time's up? Drink!</div>
-                <div class="mode-expand" id="passPlayExpand"></div>
-            </div>
-
-            <!-- Online Mode Section -->
-            <div class="mode-section" id="onlineSection">
-                <button class="mode-btn online" id="onlineModeBtn">
-                    <span class="mode-btn-title">🌐 Online</span>
-                    <span class="mode-btn-sub">Play with friends anywhere</span>
-                </button>
-                <div class="mode-detail">Join a room and ready up with other players. Each player takes turns getting everyone to guess the words, using their own device.</div>
-                <div class="mode-expand" id="onlineExpand">
-                    <label>Your Name</label>
-                    <input type="text" class="name-input" id="onlineNameInput" placeholder="Enter your name" maxlength="20">
-                    <label style="margin-top: 15px;">Room Name</label>
-                    <div class="room-input-row">
-                        <input type="text" class="room-input" id="roomInput" maxlength="20" spellcheck="false">
-                        <button class="join-btn" id="randomBtn">Random</button>
-                        <button class="join-btn" id="shareBtn">Share</button>
-                    </div>
-                    <button class="local-start-btn" id="onlineStartBtn">▶ Join</button>
-                </div>
-            </div>
+            <div class="home-toggle-desc" id="homeToggleDesc">No clock — get clues, guess at your own pace</div>
+            <button class="local-start-btn" id="startGameBtn">▶ Start</button>
         </div>
 
-        <!-- Shared local settings (moved between party/passplay via JS) -->
-        <div id="localSettings" style="display: none;">
-            <div class="settings-row">
-                <div class="difficulty-toggle">
-                    <button class="diff-btn" id="diffPractice">Practice</button>
-                    <button class="diff-btn active" id="diffEasy">Easy</button>
-                    <button class="diff-btn" id="diffHard">Hard</button>
+        <!-- Online Mode Section: hidden on /, shown only when routed to /online -->
+        <div class="mode-section" id="onlineSection" style="display: none;">
+            <button class="mode-btn online" id="onlineModeBtn">
+                <span class="mode-btn-title">🌐 Online</span>
+                <span class="mode-btn-sub">Play with friends anywhere</span>
+            </button>
+            <div class="mode-detail">Join a room and ready up with other players. Each player takes turns getting everyone to guess the words, using their own device.</div>
+            <div class="mode-expand" id="onlineExpand">
+                <label>Your Name</label>
+                <input type="text" class="name-input" id="onlineNameInput" placeholder="Enter your name" maxlength="20">
+                <label style="margin-top: 15px;">Room Name</label>
+                <div class="room-input-row">
+                    <input type="text" class="room-input" id="roomInput" maxlength="20" spellcheck="false">
+                    <button class="join-btn" id="randomBtn">Random</button>
+                    <button class="join-btn" id="shareBtn">Share</button>
                 </div>
-                <div id="roundTimeGroup" class="round-time-group">
-                    <button class="player-count-btn sm" id="roundTimeDown">−</button>
-                    <span class="round-time-val" id="roundTimeDisplay">60s</span>
-                    <button class="player-count-btn sm" id="roundTimeUp">+</button>
-                </div>
+                <button class="local-start-btn" id="onlineStartBtn">▶ Join</button>
             </div>
-            <div class="difficulty-desc" id="diffDesc">Words reveal as you say them</div>
-            <div id="playerCountRow" class="player-count-row">
-                <span style="color: #aaa; font-size: 0.85rem;">Players:</span>
-                <button class="player-count-btn sm" id="playerCountDown">−</button>
-                <span style="font-size: 1.1rem; font-weight: bold; min-width: 24px; text-align: center;" id="playerCountDisplay">1</span>
-                <button class="player-count-btn sm" id="playerCountUp">+</button>
-            </div>
-            <button class="local-start-btn" id="localStartBtn">▶ Start Game</button>
         </div>
 
         <div style="margin-top: 10px; text-align: center;">
@@ -2205,7 +2142,7 @@
             <button class="play-again-btn" id="playAgainBtn" style="display: none;">Play Again</button>
         </div>
         <div class="listen-row">
-            <button class="listen-btn" id="listenBtn" disabled>🎤 Start Listening</button>
+            <button class="listen-btn" id="listenBtn" disabled>🎤 Tap to Talk</button>
             <span class="listen-peek-toggle" id="listenPeekToggle">💬</span>
             <span class="listen-peek" id="listenPeek"></span>
         </div>
@@ -2283,17 +2220,6 @@
         <button class="onboard-back" id="onboardRulesBack">&larr; Back</button>
     </div>
 
-    <!-- Local Onboarding: Step 2 - Ready -->
-    <div class="onboard-overlay" id="onboardReady">
-        <div class="onboard-card">
-            <div class="onboard-emoji">🤳</div>
-            <div class="onboard-title">Ready for you.</div>
-            <div class="onboard-hint">Hold your phone upright to see words.</div>
-        </div>
-        <button class="onboard-back" id="onboardReadyBack">&larr; Back</button>
-        <button class="onboard-skip" id="onboardReadySkip">Skip &rarr;</button>
-    </div>
-
     <!-- Ready overlay -->
     <div class="ready-overlay" id="readyOverlay">
         <button class="ready-back-btn" id="readyBackBtn">&larr; Back</button>
@@ -2369,35 +2295,31 @@
          *   showGameScreen()        - Switch to game view
          *   showLobby()             - Return to lobby
          *
-         * Local Mode:
+         * Local (Solo) Mode — Free Play / Timed:
          *   startLocalGame()        - Initialize local game
-         *   showNewWordLocalMode()  - Display phrase with #### tracking
+         *   showNewWordSoloMode()   - Display AI-clue round for a phrase
          *   localModeClaimVictory() - Handle correct guess
-         *   localModeSkipWord()     - Skip (same player, new phrase)
-         *   nextLocalModePlayer()   - Rotate to next player
+         *   soloModeHintOrGiveUp()  - Reveal next hint, or give up
          *   renderWordProgress()    - Update "Player: #### ###" display
          *
-         * Online Mode:
+         * Online Mode (hidden behind /online):
          *   startOnlineGame()       - Connect to room
          *   connect(roomId)         - WebSocket connection
          *   claimVictory()          - Send win to server
          *   skipWord()              - Request new phrase
          *
          * Core:
-         *   startGameTimer()        - 60s countdown
+         *   startGameTimer()        - Fixed-duration countdown (Timed mode)
+         *   startPracticeMode()     - No-timer round (Free Play mode)
          *   endGame()               - Cleanup and show results
          *   showCelebration()       - Victory animation (online)
-         *   showCelebrationLocal()  - Victory animation (local, shows next player)
+         *   showCelebrationLocal()  - Victory animation (local)
          *   checkMatch()            - Fuzzy phrase matching
          *   similarity()            - Levenshtein distance
          *
          * Speech:
          *   initSpeechRecognition() - Setup Web Speech API
          *   updateRevealedWords()   - Check for individual words in transcript
-         *
-         * Reveal:
-         *   enableOrientationDetection() - Device tilt or press-to-reveal
-         *   startReveal()/stopReveal()   - Show/hide phrase
          * ============================================================================
          */
 
@@ -2405,17 +2327,16 @@
         const lobbyScreen = document.getElementById('lobbyScreen');
         const gameScreen = document.getElementById('gameScreen');
         const backBtn = document.getElementById('backBtn');
-        const partyModeBtn = document.getElementById('partyModeBtn');
-        const passPlayModeBtn = document.getElementById('passPlayModeBtn');
         const onlineModeBtn = document.getElementById('onlineModeBtn');
-        const partySection = document.getElementById('partySection');
-        const passPlaySection = document.getElementById('passPlaySection');
         const onlineSection = document.getElementById('onlineSection');
-        const localSettings = document.getElementById('localSettings');
-        const playerCountRow = document.getElementById('playerCountRow');
-        const allModeSections = [partySection, passPlaySection, onlineSection];
+        const homeButtons = document.getElementById('homeButtons');
+        const freePlayToggle = document.getElementById('freePlayToggle');
+        const timedToggle = document.getElementById('timedToggle');
+        const homeToggleDesc = document.getElementById('homeToggleDesc');
+        const startGameBtn = document.getElementById('startGameBtn');
+        const allModeSections = [onlineSection];
 
-        // Track which mode is selected (null, 'party', 'passplay', or 'online')
+        // Track which mode is selected (null or 'online' — home screen bypasses mode selection entirely)
         let selectedMode = null;
 
         // Game elements
@@ -2467,10 +2388,6 @@
         const timerCountEl = document.getElementById('timerCount');
         const transcriptBox = document.getElementById('transcriptBox');
 
-        // Player setup elements
-        const playerCountDisplay = document.getElementById('playerCountDisplay');
-        const playerCountUp = document.getElementById('playerCountUp');
-        const playerCountDown = document.getElementById('playerCountDown');
         let playerCount = 1;
 
         // State
@@ -2478,6 +2395,34 @@
         let ws = null;
         let recognition = null;
         let isListening = false;
+        function setIsListening(v) {
+            isListening = v;
+            document.body.classList.toggle('is-listening', !!v);
+            if (!v) {
+                document.body.classList.remove('is-hearing');
+                if (hearingFlashTimer) { clearTimeout(hearingFlashTimer); hearingFlashTimer = null; }
+            }
+        }
+        let hearingFlashTimer = null;
+        function flashHearing() {
+            if (!isListening) return;
+            document.body.classList.add('is-hearing');
+            if (hearingFlashTimer) clearTimeout(hearingFlashTimer);
+            hearingFlashTimer = setTimeout(() => {
+                document.body.classList.remove('is-hearing');
+                hearingFlashTimer = null;
+            }, 350);
+        }
+        let isPrewarming = false;  // Recognition running before game starts (warm-up only)
+        const IS_TOUCH_DEVICE = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
+        // Online mode lives at /online — hidden from the default home screen entirely.
+        const IS_ONLINE_ROUTE = window.location.pathname.replace(/\/$/, '') === '/online';
+
+        // Android Chrome's Web Speech API drops more words and is less accurate than desktop.
+        // We compensate with looser fuzzy thresholds and more recognition alternatives.
+        const IS_ANDROID = /Android/i.test(navigator.userAgent);
+        const FUZZY_THRESHOLD = IS_ANDROID ? 0.75 : 0.85;
+        const WORD_FUZZY_THRESHOLD = IS_ANDROID ? 0.75 : 0.85;
         let hasClaimedVictory = false;
         let currentRoomId = '';
         let isReconnecting = false;
@@ -2491,13 +2436,10 @@
         let gameActive = false;
         let pendingLeaderboard = null;
         let isLocalMode = false;
-        let isPracticeMode = false;
-        let practiceDifficulty = 'easy';
+        let isPracticeMode = true; // matches Free Play being the default-active home toggle
         let customCategory = null;
         let localModePlayers = [];
         let currentPlayerIndex = 0;
-        let orientationEnabled = false;
-        let deviceIsFlat = false;
         let phraseHistory = [];
         let usedPhrasesThisRound = new Set();
         let phraseStartTime = 0;
@@ -2577,7 +2519,7 @@
             // Fuzzy match for each word
             for (const heardWord of words) {
                 const sim = similarity(heardWord, target);
-                if (sim >= 0.85) return true;
+                if (sim >= WORD_FUZZY_THRESHOLD) return true;
             }
             return false;
         }
@@ -3339,15 +3281,16 @@
 
             // Stop listening
             if (isListening && recognition) {
-                isListening = false;
+                setIsListening(false);
                 silentStop();
-                listenBtn.textContent = 'Start Listening';
-                listenBtn.classList.remove('active');
-                transcriptBox.classList.remove('listening');
                 listenPeekToggle.classList.remove('visible');
                 listenPeek.classList.remove('visible');
                 listenPeekExpanded = false;
             }
+            micMode = 'idle';
+            listenBtn.textContent = '🎤 Tap to Talk';
+            listenBtn.classList.remove('active');
+            transcriptBox.classList.remove('listening');
 
             statusEl.textContent = isPracticeMode ? `Practice complete! Score: ${localScore}` : `Time's up! Final score: ${localScore}`;
             statusEl.classList.remove('listening');
@@ -3690,10 +3633,9 @@
                 }
             }
 
-            // 85% similarity threshold for fuzzy match
-            const SIMILARITY_THRESHOLD = 0.85;
+            // Fuzzy match threshold (85% desktop / 75% Android — Android STT is noisier)
             return {
-                matched: bestSimilarity >= SIMILARITY_THRESHOLD,
+                matched: bestSimilarity >= FUZZY_THRESHOLD,
                 similarity: bestSimilarity
             };
         }
@@ -4061,6 +4003,15 @@
                             micError.style.display = '';
                         }
                     }
+                    // Pre-warm: start recognition now so the dropped-first-word window
+                    // happens during the ready wait, not after the first phrase reveals.
+                    // isPrewarming gates onresult so we don't process anything yet.
+                    // Round starts idle (tap/long-press controls it) — pre-warming and then
+                    // immediately stopping still avoids Android's first-word-drop on cold start.
+                    if (readyMicEnabled && recognition && !recognitionRunning) {
+                        isPrewarming = true;
+                        silentStart();
+                    }
                     if (ws && ws.readyState === WebSocket.OPEN) {
                         ws.send(JSON.stringify({ type: 'READY' }));
                     }
@@ -4097,6 +4048,11 @@
             myReady = false;
             const micError = document.getElementById('readyMicError');
             if (micError) micError.style.display = 'none';
+            // If we pre-warmed recognition but the game isn't starting, stop it.
+            if (isPrewarming && !gameActive) {
+                isPrewarming = false;
+                silentStop();
+            }
         }
 
         // Send custom phrases to server (host only)
@@ -4449,36 +4405,34 @@
                         manualClaim = false;
                         startGameTimer(msg.timeRemaining);
                         updateOnlineModeButtons();
-                        // Start mic only if player enabled it in the ready overlay
+                        // End pre-warm: recognition was started on Ready click and is already
+                        // running; just flip the flag so onresult begins processing.
+                        isPrewarming = false;
+                        // Round starts idle — tap the mic to speak once, long-press for continuous.
                         if (readyMicEnabled && recognition) {
-                            isListening = true;
-                            silentStart();
-                            listenBtn.textContent = 'Stop Listening';
-                            listenBtn.classList.add('active');
-                            listenPeekToggle.classList.add('visible');
-                            statusEl.textContent = 'Listening... Say your guess!';
-                            statusEl.classList.add('listening');
-                            transcriptBox.classList.add('listening');
+                            if (recognitionRunning) silentStop();
+                            micMode = 'idle';
+                            listenBtn.textContent = '🎤 Tap to Talk';
+                            listenBtn.classList.remove('active');
+                            listenBtn.disabled = false;
+                            statusEl.textContent = 'Tap the mic to talk';
                         } else if (!readyMicEnabled) {
                             listenBtn.disabled = false;
-                            statusEl.textContent = 'Game started! Click Start Listening for mic.';
+                            statusEl.textContent = 'Game started! Tap the mic to enable voice.';
                         } else {
                             // Mic enabled but recognition not initialized — try now
                             (async () => {
                                 try {
                                     await ensureMicPermission(true);
                                     initSpeechRecognition();
-                                    isListening = true;
-                                    silentStart();
-                                    listenBtn.textContent = 'Stop Listening';
-                                    listenBtn.classList.add('active');
-                                    listenPeekToggle.classList.add('visible');
-                                    statusEl.textContent = 'Listening... Say your guess!';
-                                    statusEl.classList.add('listening');
-                                    transcriptBox.classList.add('listening');
+                                    micMode = 'idle';
+                                    listenBtn.textContent = '🎤 Tap to Talk';
+                                    listenBtn.classList.remove('active');
+                                    listenBtn.disabled = false;
+                                    statusEl.textContent = 'Tap the mic to talk';
                                 } catch (e) {
                                     listenBtn.disabled = false;
-                                    statusEl.textContent = 'Game started! Click Start Listening for mic.';
+                                    statusEl.textContent = 'Game started! Tap the mic to enable voice.';
                                 }
                             })();
                         }
@@ -4683,8 +4637,19 @@
             recognition.continuous = true;
             recognition.interimResults = true;
             recognition.lang = 'en-US';
+            // Request up to 5 hypotheses per result. We check all of them so a
+            // mis-recognized top result can still match if a lower-ranked alternative
+            // is correct. Especially helpful on Android where the top hypothesis is
+            // often noisier than desktop Chrome.
+            recognition.maxAlternatives = 5;
 
             recognition.onresult = (event) => {
+                // Ignore results during pre-warm (recognition started before round to warm up STT)
+                if (isPrewarming) return;
+                // Visual feedback: flash the edge glow on every result so the player can
+                // see the mic is hearing them. Fires even when timerPaused so they get
+                // feedback during pass-the-device transitions.
+                flashHearing();
                 // Ignore results while timer is paused (passing device)
                 if (timerPaused) return;
                 // Track latest results length so new-phrase can set baseline
@@ -4696,36 +4661,61 @@
                 // Only process results after the baseline (set on each new phrase)
                 // and limit to last 3 for speed
                 const minIdx = Math.max(speechResultBaseline, event.results.length - 3);
-                let transcript = '';
-                for (let i = minIdx; i < event.results.length; i++) {
-                    transcript += event.results[i][0].transcript;
+
+                // Build N transcripts, one per recognition alternative. Each transcript
+                // concatenates the k-th alternative from each result (falling back to the
+                // top hypothesis when a result has fewer alternatives). We check all of
+                // them and use whichever produces the best match — meaningfully more
+                // forgiving on Android where the top hypothesis is often wrong.
+                const numAlts = Math.max(
+                    1,
+                    ...Array.from({ length: event.results.length - minIdx }, (_, i) => event.results[minIdx + i].length)
+                );
+                const transcripts = [];
+                for (let k = 0; k < numAlts; k++) {
+                    let t = '';
+                    for (let i = minIdx; i < event.results.length; i++) {
+                        const alt = event.results[i][k] || event.results[i][0];
+                        t += alt.transcript;
+                    }
+                    transcripts.push(t);
                 }
+                // Top hypothesis drives the visible transcript display
+                const transcript = transcripts[0];
                 transcriptEl.textContent = transcript || '-';
                 listenPeek.textContent = transcript || '';
 
-                // In local mode, check for individual word reveals
+                // In local mode, check for individual word reveals across all alternatives
                 if (partialWordReveal && isLocalMode && gameActive && !hasClaimedVictory) {
-                    updateRevealedWords(transcript);
-                    // If all words were revealed, victory was already claimed
-                    if (hasClaimedVictory) return;
-                }
-
-                // In online mode as guesser, check for individual word reveals
-                if (partialWordReveal && !isLocalMode && !isHotPlayer && gameActive && !hasClaimedVictory) {
-                    updateRevealedWordsOnline(transcript);
-                    // Check if all words revealed
-                    if (onlineRevealedWords.every(r => r)) {
-                        return; // Victory will be handled by server
+                    for (const t of transcripts) {
+                        updateRevealedWords(t);
+                        if (hasClaimedVictory) return;
                     }
                 }
 
-                // In online mode as hot player, check for forbidden words
+                // In online mode as guesser, check for individual word reveals across alternatives
+                if (partialWordReveal && !isLocalMode && !isHotPlayer && gameActive && !hasClaimedVictory) {
+                    for (const t of transcripts) {
+                        updateRevealedWordsOnline(t);
+                        if (onlineRevealedWords.every(r => r)) {
+                            return; // Victory will be handled by server
+                        }
+                    }
+                }
+
+                // In online mode as hot player, check forbidden words against top hypothesis only
+                // (avoid false-positive slips from low-confidence alternatives)
                 if (!isLocalMode && isHotPlayer && gameActive) {
                     checkDescriberSpeech(transcript);
                 }
 
-                // Check for match with similarity (full phrase)
-                const result = checkMatch(transcript);
+                // Full-phrase match: try all alternatives, keep the best
+                let result = { matched: false, similarity: 0 };
+                for (const t of transcripts) {
+                    const r = checkMatch(t);
+                    if (r.similarity > result.similarity) result = r;
+                    if (r.matched) break;
+                }
 
                 if (result.similarity > 0 && result.similarity < 1) {
                     const pct = Math.round(result.similarity * 100);
@@ -4760,8 +4750,9 @@
                 if (event.error === 'not-allowed') {
                     errorEl.textContent = 'Microphone access denied. Please allow microphone access and refresh.';
                     // Reset listen button state since mic never started
-                    isListening = false;
-                    listenBtn.textContent = '🎤 Start Listening';
+                    setIsListening(false);
+                    micMode = 'idle';
+                    listenBtn.textContent = '🎤 Tap to Talk';
                     listenBtn.classList.remove('active');
                     listenBtn.disabled = false;
                     statusEl.classList.remove('listening');
@@ -4781,14 +4772,31 @@
                 // so stale baseline would cause all new results to be skipped
                 speechResultBaseline = 0;
                 speechResultsLength = 0;
-                // Debounced restart: wait 2s before restarting to avoid rapid
-                // onend→start cycles on Android (each start() plays a "ding").
-                // If recognition fires onend again during the wait, timer resets.
+                // Tap mode: don't auto-restart. The user tapped to start a listening
+                // burst; when silence ends it, surface that visually so they know to
+                // tap again. Avoids the ding loop entirely.
+                if (micMode !== 'continuous') {
+                    if (isListening) {
+                        setIsListening(false);
+                        // Resume timer when silence ends the tap burst
+                        if (isLocalMode && gameActive) timerPaused = false;
+                        listenBtn.textContent = '🎤 Tap to Talk';
+                        listenBtn.classList.remove('active');
+                        statusEl.textContent = 'Tap mic to talk again';
+                        statusEl.classList.remove('listening');
+                        transcriptBox.classList.remove('listening');
+                    }
+                    micMode = 'idle';
+                    return;
+                }
+                // Continuous mode: debounced restart to suppress rapid onend→start
+                // cycles on Android (each start() plays a "ding"). If recognition
+                // fires onend again during the wait, the timer resets.
                 if (isListening) {
                     if (recognitionRestartTimer) clearTimeout(recognitionRestartTimer);
                     recognitionRestartTimer = setTimeout(() => {
                         recognitionRestartTimer = null;
-                        if (isListening) silentStart();
+                        if (isListening && micMode === 'continuous') silentStart();
                     }, 2000);
                 }
             };
@@ -4835,45 +4843,113 @@
             listenPeekToggle.classList.add('visible');
         });
 
-        listenBtn.addEventListener('click', async () => {
+        // ===== Mic gesture: tap once to speak, long-press to toggle continuous =====
+        // Tap fires one recognition burst, which runs until Android's silence
+        // detector ends it (~5–10s of silence); onend then resets to idle. No
+        // restart loop = no dings. Long-press starts/stops continuous listening,
+        // which auto-restarts on onend (see recognition.onend above).
+        async function ensureRecognitionReady() {
             if (!recognition) {
                 await ensureMicPermission();
                 initSpeechRecognition();
             }
-
-            if (isListening) {
-                isListening = false;
-                silentStop();
-                listenBtn.textContent = 'Start Listening';
-                listenBtn.classList.remove('active');
-                statusEl.textContent = 'Stopped listening';
-                statusEl.classList.remove('listening');
-                transcriptBox.classList.remove('listening');
-                closeMatchOverlay.classList.remove('active');
-                // Hide peek toggle and text
-                listenPeekToggle.classList.remove('visible');
-                listenPeek.classList.remove('visible');
-                listenPeekExpanded = false;
-                // End game if manually stopped (online mode only)
-                if (gameActive && !isLocalMode) {
-                    endGame();
-                }
-            } else {
-                isListening = true;
-                silentStart();
-                listenBtn.textContent = 'Stop Listening';
-                listenBtn.classList.add('active');
-                // Show peek toggle emoji
-                listenPeekToggle.classList.add('visible');
-                statusEl.textContent = 'Listening... Say your guess!';
-                statusEl.classList.add('listening');
-                transcriptBox.classList.add('listening');
-                // In online mode, enable buttons if game is already active
-                if (!isLocalMode && gameActive) {
-                    updateOnlineModeButtons();
-                }
+        }
+        async function micStartTap() {
+            await ensureRecognitionReady();
+            micMode = 'tap';
+            setIsListening(true);
+            silentStart();
+            // Pause timer while talking in local mode — clock shouldn't tick during guesses
+            if (isLocalMode && gameActive) timerPaused = true;
+            listenBtn.textContent = '🎙️ Listening...';
+            listenBtn.classList.add('active');
+            listenPeekToggle.classList.add('visible');
+            statusEl.textContent = 'Listening... Say your guess!';
+            statusEl.classList.add('listening');
+            transcriptBox.classList.add('listening');
+        }
+        function micStopTap() {
+            setIsListening(false);
+            silentStop();
+            micMode = 'idle';
+            // Resume timer when done talking
+            if (isLocalMode && gameActive) timerPaused = false;
+            listenBtn.textContent = '🎤 Tap to Talk';
+            listenBtn.classList.remove('active');
+            statusEl.textContent = 'Tap mic to talk';
+            statusEl.classList.remove('listening');
+            transcriptBox.classList.remove('listening');
+        }
+        async function micStartContinuous() {
+            await ensureRecognitionReady();
+            micMode = 'continuous';
+            setIsListening(true);
+            silentStart();
+            listenBtn.textContent = 'Stop Listening';
+            listenBtn.classList.add('active');
+            listenPeekToggle.classList.add('visible');
+            statusEl.textContent = 'Listening... Say your guess!';
+            statusEl.classList.add('listening');
+            transcriptBox.classList.add('listening');
+            // In online mode, enable buttons if game is already active
+            if (!isLocalMode && gameActive) {
+                updateOnlineModeButtons();
             }
+        }
+        function micStopContinuous() {
+            setIsListening(false);
+            silentStop();
+            micMode = 'idle';
+            listenBtn.textContent = '🎤 Tap to Talk';
+            listenBtn.classList.remove('active');
+            statusEl.textContent = 'Stopped listening';
+            statusEl.classList.remove('listening');
+            transcriptBox.classList.remove('listening');
+            closeMatchOverlay.classList.remove('active');
+            listenPeekToggle.classList.remove('visible');
+            listenPeek.classList.remove('visible');
+            listenPeekExpanded = false;
+            // End game if manually stopped (online mode only)
+            if (gameActive && !isLocalMode) {
+                endGame();
+            }
+        }
+
+        let micMode = 'idle'; // 'idle' | 'tap' | 'continuous'
+        let micLongPressTimer = null;
+        let micLongPressTriggered = false;
+        const MIC_LONG_PRESS_MS = 500;
+
+        function cancelMicLongPress() {
+            if (micLongPressTimer) { clearTimeout(micLongPressTimer); micLongPressTimer = null; }
+        }
+        listenBtn.addEventListener('pointerdown', (e) => {
+            e.preventDefault();
+            micLongPressTriggered = false;
+            micLongPressTimer = setTimeout(() => {
+                micLongPressTriggered = true;
+                if (micMode === 'continuous') {
+                    micStopContinuous();
+                } else {
+                    if (micMode === 'tap') micStopTap();
+                    micStartContinuous();
+                }
+            }, MIC_LONG_PRESS_MS);
         });
+        listenBtn.addEventListener('pointerup', async () => {
+            cancelMicLongPress();
+            if (micLongPressTriggered) return;
+            if (micMode === 'tap') {
+                micStopTap();
+            } else if (micMode === 'idle') {
+                await micStartTap();
+            }
+            // micMode === 'continuous': a short tap is a no-op — long-press to stop.
+        });
+        listenBtn.addEventListener('pointerleave', cancelMicLongPress);
+        listenBtn.addEventListener('pointercancel', cancelMicLongPress);
+        // Pointer events drive everything above; suppress the ghost click that follows.
+        listenBtn.addEventListener('click', (e) => e.preventDefault());
 
         // Skip button (online mode — local mode overrides via capture handler below)
         skipBtn.addEventListener('pointerdown', (e) => {
@@ -4908,8 +4984,7 @@
                 e.preventDefault();
                 if (skipBtn.classList.contains('btn-inactive')) return;
                 if (isLocalMode && gameActive) {
-                    if (isSoloMode) soloModeHintOrGiveUp();
-                    else localModeSkipWord();
+                    soloModeHintOrGiveUp();
                 } else if (!isLocalMode) {
                     skipWord();
                 }
@@ -4921,7 +4996,11 @@
         const typeAnswerInput = document.getElementById('typeAnswerInput');
         const typeAnswerBtn = document.getElementById('typeAnswerBtn');
 
-        // Type answer row is always visible (no toggle needed)
+        // Hide the type-to-answer row on touch devices — keyboard input is awkward
+        // on phones, and the mic flow is the primary input there.
+        if (IS_TOUCH_DEVICE) {
+            typeAnswerRow.style.display = 'none';
+        }
 
         function processTypedAnswer() {
             if (timerPaused) return;
@@ -4988,7 +5067,6 @@
                 localScore = 0;
                 phraseHistory = [];
                 usedPhrasesThisRound.clear();
-                if (!isSoloMode) await enableOrientationDetection();
                 await launchLocalGame();
             } else if (ws && ws.readyState === WebSocket.OPEN) {
                 ws.send(JSON.stringify({ type: 'NEW_ROUND', theme: getActiveThemeForServer() }));
@@ -5032,7 +5110,7 @@
         const shareBtn = document.getElementById('shareBtn');
         shareBtn.addEventListener('click', async () => {
             const room = roomInput.value.trim() || currentRoomId;
-            const url = new URL(window.location.origin);
+            const url = new URL('/online', window.location.origin);
             url.searchParams.set('room', room);
             const shareUrl = url.toString();
 
@@ -5101,15 +5179,13 @@
             hideReadyOverlay();
             document.getElementById('pauseOverlay').classList.remove('active');
             hideOnboardRules();
-            hideOnboardReady();
-            waitingForFirstReveal = false;
             // Stop any active game
             if (gameActive) {
                 endGame();
             }
             // Stop listening
             if (isListening && recognition) {
-                isListening = false;
+                setIsListening(false);
                 silentStop();
             }
             // Reset state
@@ -5126,9 +5202,7 @@
             gameScreen.classList.remove('active', 'local-mode', 'online-mode');
             lobbyScreen.classList.remove('hidden');
             backBtn.classList.remove('active');
-            wordContainer.classList.remove('orientation-hidden');
             document.body.classList.remove('countdown-danger');
-            disableOrientationDetection();
 
             // Move skip button back to button-row
             document.querySelector('.button-row').insertBefore(skipBtn, playAgainBtn);
@@ -5144,11 +5218,10 @@
             url.searchParams.delete('name');
             window.history.replaceState({}, '', url.pathname);
 
-            // Reset mode selection and re-select last used
+            // Reset mode selection; on /online, re-select the online section
             selectedMode = null;
             allModeSections.forEach(s => s.classList.remove('selected'));
-            const lastMode = localStorage.getItem('hotwords_last_mode') || 'party';
-            selectMode(lastMode);
+            if (IS_ONLINE_ROUTE) selectMode('online');
 
             // Refresh topic picker (picks up new categories of the day)
             loadTopicPicker();
@@ -5225,48 +5298,22 @@
             if (selectedMode === mode) return;
             selectedMode = mode;
             allModeSections.forEach(s => s.classList.remove('selected'));
-
-            if (mode === 'party') {
-                partySection.classList.add('selected');
-                // Move local settings into party expand
-                document.getElementById('partyExpand').appendChild(localSettings);
-                localSettings.style.display = '';
-                // Party mode: hide player count, force 1 player (solo/group guessing)
-                playerCountRow.style.display = 'none';
-                playerCount = 1;
-                isSoloMode = true;
-                updatePlayerCountUI();
-                // Restore party-specific round time
-                const savedTime = parseInt(localStorage.getItem('hotwords_party_round_time'));
-                customRoundTime = (savedTime >= 30 && savedTime <= 120) ? savedTime : 60;
-                enforceMinRoundTime();
-                updateRoundTimeUI();
-                updateDiffDescriptions();
-            } else if (mode === 'passplay') {
-                passPlaySection.classList.add('selected');
-                // Move local settings into passplay expand
-                document.getElementById('passPlayExpand').appendChild(localSettings);
-                localSettings.style.display = '';
-                // Pass & Play: hide player count, default 2 players
-                playerCountRow.style.display = 'none';
-                playerCount = 2;
-                isSoloMode = false;
-                updatePlayerCountUI();
-                // Restore passplay-specific round time
-                const savedTime = parseInt(localStorage.getItem('hotwords_pp_round_time'));
-                customRoundTime = (savedTime >= minRoundTime() && savedTime <= 120) ? savedTime : minRoundTime();
-                enforceMinRoundTime();
-                updateRoundTimeUI();
-                updateDiffDescriptions();
-            } else if (mode === 'online') {
+            if (mode === 'online') {
                 onlineSection.classList.add('selected');
-                localSettings.style.display = 'none';
             }
-            localStorage.setItem('hotwords_last_mode', mode);
             updateExpandTabIndex();
         }
         // Initially hide expand section controls from tab order
         updateExpandTabIndex();
+
+        // /online shows only the Online section; / (default) shows only Free Play/Timed
+        function initHomeRoute() {
+            if (IS_ONLINE_ROUTE) {
+                homeButtons.style.display = 'none';
+                onlineSection.style.display = '';
+                selectMode('online');
+            }
+        }
 
         // RKO easter egg — long-press 🔥 for 1.5s to toggle
         let rkoLongPressTimer = null;
@@ -5510,9 +5557,21 @@
             }
         });
 
-        // Mode buttons
-        partyModeBtn.addEventListener('click', () => selectMode('party'));
-        passPlayModeBtn.addEventListener('click', () => selectMode('passplay'));
+        // Home toggle — Free Play (no timer) vs Timed (fixed 45s) — then a single Start button.
+        freePlayToggle.addEventListener('click', () => {
+            isPracticeMode = true;
+            freePlayToggle.classList.add('active');
+            timedToggle.classList.remove('active');
+            homeToggleDesc.textContent = 'No clock — get clues, guess at your own pace';
+        });
+        timedToggle.addEventListener('click', () => {
+            isPracticeMode = false;
+            customRoundTime = 45;
+            timedToggle.classList.add('active');
+            freePlayToggle.classList.remove('active');
+            homeToggleDesc.textContent = '45 seconds — how many can you get?';
+        });
+        startGameBtn.addEventListener('click', () => startLocalGame());
 
         // Lobby leaderboard link
         document.getElementById('lobbyLeaderboardLink').addEventListener('click', (e) => {
@@ -5520,115 +5579,26 @@
             showLeaderboardView('local');
         });
 
-        // Local Start button (inside expanded area)
-        const localStartBtn = document.getElementById('localStartBtn');
-        localStartBtn.addEventListener('click', () => startLocalGame());
-
         onlineModeBtn.addEventListener('click', () => selectMode('online'));
 
         // Online Start button (inside expanded area)
         const onlineStartBtn = document.getElementById('onlineStartBtn');
         onlineStartBtn.addEventListener('click', () => startOnlineGame());
 
-        // Difficulty toggle
-        const diffPractice = document.getElementById('diffPractice');
-        const diffEasy = document.getElementById('diffEasy');
-        const diffHard = document.getElementById('diffHard');
-        const diffDesc = document.getElementById('diffDesc');
-        const roundTimeGroup = document.getElementById('roundTimeGroup');
-
-        function updateDiffDescriptions() {
-            if (diffPractice.classList.contains('active')) {
-                diffDesc.textContent = isSoloMode ? 'No timer — get clues, guess the word' : 'No timer — just practice';
-            } else if (diffEasy.classList.contains('active')) {
-                diffDesc.textContent = isSoloMode ? 'Clues + words reveal as you guess' : 'Words reveal as you say them';
-            } else if (diffHard.classList.contains('active')) {
-                diffDesc.textContent = isSoloMode ? 'Clues only — must say the full phrase' : 'Must say the full phrase to score';
-            }
-        }
-
-        diffPractice.addEventListener('click', () => {
-            isPracticeMode = true;
-            partialWordReveal = true;
-            diffPractice.classList.add('active');
-            diffEasy.classList.remove('active');
-            diffHard.classList.remove('active');
-            updateDiffDescriptions();
-            roundTimeGroup.style.display = 'none';
-            localStorage.setItem('hotwords_difficulty', 'practice');
-        });
-        diffEasy.addEventListener('click', () => {
-            isPracticeMode = false;
-            partialWordReveal = true;
-            diffEasy.classList.add('active');
-            diffPractice.classList.remove('active');
-            diffHard.classList.remove('active');
-            updateDiffDescriptions();
-            roundTimeGroup.style.display = '';
-            localStorage.setItem('hotwords_difficulty', 'easy');
-        });
-        diffHard.addEventListener('click', () => {
-            isPracticeMode = false;
-            partialWordReveal = false;
-            diffHard.classList.add('active');
-            diffPractice.classList.remove('active');
-            diffEasy.classList.remove('active');
-            updateDiffDescriptions();
-            roundTimeGroup.style.display = '';
-            localStorage.setItem('hotwords_difficulty', 'hard');
-        });
-
-        // Restore saved difficulty
-        const savedDiff = localStorage.getItem('hotwords_difficulty');
-        if (savedDiff === 'practice') diffPractice.click();
-        else if (savedDiff === 'hard') diffHard.click();
-        // else default is easy (already active)
-
-        // Local onboarding flow
-        let waitingForFirstReveal = false;
-
         function showOnboardRules() {
             const duration = getGameDuration();
-            let rulesText;
-            let hintText;
-            if (isSoloMode) {
-                rulesText = isPracticeMode
-                    ? 'You\'ll receive clues — guess the phrase by speaking or typing!'
-                    : 'Hints are available — guess the words before the timer expires!';
-                hintText = isPracticeMode
-                    ? 'Speak or type your answers.'
-                    : 'Timer starts when you reveal the first clue.';
-            } else {
-                rulesText = isPracticeMode
-                    ? 'Practice mode — no timer. Get as many hot words as you can!'
-                    : 'Reveal the words and get others to guess. Got it? Pass it like hot potato! Skip or time runs out? Drink!';
-                hintText = isPracticeMode
-                    ? 'Speak or type your answers.'
-                    : 'Timer starts when you reveal the first word.';
-            }
+            const rulesText = isPracticeMode
+                ? 'You\'ll receive clues — guess the phrase by speaking or typing!'
+                : 'Hints are available — guess the words before the timer expires!';
+            const hintText = isPracticeMode
+                ? 'Speak or type your answers.'
+                : 'Timer starts when you reveal the first clue.';
             document.getElementById('onboardRulesTitle').textContent = rulesText;
             document.getElementById('onboardRulesHint').textContent = hintText;
             document.getElementById('onboardRules').classList.add('active');
         }
         function hideOnboardRules() {
             document.getElementById('onboardRules').classList.remove('active');
-        }
-        function showOnboardReady() {
-            const overlay = document.getElementById('onboardReady');
-            const isDesktop = !('ontouchstart' in window) && navigator.maxTouchPoints === 0;
-            if (isDesktop) {
-                overlay.querySelector('.onboard-emoji').textContent = '⌨️';
-                overlay.querySelector('.onboard-title').textContent = 'Ready for you.';
-                overlay.querySelector('.onboard-hint').textContent = 'Press Spacebar to reveal words.';
-            } else {
-                overlay.querySelector('.onboard-emoji').textContent = '🤳';
-                overlay.querySelector('.onboard-title').textContent = 'Ready for you.';
-                overlay.querySelector('.onboard-hint').textContent = 'Hold your phone upright to see words.';
-            }
-            overlay.classList.add('active');
-        }
-        function hideOnboardReady() {
-            document.getElementById('onboardReady').classList.remove('active');
         }
 
         // Wire up onboarding buttons
@@ -5639,9 +5609,9 @@
             hideOnboardRules();
             localStorage.setItem('hotwords_rules_seen', Date.now().toString());
 
-            // Set up local mode state
-            isSoloMode = (playerCount === 1);
-            localModePlayers = isSoloMode ? ['You'] : Array.from({ length: playerCount }, (_, i) => `Player ${i + 1}`);
+            // Set up local (solo) mode state
+            isSoloMode = true;
+            localModePlayers = ['You'];
             isLocalMode = true;
             currentPlayerIndex = 0;
             localScore = 0;
@@ -5650,30 +5620,12 @@
             currentRoomId = getRandomRoomName();
 
             // Request permissions on this user gesture (needed for iOS)
-            if (!isSoloMode) await enableOrientationDetection();
             const micGranted = await ensureMicPermission();
 
-            // Set up the game behind the overlay so first reveal dismisses it
             launchLocalGame(micGranted);
-
-            // Skip onboard ready for solo (no reveal mechanic)
-            if (!isSoloMode) {
-                showOnboardReady();
-            }
         }
 
         document.getElementById('onboardRulesBtn').addEventListener('click', () => proceedFromRules());
-        document.getElementById('onboardReadyBack').addEventListener('click', () => {
-            hideOnboardReady();
-            showLobby();
-        });
-        document.getElementById('onboardReadySkip').addEventListener('click', () => {
-            if (waitingForFirstReveal) {
-                waitingForFirstReveal = false;
-                hideOnboardReady();
-                if (isPracticeMode) startPracticeMode(); else startGameTimer();
-            }
-        });
 
         // Start Local Game (called from onboarding flow)
         function startLocalGame() {
@@ -5696,16 +5648,13 @@
             updateScoreDisplay(0);
             wordDisplay.textContent = 'Get Ready!';
 
-            // Start listening automatically (only if mic was granted)
+            // Mic starts idle — tap the mic icon to speak once, long-press for continuous listening
             if (micGranted !== false) {
                 if (!recognition) {
                     initSpeechRecognition();
                 }
-                isListening = true;
-                silentStart();
-                listenBtn.textContent = 'Stop Listening';
-                listenBtn.classList.add('active');
-                listenPeekToggle.classList.add('visible');
+                listenBtn.textContent = '🎤 Tap to Talk';
+                listenBtn.classList.remove('active');
             }
             listenBtn.disabled = false;
             setBtnActive(skipBtn, true);
@@ -5714,54 +5663,31 @@
             // Move skip/hint button above the word box in local mode
             document.getElementById('skipRow').appendChild(skipBtn);
 
-            if (isSoloMode) {
-                if (micGranted !== false) {
-                    statusEl.textContent = 'Say your guess!';
-                    statusEl.classList.add('listening');
-                    transcriptBox.classList.add('listening');
-                } else {
-                    statusEl.textContent = '';
-                }
+            // Solo mode wins by speaking the phrase aloud — no manual "Got It" needed
+            gotItBtn.style.display = 'none';
+            // Hint button is rendered inline below clues (easier to reach on small screens)
+            skipBtn.style.display = 'none';
 
-                // Solo mode starts immediately (no reveal needed)
-                waitingForFirstReveal = false;
-                gameActive = true;
-
-                const word = getRandomPhrase();
-                await showNewWordSoloMode(word);
-
-                // Start timer after clues are ready so generation time doesn't count
-                if (isPracticeMode) {
-                    startPracticeMode();
-                    timerDisplayEl.style.display = 'none';
-                } else {
-                    GAME_DURATION = getGameDuration();
-                    startGameTimer();
-                }
+            if (micGranted !== false) {
+                statusEl.textContent = 'Say your guess!';
+                statusEl.classList.add('listening');
+                transcriptBox.classList.add('listening');
             } else {
-                const isDesktop = !('ontouchstart' in window) && navigator.maxTouchPoints === 0;
-                statusEl.textContent = isDesktop ? 'Press Spacebar to reveal!' : 'Hold upright to reveal!';
-                if (micGranted !== false) {
-                    statusEl.classList.add('listening');
-                    transcriptBox.classList.add('listening');
-                }
+                statusEl.textContent = '';
+            }
 
-                // Pick the first word (after orientation is set up so hiding works)
-                const word = getRandomPhrase();
-                showNewWordLocalMode(word);
+            gameActive = true;
 
-                // Don't start the timer yet — wait for first reveal
-                waitingForFirstReveal = true;
-                if (isPracticeMode) {
-                    timerDisplayEl.style.display = 'none';
-                } else {
-                    GAME_DURATION = getGameDuration();
-                    timerDisplayEl.classList.add('active');
-                    timerCountEl.textContent = GAME_DURATION;
-                }
+            const word = getRandomPhrase();
+            await showNewWordSoloMode(word);
 
-                // Auto-focus type answer input on desktop
-                if (isDesktop) typeAnswerInput.focus();
+            // Start timer after clues are ready so generation time doesn't count
+            if (isPracticeMode) {
+                startPracticeMode();
+                timerDisplayEl.style.display = 'none';
+            } else {
+                GAME_DURATION = getGameDuration();
+                startGameTimer();
             }
         }
 
@@ -5797,154 +5723,12 @@
             connect(currentRoomId);
         }
 
-        // Player count controls
-        // Migrate old localStorage key
-        const oldPC = localStorage.getItem('hotwords_player_count');
-        if (oldPC && !localStorage.getItem('hotwords_pp_player_count')) {
-            const v = parseInt(oldPC);
-            if (v >= 2) localStorage.setItem('hotwords_pp_player_count', v);
-            localStorage.removeItem('hotwords_player_count');
-        }
+        // Round duration for local (solo) mode — Free Play ignores this (no timer),
+        // Timed always sets it to 45 before starting (see timedBtn handler above).
+        let customRoundTime = 45;
 
-        function updatePlayerCountUI() {
-            playerCountDisplay.textContent = playerCount;
-            playerCountDown.disabled = playerCount <= (selectedMode === 'passplay' ? 2 : 1);
-            playerCountUp.disabled = playerCount >= 10;
-            isSoloMode = (playerCount === 1);
-            updateDiffDescriptions();
-            if (selectedMode === 'passplay') {
-                localStorage.setItem('hotwords_pp_player_count', playerCount);
-            }
-        }
-        playerCountUp.addEventListener('click', () => {
-            if (playerCount < 10) { playerCount++; updatePlayerCountUI(); enforceMinRoundTime(); updateRoundTimeUI(); }
-        });
-        playerCountDown.addEventListener('click', () => {
-            const minPlayers = selectedMode === 'passplay' ? 2 : 1;
-            if (playerCount > minPlayers) {
-                // If round time was at the old minimum, decrease it with the player count
-                const wasAtMin = customRoundTime === minRoundTime();
-                playerCount--;
-                updatePlayerCountUI();
-                if (wasAtMin) customRoundTime = minRoundTime();
-                updateRoundTimeUI();
-            }
-        });
-        updatePlayerCountUI();
-
-        // Round time controls
-        let customRoundTime = 60;
-        const roundTimeDisplay = document.getElementById('roundTimeDisplay');
-        const roundTimeUp = document.getElementById('roundTimeUp');
-        const roundTimeDown = document.getElementById('roundTimeDown');
-
-        function minRoundTime() {
-            if (playerCount <= 1) return 30;
-            return 30 + Math.max(0, playerCount - 2) * 5;
-        }
-        function enforceMinRoundTime() {
-            const min = minRoundTime();
-            if (customRoundTime < min) {
-                customRoundTime = min;
-            }
-        }
-        function updateRoundTimeUI() {
-            roundTimeDisplay.textContent = customRoundTime + 's';
-            roundTimeDown.disabled = customRoundTime <= minRoundTime();
-            roundTimeUp.disabled = customRoundTime >= 120;
-        }
-        function saveRoundTimeForMode() {
-            if (selectedMode === 'party') localStorage.setItem('hotwords_party_round_time', customRoundTime);
-            else if (selectedMode === 'passplay') localStorage.setItem('hotwords_pp_round_time', customRoundTime);
-        }
-        roundTimeUp.addEventListener('click', () => {
-            if (customRoundTime < 120) { customRoundTime += 15; updateRoundTimeUI(); saveRoundTimeForMode(); }
-        });
-        roundTimeDown.addEventListener('click', () => {
-            if (customRoundTime > minRoundTime()) { customRoundTime -= 15; enforceMinRoundTime(); updateRoundTimeUI(); saveRoundTimeForMode(); }
-        });
-        updateRoundTimeUI();
-
-        // Initial mode selection on page load
-        const initialMode = localStorage.getItem('hotwords_last_mode') || 'party';
-        selectMode(initialMode);
-
-        // Sync the word-display box height so it doesn't jump between revealed/hidden
-        function syncWordDisplayHeight() {
-            requestAnimationFrame(() => {
-                // Save current state
-                const wasHidden = wordContainer.classList.contains('orientation-hidden');
-                const wasRedacted = wordContainer.classList.contains('redacted');
-
-                // Disable transitions so measurements are instant (not mid-animation)
-                wordContainer.style.transition = 'none';
-
-                // Temporarily remove constraints to measure
-                wordContainer.style.minHeight = '';
-                wordContainer.classList.remove('orientation-hidden', 'redacted');
-
-                // Force reflow so cleared styles take effect immediately
-                wordContainer.offsetHeight;
-
-                // Measure revealed state height
-                const revealedHeight = wordContainer.scrollHeight;
-
-                // Measure hidden state: redact-label is absolute, so measure its content directly
-                const labelHeight = redactLabelEl.scrollHeight + 40; // padding
-
-                // Use the larger of the two
-                const maxHeight = Math.max(revealedHeight, labelHeight, 140);
-                wordContainer.style.minHeight = maxHeight + 'px';
-
-                // Restore state
-                if (wasHidden) wordContainer.classList.add('orientation-hidden');
-                if (wasRedacted) wordContainer.classList.add('redacted');
-
-                // Re-enable transitions
-                wordContainer.style.transition = '';
-            });
-        }
-
-        // Show new word in local mode (hidden until revealed)
-        function showNewWordLocalMode(word) {
-            currentWord = word;
-            hasClaimedVictory = false;
-            manualClaim = false;
-            const tar = document.getElementById('typeAnswerRow');
-            if (tar) { tar.querySelector('input').value = ''; }
-            phraseStartTime = Date.now();
-            speechResultBaseline = speechResultsLength; // ignore stale speech from previous phrase
-
-            // Initialize word-by-word tracking
-            currentWords = word.trim().split(/\s+/);
-            revealedWords = new Array(currentWords.length).fill(false);
-
-            // Show the full phrase in the word-text span
-            wordDisplay.textContent = currentWord;
-            renderWordProgress();
-
-            // Reset to hidden state for new word (flat = hidden)
-            if (orientationEnabled || tapToRevealEnabled) {
-                deviceIsFlat = true;
-                updateWordVisibilityByOrientation();
-            } else {
-                wordContainer.classList.remove('redacted', 'orientation-hidden');
-                if (redactTimer) clearTimeout(redactTimer);
-                redactTimer = setTimeout(() => {
-                    wordContainer.classList.add('redacted');
-                }, REDACT_DELAY);
-            }
-
-            // Update label with #### pattern + hint for hidden state
-            redactLabelEl.innerHTML = getHiddenLabel();
-
-            // Sync box height so it doesn't jump between states
-            syncWordDisplayHeight();
-
-            statusEl.textContent = 'Listening... Say your guess!';
-            statusEl.classList.remove('winner', 'skipped');
-            statusEl.classList.add('listening');
-        }
+        // Route-based lobby setup — /online shows the online section instead of Free Play/Timed
+        initHomeRoute();
 
         // ========== SOLO MODE ==========
 
@@ -5979,8 +5763,7 @@
                 } catch {
                     soloClues = generateFallbackClues(word);
                 }
-                gotItBtn.style.display = '';
-                skipBtn.style.display = '';
+                // Solo mode keeps Got It and top Skip hidden — Hint is rendered inline
             }
 
             soloNextPhrase = null;
@@ -6088,13 +5871,28 @@
 
             const remaining = soloClues.length - soloCluesShown;
             if (remaining > 0) {
-                html += `<div class="solo-clues-remaining">${remaining} more clue${remaining !== 1 ? 's' : ''} available</div>`;
+                html += `<div class="solo-clues-remaining">${remaining} more clue${remaining !== 1 ? 's' : ''} available`;
+                html += `<button class="solo-hint-inline" id="soloHintInline">Hint</button>`;
+                html += `</div>`;
+            } else {
+                html += `<button class="solo-hint-inline give-up" id="soloHintInline">Give Up</button>`;
             }
 
             html += `</div>`;
             wordDisplay.innerHTML = html;
 
-            // Update button text
+            // Wire up inline hint button (re-rendered each call, so re-attach handler)
+            const inlineHint = document.getElementById('soloHintInline');
+            if (inlineHint) {
+                inlineHint.addEventListener('pointerdown', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    soloModeHintOrGiveUp();
+                });
+                inlineHint.addEventListener('click', (e) => e.preventDefault());
+            }
+
+            // Update button text (still keeps skipBtn label in sync for keyboard shortcut)
             updateSoloButtonText();
         }
 
@@ -6138,48 +5936,17 @@
             await showNewWordSoloMode(word);
         }
 
-        // Local Mode: Claim victory
+        // Local (solo) mode: Claim victory
         function localModeClaimVictory() {
             if (!isLocalMode || !gameActive || hasClaimedVictory || gotItCooldown || timerPaused) return;
             hasClaimedVictory = true;
 
-            if (isSoloMode) {
-                // Solo: brief cooldown, no timer pause, no device passing
-                gotItCooldown = true;
-                setBtnActive(gotItBtn, false);
-                setTimeout(() => { gotItCooldown = false; setBtnActive(gotItBtn, true); }, 400);
-
-                phraseHistory.push({ phrase: currentWord, status: 'got-it', time: Math.round((Date.now() - phraseStartTime) / 1000) });
-                localScore++;
-                updateScoreDisplay(localScore);
-
-                // Add 4 seconds when under 6s remaining (not in practice mode)
-                if (!isPracticeMode && timeRemaining < 6) {
-                    timeRemaining += 4;
-                    timerCountEl.textContent = timeRemaining;
-                    timerDisplayEl.classList.remove('warning', 'danger');
-                    document.body.classList.remove('countdown-danger');
-                    showTimerBonus(4);
-                }
-
-                closeMatchOverlay.classList.remove('active');
-                showCelebrationLocal(currentWord, localScore);
-                nextSoloPhrase();
-                return;
-            }
-
-            // Pause timer and mic while passing the device
-            // Lock buttons immediately; timed cooldowns start when timer resumes (next player reveals)
-            timerPaused = true;
-            timerDisplayEl.classList.add('paused');
+            // Brief cooldown, no timer pause
             gotItCooldown = true;
             setBtnActive(gotItBtn, false);
-            skipCooldown = true;
-            setBtnActive(skipBtn, false);
-            // Keep recognition running during pass — timerPaused guard ignores results
+            setTimeout(() => { gotItCooldown = false; setBtnActive(gotItBtn, true); }, 400);
 
             phraseHistory.push({ phrase: currentWord, status: 'got-it', time: Math.round((Date.now() - phraseStartTime) / 1000) });
-
             localScore++;
             updateScoreDisplay(localScore);
 
@@ -6193,47 +5960,8 @@
             }
 
             closeMatchOverlay.classList.remove('active');
-
-            // Show celebration with score
             showCelebrationLocal(currentWord, localScore);
-
-            // Prep next word behind the celebration so transition is seamless
-            nextLocalModePlayer();
-        }
-
-        // Local Mode: Skip phrase (hot potato - same player, new phrase)
-        function localModeSkipWord() {
-            if (!isLocalMode || !gameActive || skipCooldown || timerPaused) return;
-            startSkipCooldown();
-
-            phraseHistory.push({ phrase: currentWord, status: 'skipped', time: Math.round((Date.now() - phraseStartTime) / 1000) });
-
-            statusEl.textContent = 'Skipped!';
-            statusEl.classList.add('skipped');
-
-            closeMatchOverlay.classList.remove('active');
-
-            // Same player, new phrase (hot potato style)
-            transcriptEl.textContent = '-';
-            similarityEl.textContent = '';
-            similarityEl.classList.remove('close');
-
-            const word = getRandomPhrase();
-            showNewWordLocalMode(word);
-        }
-
-        // Move to next player in local mode
-        function nextLocalModePlayer() {
-            currentPlayerIndex = (currentPlayerIndex + 1) % localModePlayers.length;
-
-            // Keep listening active - just reset transcript
-            transcriptEl.textContent = '-';
-            similarityEl.textContent = '';
-            similarityEl.classList.remove('close');
-
-            // Pick a new word
-            const word = getRandomPhrase();
-            showNewWordLocalMode(word);
+            nextSoloPhrase();
         }
 
         // Override skip button for local mode
@@ -6243,11 +5971,7 @@
             if (isLocalMode && gameActive) {
                 e.preventDefault();
                 e.stopPropagation();
-                if (isSoloMode) {
-                    soloModeHintOrGiveUp();
-                } else {
-                    localModeSkipWord();
-                }
+                soloModeHintOrGiveUp();
             }
         }, true);
         skipBtn.addEventListener('click', (e) => {
@@ -6255,241 +5979,9 @@
         });
 
         // Update button text
-        function updateButtonsForMode() {
-            listenBtn.textContent = isListening ? 'Stop Listening' : 'Start Listening';
-            listenBtn.classList.toggle('active', isListening);
-            if (isLocalMode) {
-                const isDesktop = !('ontouchstart' in window) && navigator.maxTouchPoints === 0;
-                if (isSoloMode) {
-                    updateSoloButtonText();
-                } else {
-                    skipBtn.innerHTML = 'Skip' + (isDesktop ? ' <span class="key-hint">[Tab]</span>' : '');
-                }
-                gotItBtn.innerHTML = 'Got It!' + (isDesktop ? ' <span class="key-hint">[Enter]</span>' : '');
-            }
-            // Online mode button text is handled by updateOnlineModeButtons()
-        }
-
-        // ========== DEVICE ORIENTATION ==========
-
-        let orientationHandler = null;
-
-        async function enableOrientationDetection() {
-            // Check if this is likely a mobile/tablet device
-            const isTouchDevice = ('ontouchstart' in window) ||
-                                  (navigator.maxTouchPoints > 0) ||
-                                  (navigator.msMaxTouchPoints > 0);
-
-            const isMobileUA = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-
-            // If not a touch/mobile device, skip orientation and use tap-to-reveal directly
-            if (!isTouchDevice && !isMobileUA) {
-                console.log('Desktop detected - using tap-to-reveal');
-                enableTapToReveal();
-                return;
-            }
-
-            // Check if DeviceOrientationEvent is available
-            if (!window.DeviceOrientationEvent) {
-                console.log('DeviceOrientation not supported');
-                enableTapToReveal();
-                return;
-            }
-
-            // iOS 13+ requires permission
-            if (typeof DeviceOrientationEvent.requestPermission === 'function') {
-                try {
-                    const response = await DeviceOrientationEvent.requestPermission();
-                    if (response === 'granted') {
-                        startOrientationListening();
-                    } else {
-                        console.log('Orientation permission denied');
-                        enableTapToReveal();
-                    }
-                } catch (err) {
-                    console.log('Orientation permission error:', err);
-                    enableTapToReveal();
-                }
-            } else {
-                // Non-iOS or older iOS
-                startOrientationListening();
-            }
-        }
-
-        let orientationDataReceived = false;
-        let orientationCheckTimeout = null;
-
-        function startOrientationListening() {
-            orientationEnabled = true;
-            orientationDataReceived = false;
-
-            orientationHandler = (event) => {
-                const beta = event.beta;  // -180 to 180 (front-to-back tilt)
-                const gamma = event.gamma; // -90 to 90 (left-to-right tilt)
-
-                // Check if we're getting real data (not null/0)
-                if (beta !== null && beta !== 0) {
-                    orientationDataReceived = true;
-                }
-
-                // beta ~= 0: screen facing up (flat), beta ~= 90: upright
-                // Thresholds with hysteresis to prevent flicker
-                const flatThreshold = 75;
-                const uprightThreshold = 80;
-                // Fade zone: between flatThreshold and uprightThreshold
-                const fadeStart = 75;
-                const fadeEnd = 80;
-
-                if (beta !== null) {
-                    const absBeta = Math.abs(beta);
-
-                    if (absBeta < flatThreshold && Math.abs(gamma) < flatThreshold) {
-                        if (!deviceIsFlat && !pressRevealing) {
-                            deviceIsFlat = true;
-                            updateWordVisibilityByOrientation();
-                        }
-                        // Fully hidden
-                        wordContainer.style.opacity = '';
-                        redactLabelEl.style.opacity = '';
-                    } else if (absBeta >= uprightThreshold) {
-                        if (deviceIsFlat) {
-                            deviceIsFlat = false;
-                            updateWordVisibilityByOrientation();
-                            if (waitingForFirstReveal) {
-                                waitingForFirstReveal = false;
-                                hideOnboardReady();
-                                if (isPracticeMode) startPracticeMode(); else startGameTimer();
-                            }
-                            if (timerPaused) {
-                                timerPaused = false;
-                                timerDisplayEl.classList.remove('paused');
-                                // Recognition stays running — timerPaused guard handles ignoring results
-                                startGotItCooldown();
-                                startSkipCooldown();
-                            }
-                        }
-                        // Fully revealed
-                        wordContainer.style.opacity = '';
-                        redactLabelEl.style.opacity = '';
-                    } else if (absBeta >= fadeStart && absBeta < fadeEnd && deviceIsFlat) {
-                        // Transition zone: fade the redact label, peek the word
-                        const progress = (absBeta - fadeStart) / (fadeEnd - fadeStart);
-                        redactLabelEl.style.opacity = String(1 - progress);
-                        // Show the word text peeking through
-                        const wordText = wordContainer.querySelector('.word-text');
-                        if (wordText) wordText.style.opacity = String(progress * 0.5);
-                    }
-                }
-            };
-
-            window.addEventListener('deviceorientation', orientationHandler);
-
-            // Also allow press-to-reveal as an alternative while in tilt mode
-            wordContainer.style.cursor = 'pointer';
-            wordContainer.addEventListener('mousedown', startReveal);
-            wordContainer.addEventListener('mouseup', stopReveal);
-            wordContainer.addEventListener('mouseleave', stopReveal);
-            wordContainer.addEventListener('touchstart', startReveal, { passive: true });
-            wordContainer.addEventListener('touchend', stopReveal, { passive: true });
-            wordContainer.addEventListener('touchcancel', stopReveal, { passive: true });
-            wordContainer.addEventListener('contextmenu', preventContextMenu);
-
-            // Check after 1 second if we received orientation data
-            // If not, fall back to tap-to-reveal mode
-            orientationCheckTimeout = setTimeout(() => {
-                if (!orientationDataReceived) {
-                    console.log('No orientation data - falling back to tap-to-reveal');
-                    enableTapToReveal();
-                }
-            }, 1000);
-
-            updateWordVisibilityByOrientation();
-        }
-
-        // Press-to-reveal for all devices
-        let tapToRevealEnabled = false;
-
-        function enableTapToReveal() {
-            orientationEnabled = false;
-            tapToRevealEnabled = true;
-            deviceIsFlat = true;  // Start hidden
-
-            wordContainer.classList.add('orientation-hidden');
-            wordContainer.style.cursor = 'pointer';
-
-            // Press and hold to reveal - mouse events
-            wordContainer.addEventListener('mousedown', startReveal);
-            wordContainer.addEventListener('mouseup', stopReveal);
-            wordContainer.addEventListener('mouseleave', stopReveal);
-
-            // Touch events for mobile
-            wordContainer.addEventListener('touchstart', startReveal, { passive: true });
-            wordContainer.addEventListener('touchend', stopReveal, { passive: true });
-            wordContainer.addEventListener('touchcancel', stopReveal, { passive: true });
-            wordContainer.addEventListener('contextmenu', preventContextMenu);
-        }
-
-        function startReveal(e) {
-            if (isSoloMode) return;
-            if (!isLocalMode || (!gameActive && !waitingForFirstReveal)) return;
-            pressRevealing = true;
-            revealStartTime = Date.now();
-            if (minRevealTimer) { clearTimeout(minRevealTimer); minRevealTimer = null; }
-            deviceIsFlat = false;  // Not flat = upright = revealed
-            wordContainer.classList.remove('orientation-hidden');
-            if (waitingForFirstReveal) {
-                waitingForFirstReveal = false;
-                hideOnboardReady();
-                if (isPracticeMode) startPracticeMode(); else startGameTimer();
-            }
-            if (timerPaused) {
-                timerPaused = false;
-                timerDisplayEl.classList.remove('paused');
-                // Recognition stays running — timerPaused guard handles ignoring results
-                hasClaimedVictory = false;
-                gotItCooldown = false;
-                setBtnActive(gotItBtn, true);
-                skipCooldown = false;
-                setBtnActive(skipBtn, true);
-            }
-        }
-
-        let pressRevealing = false;
-        let revealStartTime = 0;
-        let minRevealTimer = null;
-
-        function preventContextMenu(e) {
-            e.preventDefault();
-        }
-
-        function stopReveal(e) {
-            if (isSoloMode) return;
-            if (!isLocalMode || !gameActive) return;
-            pressRevealing = false;
-            // In orientation mode, defer to current device orientation
-            if (orientationEnabled) {
-                updateWordVisibilityByOrientation();
-                return;
-            }
-            // Ensure minimum 1s reveal duration
-            const elapsed = Date.now() - revealStartTime;
-            if (elapsed < 1000) {
-                if (minRevealTimer) clearTimeout(minRevealTimer);
-                minRevealTimer = setTimeout(() => {
-                    minRevealTimer = null;
-                    if (!pressRevealing && gameActive) {
-                        deviceIsFlat = true;
-                        wordContainer.classList.add('orientation-hidden');
-                        redactLabelEl.innerHTML = getHiddenLabel();
-                    }
-                }, 1000 - elapsed);
-                return;
-            }
-            deviceIsFlat = true;  // Flat = hidden
-            wordContainer.classList.add('orientation-hidden');
-            redactLabelEl.innerHTML = getHiddenLabel();
-        }
-
+        // getHiddenLabel() is still used by renderWordProgress() (shared with online mode's
+        // per-word progress display), so it's kept even though the device-tilt/press-to-reveal
+        // mechanic it originally supported (Pass & Play) has been removed.
         function getHiddenLabel() {
             let pattern = '';
             if (currentWords && currentWords.length > 0) {
@@ -6509,60 +6001,7 @@
                     pattern = `${count} word${count !== 1 ? 's' : ''}`;
                 }
             }
-            const isDesktopHint = !('ontouchstart' in window) && navigator.maxTouchPoints === 0;
-            const hint = isDesktopHint
-                ? 'Hold Spacebar to reveal'
-                : (orientationEnabled ? 'Tilt vertical or press & hold to reveal' : 'Press & hold to reveal');
-            return `<div class="reveal-hint" style="font-size: 3rem; letter-spacing: 4px; color: #fff; font-weight: bold; line-height: 1.4; word-break: keep-all;">${pattern}</div><div class="reveal-hint" style="margin-top: 12px; font-size: 0.85rem; color: #999;">${hint}</div>`;
-        }
-
-        function updateWordVisibilityByOrientation() {
-            if (isSoloMode) return;
-            if (!orientationEnabled && !tapToRevealEnabled) return;
-
-            // Reset transition zone styles
-            redactLabelEl.style.opacity = '';
-            const wordText = wordContainer.querySelector('.word-text');
-            if (wordText) wordText.style.opacity = '';
-
-            if (deviceIsFlat) {
-                // Device is flat (on table) - hide the phrase, show #### pattern
-                wordContainer.classList.add('orientation-hidden');
-                wordContainer.classList.remove('redacted');
-                redactLabelEl.innerHTML = getHiddenLabel();
-            } else {
-                // Device is upright - reveal the phrase
-                wordContainer.classList.remove('orientation-hidden');
-                wordContainer.classList.remove('redacted');
-            }
-
-            updateButtonsForMode();
-        }
-
-        function disableOrientationDetection() {
-            orientationEnabled = false;
-            deviceIsFlat = false;
-            tapToRevealEnabled = false;
-            pressRevealing = false;
-            if (minRevealTimer) { clearTimeout(minRevealTimer); minRevealTimer = null; }
-            if (orientationHandler) {
-                window.removeEventListener('deviceorientation', orientationHandler);
-                orientationHandler = null;
-            }
-            if (orientationCheckTimeout) {
-                clearTimeout(orientationCheckTimeout);
-                orientationCheckTimeout = null;
-            }
-            // Remove press-to-reveal listeners
-            wordContainer.removeEventListener('mousedown', startReveal);
-            wordContainer.removeEventListener('mouseup', stopReveal);
-            wordContainer.removeEventListener('mouseleave', stopReveal);
-            wordContainer.removeEventListener('touchstart', startReveal);
-            wordContainer.removeEventListener('touchend', stopReveal);
-            wordContainer.removeEventListener('touchcancel', stopReveal);
-            wordContainer.removeEventListener('contextmenu', preventContextMenu);
-            wordContainer.style.cursor = '';
-            wordContainer.classList.remove('orientation-hidden');
+            return `<div class="reveal-hint" style="font-size: 3rem; letter-spacing: 4px; color: #fff; font-weight: bold; line-height: 1.4; word-break: keep-all;">${pattern}</div>`;
         }
 
         // Keyboard shortcuts
@@ -6601,17 +6040,13 @@
                 return;
             }
 
-            if (!gameActive && !waitingForFirstReveal) return;
+            if (!gameActive) return;
 
             if (isLocalMode) {
-                // Space: solo mode = next hint, multiplayer = reveal word (press and hold)
-                if (e.code === 'Space' && !e.repeat) {
+                // Space or Tab: reveal next hint (or give up once all hints are shown)
+                if ((e.code === 'Space' && !e.repeat) || e.code === 'Tab') {
                     e.preventDefault();
-                    if (isSoloMode) {
-                        soloModeHintOrGiveUp();
-                    } else {
-                        startReveal();
-                    }
+                    soloModeHintOrGiveUp();
                 }
                 // Enter: Got it!
                 if (e.code === 'Enter') {
@@ -6619,15 +6054,6 @@
                     if (!hasClaimedVictory) {
                         manualClaim = true;
                         localModeClaimVictory();
-                    }
-                }
-                // Tab: Skip phrase (or Hint/Give Up in solo mode)
-                if (e.code === 'Tab') {
-                    e.preventDefault();
-                    if (isSoloMode) {
-                        soloModeHintOrGiveUp();
-                    } else {
-                        localModeSkipWord();
                     }
                 }
             } else {
@@ -6644,16 +6070,6 @@
                     e.preventDefault();
                     skipWord();
                 }
-            }
-        });
-
-        document.addEventListener('keyup', (e) => {
-            if (!isLocalMode || (!gameActive && !pressRevealing)) return;
-
-            // Space released: hide word
-            if (e.code === 'Space') {
-                e.preventDefault();
-                stopReveal();
             }
         });
 

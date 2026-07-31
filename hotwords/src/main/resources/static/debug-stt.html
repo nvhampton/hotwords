@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Web Speech diagnostic</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; height: 100%; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", Segoe UI, Roboto, sans-serif; background: #111; color: #eee; }
+  body { padding: 12px; display: flex; flex-direction: column; gap: 12px; }
+  h1 { font-size: 16px; margin: 0; opacity: .8; font-weight: 600; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; }
+  button { font-size: 16px; padding: 10px 14px; border: 1px solid #444; background: #1c1c1c; color: #eee; border-radius: 8px; min-height: 44px; cursor: pointer; }
+  button[disabled] { opacity: .4; cursor: not-allowed; }
+  button.primary { background: #2563eb; border-color: #2563eb; }
+  button.danger { background: #7f1d1d; border-color: #7f1d1d; }
+  .pill { display: inline-block; padding: 2px 8px; font-size: 12px; border-radius: 999px; background: #222; border: 1px solid #333; margin-right: 4px; }
+  .pill.good { background: #064e3b; border-color: #065f46; }
+  .pill.bad { background: #7f1d1d; border-color: #991b1b; }
+  .pill.warn { background: #78350f; border-color: #92400e; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; }
+  .cell { background: #1a1a1a; padding: 8px; border-radius: 8px; border: 1px solid #2a2a2a; }
+  .cell .k { font-size: 11px; opacity: .6; text-transform: uppercase; letter-spacing: .5px; }
+  .cell .v { font-size: 22px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  #transcript { background: #0a0a0a; border: 1px solid #2a2a2a; border-radius: 8px; padding: 10px; min-height: 80px; max-height: 140px; overflow-y: auto; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; white-space: pre-wrap; }
+  #log { background: #0a0a0a; border: 1px solid #2a2a2a; border-radius: 8px; padding: 8px; flex: 1; min-height: 200px; overflow-y: auto; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; line-height: 1.4; }
+  .log-line { display: flex; gap: 8px; padding: 1px 0; }
+  .log-line .t { opacity: .4; min-width: 64px; }
+  .log-line.evt-start { color: #6ee7b7; }
+  .log-line.evt-end { color: #fca5a5; }
+  .log-line.evt-result { color: #93c5fd; }
+  .log-line.evt-error { color: #fda4af; background: #2a0a0a; }
+  .log-line.evt-info { color: #cbd5e1; }
+  .log-line.evt-restart { color: #fcd34d; font-weight: 600; }
+  details { background: #181818; border: 1px solid #2a2a2a; border-radius: 8px; padding: 8px 10px; }
+  details summary { cursor: pointer; font-size: 13px; opacity: .8; }
+  details > div { margin-top: 8px; font-size: 12px; line-height: 1.6; opacity: .85; }
+  code { background: #0a0a0a; padding: 1px 5px; border-radius: 4px; font-size: 12px; }
+</style>
+</head>
+<body>
+
+<h1>Web Speech API diagnostic</h1>
+
+<div id="caps" class="row"></div>
+
+<div class="row">
+  <button id="btnStart" class="primary">Start continuous</button>
+  <button id="btnStop" class="danger" disabled>Stop</button>
+  <button id="btnInstall">Try on-device install()</button>
+  <button id="btnClear">Clear log</button>
+</div>
+
+<div class="grid">
+  <div class="cell"><div class="k">starts</div><div class="v" id="cStart">0</div></div>
+  <div class="cell"><div class="k">ends</div><div class="v" id="cEnd">0</div></div>
+  <div class="cell"><div class="k">restarts</div><div class="v" id="cRestart">0</div></div>
+  <div class="cell"><div class="k">results</div><div class="v" id="cResult">0</div></div>
+  <div class="cell"><div class="k">errors</div><div class="v" id="cError">0</div></div>
+  <div class="cell"><div class="k">silence (s)</div><div class="v" id="cSilence">—</div></div>
+</div>
+
+<div id="transcript" aria-label="live transcript">(transcript appears here)</div>
+
+<details>
+  <summary>What to observe (read me before testing)</summary>
+  <div>
+    <p><strong>The plot:</strong> We want to know if Chrome 139+'s on-device Web Speech API silences the start-of-listening "ding" on Android. If yes, we ship continuous streaming. If no, we either accept dings or move to server-side STT.</p>
+    <p><strong>Steps:</strong></p>
+    <ol>
+      <li>Tap <em>Try on-device install()</em> first. Check what the capability pills show.</li>
+      <li>Tap <em>Start continuous</em>. Speak a few words, then stay silent for ~15 seconds.</li>
+      <li>Watch the log — recognition will likely <code>onend</code> after silence, and the code will <code>start()</code> again. <strong>Note whether you hear a "ding"</strong> on each restart.</li>
+      <li>Try repeating with on-device installed vs not. Report back: ding present? ding silenced? recognition stayed alive?</li>
+    </ol>
+    <p><strong>Capability pill meanings:</strong> <code>install()</code> = on-device install API exists. <code>available</code> = on-device model is downloaded and ready. <code>cloud-only</code> = only the legacy cloud path is available.</p>
+  </div>
+</details>
+
+<div id="log"></div>
+
+<script>
+(() => {
+  'use strict';
+
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const $ = (id) => document.getElementById(id);
+
+  const caps = $('caps');
+  const log = $('log');
+  const transcript = $('transcript');
+  const counters = { Start: 0, End: 0, Restart: 0, Result: 0, Error: 0 };
+  let recog = null;
+  let wantRunning = false;
+  let lastSpeechAt = 0;
+  let silenceTimer = null;
+
+  const pill = (text, cls = '') => {
+    const el = document.createElement('span');
+    el.className = 'pill ' + cls;
+    el.textContent = text;
+    return el;
+  };
+
+  const ts = () => {
+    const d = new Date();
+    return d.toLocaleTimeString([], { hour12: false }) + '.' + String(d.getMilliseconds()).padStart(3, '0');
+  };
+
+  const logLine = (msg, kind = 'info') => {
+    const line = document.createElement('div');
+    line.className = 'log-line evt-' + kind;
+    const t = document.createElement('span');
+    t.className = 't'; t.textContent = ts();
+    const m = document.createElement('span');
+    m.textContent = msg;
+    line.appendChild(t); line.appendChild(m);
+    log.appendChild(line);
+    log.scrollTop = log.scrollHeight;
+  };
+
+  const bump = (name) => {
+    counters[name] = (counters[name] || 0) + 1;
+    $('c' + name).textContent = counters[name];
+  };
+
+  // ── Capability pills ─────────────────────────────────────
+  caps.appendChild(pill('UA: ' + (navigator.userAgentData?.brands?.map(b => b.brand).join(',') || navigator.userAgent.slice(0, 60))));
+  caps.appendChild(pill('SR: ' + (SR ? 'yes' : 'no'), SR ? 'good' : 'bad'));
+
+  if (SR) {
+    caps.appendChild(pill('install(): ' + (typeof SR.install === 'function' ? 'yes' : 'no'),
+      typeof SR.install === 'function' ? 'good' : 'warn'));
+    caps.appendChild(pill('available(): ' + (typeof SR.available === 'function' ? 'yes' : 'no'),
+      typeof SR.available === 'function' ? 'good' : 'warn'));
+  }
+
+  // Probe on-device availability immediately if API exists
+  if (SR && typeof SR.available === 'function') {
+    try {
+      const p = SR.available({ langs: ['en-US'], processLocally: true });
+      Promise.resolve(p).then(v => {
+        const known = typeof v === 'string' ? v : JSON.stringify(v);
+        caps.appendChild(pill('on-device: ' + known,
+          known === 'available' || known === 'readily' ? 'good' :
+          known === 'downloadable' || known === 'after-download' ? 'warn' : 'bad'));
+        logLine('SR.available({processLocally:true}) → ' + known, 'info');
+      }).catch(e => logLine('available() rejected: ' + e.message, 'error'));
+    } catch (e) {
+      logLine('available() threw: ' + e.message, 'error');
+    }
+  }
+
+  // ── Build recognizer ─────────────────────────────────────
+  const buildRecognizer = (opts = {}) => {
+    const r = new SR();
+    r.continuous = true;
+    r.interimResults = true;
+    r.lang = 'en-US';
+    r.maxAlternatives = 3;
+    if ('processLocally' in r) r.processLocally = !!opts.processLocally;
+
+    r.onstart = () => {
+      bump('Start');
+      logLine('onstart' + (opts.processLocally ? ' (processLocally=true)' : ''), 'start');
+      lastSpeechAt = performance.now();
+      startSilenceTimer();
+    };
+    r.onaudiostart = () => logLine('onaudiostart', 'info');
+    r.onsoundstart = () => logLine('onsoundstart', 'info');
+    r.onspeechstart = () => { logLine('onspeechstart', 'info'); lastSpeechAt = performance.now(); };
+    r.onspeechend = () => logLine('onspeechend', 'info');
+    r.onsoundend = () => logLine('onsoundend', 'info');
+    r.onaudioend = () => logLine('onaudioend', 'info');
+
+    r.onresult = (ev) => {
+      bump('Result');
+      lastSpeechAt = performance.now();
+      const last = ev.results[ev.results.length - 1];
+      const t = last[0].transcript;
+      const isFinal = last.isFinal;
+      const alts = [];
+      for (let i = 0; i < last.length; i++) alts.push(last[i].transcript);
+      logLine(`onresult ${isFinal ? 'FINAL' : 'interim'}: "${t}"` + (alts.length > 1 ? ` [alts: ${alts.length}]` : ''), 'result');
+      transcript.textContent = Array.from(ev.results).map(r => r[0].transcript).join(' ');
+    };
+
+    r.onnomatch = () => logLine('onnomatch', 'info');
+
+    r.onerror = (ev) => {
+      bump('Error');
+      logLine(`onerror: ${ev.error} ${ev.message || ''}`, 'error');
+    };
+
+    r.onend = () => {
+      bump('End');
+      logLine('onend', 'end');
+      stopSilenceTimer();
+      if (wantRunning) {
+        bump('Restart');
+        logLine('→ restart() — LISTEN for a ding', 'restart');
+        try { r.start(); } catch (e) { logLine('start() threw: ' + e.message, 'error'); }
+      }
+    };
+
+    return r;
+  };
+
+  const startSilenceTimer = () => {
+    stopSilenceTimer();
+    silenceTimer = setInterval(() => {
+      const s = (performance.now() - lastSpeechAt) / 1000;
+      $('cSilence').textContent = s.toFixed(1);
+    }, 250);
+  };
+  const stopSilenceTimer = () => {
+    if (silenceTimer) { clearInterval(silenceTimer); silenceTimer = null; }
+    $('cSilence').textContent = '—';
+  };
+
+  // ── Buttons ──────────────────────────────────────────────
+  $('btnStart').addEventListener('click', async () => {
+    if (!SR) { logLine('SpeechRecognition not supported in this browser', 'error'); return; }
+    try { await navigator.mediaDevices.getUserMedia({ audio: true }); } catch (e) {
+      logLine('mic permission denied: ' + e.message, 'error'); return;
+    }
+    if (!recog) recog = buildRecognizer({ processLocally: true });
+    wantRunning = true;
+    counters.Start = counters.End = counters.Restart = counters.Result = counters.Error = 0;
+    ['Start','End','Restart','Result','Error'].forEach(n => $('c'+n).textContent = 0);
+    try { recog.start(); } catch (e) { logLine('start() threw: ' + e.message, 'error'); }
+    $('btnStart').disabled = true; $('btnStop').disabled = false;
+  });
+
+  $('btnStop').addEventListener('click', () => {
+    wantRunning = false;
+    if (recog) { try { recog.stop(); } catch (e) { /* */ } }
+    $('btnStart').disabled = false; $('btnStop').disabled = true;
+    stopSilenceTimer();
+  });
+
+  $('btnInstall').addEventListener('click', async () => {
+    if (!SR || typeof SR.install !== 'function') {
+      logLine('SR.install() not available on this browser', 'error'); return;
+    }
+    try {
+      logLine('calling SR.install({langs:[en-US], processLocally:true})', 'info');
+      const p = SR.install({ langs: ['en-US'], processLocally: true });
+      const result = await Promise.resolve(p);
+      logLine('install() resolved: ' + JSON.stringify(result), 'start');
+      if (typeof SR.available === 'function') {
+        const v = await SR.available({ langs: ['en-US'], processLocally: true });
+        logLine('available() now: ' + v, 'info');
+      }
+    } catch (e) {
+      logLine('install() rejected: ' + (e.message || e), 'error');
+    }
+  });
+
+  $('btnClear').addEventListener('click', () => { log.innerHTML = ''; });
+})();
+</script>
+
+</body>
+</html>
