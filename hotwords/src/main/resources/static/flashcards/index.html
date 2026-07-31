@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Baby Words</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#222222">
+<style>
+  :root { color-scheme: light; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0; padding: 0; width: 100%; height: 100%;
+    overflow: hidden; overscroll-behavior: none;
+    user-select: none; -webkit-user-select: none;
+    touch-action: manipulation;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+  #app { position: fixed; inset: 0; }
+
+  #start {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    background: #1e1b4b; color: white; gap: 24px; text-align: center; padding: 24px;
+  }
+  #start h1 { font-size: clamp(2rem, 8vw, 4rem); margin: 0; }
+  #start p { font-size: clamp(1rem, 3vw, 1.4rem); opacity: 0.8; margin: 0; max-width: 32ch; }
+  #start button {
+    font-size: clamp(1.3rem, 5vw, 2rem); font-weight: 700;
+    padding: 1em 2em; border-radius: 999px; border: none;
+    background: #facc15; color: #1e1b4b; cursor: pointer;
+  }
+
+  #deck {
+    position: absolute; inset: 0; display: none;
+    flex-direction: column; align-items: center; justify-content: center;
+    transition: background-color 0.25s ease;
+  }
+  #deck.active { display: flex; }
+
+  #card { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4vh; }
+  #emoji {
+    font-size: clamp(6rem, 42vmin, 18rem); line-height: 1;
+    filter: drop-shadow(0 8px 20px rgba(0,0,0,0.15));
+  }
+  #word {
+    font-size: clamp(2.2rem, 11vw, 5.5rem); font-weight: 800;
+    color: #1f2937; letter-spacing: 0.02em; text-transform: capitalize;
+  }
+
+  .zone { position: absolute; top: 0; bottom: 0; width: 22%; z-index: 2; }
+  #zone-prev { left: 0; }
+  #zone-next { right: 0; }
+  .arrow {
+    position: absolute; top: 50%; transform: translateY(-50%);
+    font-size: clamp(1.5rem, 4vw, 2.5rem); color: rgba(0,0,0,0.25);
+    pointer-events: none;
+  }
+  #zone-prev .arrow { left: 4vw; }
+  #zone-next .arrow { right: 4vw; }
+
+  #topbar {
+    position: absolute; top: 0; left: 0; right: 0; z-index: 3;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: max(12px, env(safe-area-inset-top)) 16px 12px;
+  }
+  #counter {
+    font-size: 1rem; font-weight: 700; color: rgba(0,0,0,0.4);
+    background: rgba(255,255,255,0.6); padding: 4px 12px; border-radius: 999px;
+  }
+  #shuffle-btn {
+    font-size: 1.3rem; background: rgba(255,255,255,0.6); border: none;
+    border-radius: 999px; width: 44px; height: 44px; cursor: pointer;
+  }
+
+  #hint {
+    position: absolute; bottom: max(20px, env(safe-area-inset-bottom));
+    left: 0; right: 0; text-align: center; z-index: 3;
+    font-size: 0.85rem; color: rgba(0,0,0,0.35); font-weight: 600;
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="start">
+    <h1>Baby Words</h1>
+    <p>Tap words to hear them out loud. Tap the edges to move between cards.</p>
+    <button id="start-btn">Start ▶</button>
+  </div>
+
+  <div id="deck">
+    <div id="topbar">
+      <span id="counter"></span>
+      <button id="shuffle-btn" title="Shuffle">🔀</button>
+    </div>
+    <div id="zone-prev" class="zone"><span class="arrow">‹</span></div>
+    <div id="zone-next" class="zone"><span class="arrow">›</span></div>
+    <div id="card">
+      <div id="emoji"></div>
+      <div id="word"></div>
+    </div>
+    <div id="hint">tap card to hear it again</div>
+  </div>
+</div>
+
+<script>
+(function () {
+  const WORDS = [
+    ["Apple", "🍎"], ["Ball", "⚽"], ["Banana", "🍌"], ["Bear", "🐻"], ["Bird", "🐦"],
+    ["Book", "📖"], ["Bus", "🚌"], ["Car", "🚗"], ["Cat", "🐱"], ["Chicken", "🐔"],
+    ["Cookie", "🍪"], ["Cow", "🐮"], ["Dog", "🐶"], ["Duck", "🦆"], ["Elephant", "🐘"],
+    ["Fish", "🐟"], ["Flower", "🌸"], ["Hat", "🎩"], ["Horse", "🐴"], ["Lion", "🦁"],
+    ["Milk", "🥛"], ["Moon", "🌙"], ["Pig", "🐷"], ["Shoe", "👟"], ["Sheep", "🐑"],
+    ["Star", "⭐"], ["Sun", "☀️"], ["Tree", "🌳"], ["Water", "💧"], ["Cake", "🎂"],
+    ["Egg", "🥚"], ["Frog", "🐸"], ["Bee", "🐝"], ["Butterfly", "🦋"], ["Rabbit", "🐰"],
+    ["Monkey", "🐵"], ["Owl", "🦉"], ["Turtle", "🐢"], ["Bread", "🍞"], ["Cheese", "🧀"],
+    ["Balloon", "🎈"], ["Train", "🚂"], ["Boat", "⛵"], ["Airplane", "✈️"], ["Bicycle", "🚲"],
+    ["Chair", "🪑"], ["Spoon", "🥄"], ["Cup", "🥤"], ["Bed", "🛏️"], ["Door", "🚪"]
+  ];
+
+  const BG_COLORS = ["#fde68a", "#bbf7d0", "#bfdbfe", "#fbcfe8", "#fed7aa", "#ddd6fe", "#a7f3d0", "#fecaca"];
+
+  let deck = WORDS.slice();
+  let index = 0;
+
+  const startScreen = document.getElementById("start");
+  const deckScreen = document.getElementById("deck");
+  const emojiEl = document.getElementById("emoji");
+  const wordEl = document.getElementById("word");
+  const counterEl = document.getElementById("counter");
+
+  function speak(text) {
+    if (!("speechSynthesis" in window)) return;
+    window.speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.rate = 0.85;
+    u.pitch = 1.1;
+    window.speechSynthesis.speak(u);
+  }
+
+  function render(shouldSpeak) {
+    const [word, emoji] = deck[index];
+    emojiEl.textContent = emoji;
+    wordEl.textContent = word;
+    counterEl.textContent = (index + 1) + " / " + deck.length;
+    deckScreen.style.backgroundColor = BG_COLORS[index % BG_COLORS.length];
+    if (shouldSpeak) speak(word);
+  }
+
+  function next() {
+    index = (index + 1) % deck.length;
+    render(true);
+  }
+
+  function prev() {
+    index = (index - 1 + deck.length) % deck.length;
+    render(true);
+  }
+
+  function shuffle() {
+    for (let i = deck.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [deck[i], deck[j]] = [deck[j], deck[i]];
+    }
+    index = 0;
+    render(true);
+  }
+
+  document.getElementById("zone-next").addEventListener("click", next);
+  document.getElementById("zone-prev").addEventListener("click", prev);
+  document.getElementById("card").addEventListener("click", () => render(true));
+  document.getElementById("shuffle-btn").addEventListener("click", (e) => { e.stopPropagation(); shuffle(); });
+
+  document.addEventListener("keydown", (e) => {
+    if (!deckScreen.classList.contains("active")) return;
+    if (e.key === "ArrowRight") next();
+    else if (e.key === "ArrowLeft") prev();
+    else if (e.key === " ") render(true);
+  });
+
+  let touchStartX = null;
+  deckScreen.addEventListener("touchstart", (e) => { touchStartX = e.touches[0].clientX; }, { passive: true });
+  deckScreen.addEventListener("touchend", (e) => {
+    if (touchStartX === null) return;
+    const dx = e.changedTouches[0].clientX - touchStartX;
+    if (Math.abs(dx) > 60) { dx < 0 ? next() : prev(); }
+    touchStartX = null;
+  }, { passive: true });
+
+  document.getElementById("start-btn").addEventListener("click", () => {
+    // First user gesture: unlock speech synthesis on iOS Safari and request fullscreen.
+    speak(" ");
+    const el = document.documentElement;
+    if (el.requestFullscreen) el.requestFullscreen().catch(() => {});
+    else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+
+    startScreen.style.display = "none";
+    deckScreen.classList.add("active");
+    shuffle();
+  });
+})();
+</script>
+</body>
+</html>
