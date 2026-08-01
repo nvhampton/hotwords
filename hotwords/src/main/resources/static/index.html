@@ -27,6 +27,12 @@
             background: var(--hw-bg);
             color: var(--hw-ink);
             min-height: 100vh;
+            /* Dynamic viewport height shrinks to the actually-visible area when the
+               on-screen keyboard opens (100vh doesn't) — without this, focusing the
+               type-answer input creates a phantom scrollbar over blank space that
+               used to sit behind the keyboard. Falls back to 100vh above where
+               unsupported. */
+            min-height: 100dvh;
             margin: 0;
             -webkit-user-select: none;
             user-select: none;
@@ -42,7 +48,7 @@
            above/below the action buttons. */
         body.in-round {
             justify-content: flex-start;
-            padding-top: 68px;
+            padding-top: 44px;
         }
         input, textarea {
             -webkit-user-select: text;
@@ -60,6 +66,12 @@
             font-family: ui-monospace, monospace;
             letter-spacing: 2px;
             min-height: 40px;
+        }
+        /* Local/pass-and-play mode never populates these — collapse the reserved
+           space instead of leaving a dead gap above the phrase card. */
+        .word-progress:empty,
+        .skip-row:empty {
+            display: none;
         }
         .word-progress .word-hidden {
             color: var(--hw-sub);
@@ -109,8 +121,9 @@
             0% { transform: scale(1.3); color: var(--hw-gold); }
             100% { transform: scale(1); color: #3EBECB; }
         }
-        /* Show Clue fallback hints */
-        .clue-display { text-align: center; padding: 0 10px; }
+        /* Show Clue fallback hints — capped so a growing list of clues scrolls
+           within its own box instead of pushing the buttons off screen. */
+        .clue-display { text-align: center; padding: 0 10px; max-height: 24vh; overflow-y: auto; }
         .clue-line { font-size: 1rem; margin: 6px 0; padding: 8px 16px; border-radius: 8px; animation: clueIn 0.3s ease-out; }
         @keyframes clueIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
         .container {
@@ -229,6 +242,13 @@
         .word-display.orientation-hidden .redact-label {
             opacity: 1;
         }
+        /* Applied for a single frame when a new phrase loads under tilt/press reveal,
+           so the hide-and-swap is instant instead of cross-fading through the new word. */
+        .word-display.no-transition,
+        .word-display.no-transition .word-text,
+        .word-display.no-transition .redact-label {
+            transition: none !important;
+        }
         .redact-label .reveal-pattern {
             font-size: var(--word-size, clamp(1.3rem, 6.5vw, 2.4rem));
             letter-spacing: clamp(1px, 1vw, 4px);
@@ -248,6 +268,18 @@
             body { padding: 12px; }
             .word-display { padding: 22px 14px; }
             .redact-label { padding: 10px; }
+        }
+        /* Short viewports (landscape phones, or a keyboard eating vertical
+           space when the type-answer box is open) — tighten everything so
+           the round fits without the page itself needing to scroll. */
+        @media (max-height: 700px) {
+            body.in-round { padding-top: 20px; }
+            .stage { margin: 10px 0 4px; }
+            .word-display { min-height: 100px; padding: 18px; }
+            .status { margin: 4px 0 8px; min-height: 0; }
+            .listen-row { margin: 8px 0 10px; }
+            .transcript { margin-top: 6px; }
+            .clue-display { max-height: 18vh; }
         }
         .key-hint {
             font-size: 0.7em;
@@ -298,7 +330,7 @@
         /* Stage: the phrase card plus its overlapping timer badge */
         .stage {
             position: relative;
-            margin: 34px 0 4px;
+            margin: 20px 0 4px;
         }
         .timer-display {
             position: absolute;
@@ -378,8 +410,8 @@
             font-size: 1.05rem;
             font-weight: 600;
             color: var(--hw-sub);
-            margin: 10px 0 14px;
-            min-height: 30px;
+            margin: 6px 0 10px;
+            min-height: 24px;
         }
         .status.listening {
             color: var(--hw-accent);
@@ -428,25 +460,13 @@
             color: var(--hw-ink);
             font-size: 1rem;
             padding: 8px 12px;
-            width: 220px;
+            width: 260px;
+            max-width: 100%;
             outline: none;
         }
         .type-answer-input:focus {
             border-color: var(--hw-accent);
             box-shadow: 0 0 0 2px rgba(255, 75, 110, 0.15);
-        }
-        .type-answer-btn {
-            background: var(--hw-ink);
-            color: #fff;
-            border: none;
-            border-radius: 8px;
-            font-size: 1rem;
-            font-weight: 600;
-            padding: 8px 16px;
-            cursor: pointer;
-        }
-        .type-answer-btn:hover {
-            background: #52362d;
         }
         .share-invite {
             color: var(--hw-accent);
@@ -569,7 +589,7 @@
             align-items: center;
             justify-content: center;
             gap: 12px;
-            margin: 16px 0 18px;
+            margin: 10px 0 12px;
         }
         .listen-row .clue-btn,
         .listen-row .listen-btn,
@@ -625,6 +645,20 @@
             0%, 100% { box-shadow: 0 0 14px rgba(255, 75, 110, 0.4); }
             50%      { box-shadow: 0 0 22px rgba(255, 75, 110, 0.7); }
         }
+        /* Reveal button — lit up mint while actively held (word is showing) */
+        .reveal-btn.active {
+            background: var(--hw-mint);
+            border-color: var(--hw-mint);
+            color: #fff;
+            box-shadow: 0 0 14px rgba(31, 184, 138, 0.5);
+        }
+        /* Orientation toggle — lit up gold while tilt-to-reveal is on */
+        .orientation-toggle-btn.active {
+            background: var(--hw-gold);
+            border-color: var(--hw-gold);
+            color: #4a3200;
+            box-shadow: 0 0 12px rgba(255, 201, 60, 0.5);
+        }
         /* Listening indicator — applied to the phrase box itself (not viewport) */
         .word-display {
             transition: border-color 0.25s ease, box-shadow 0.25s ease, background 0.25s ease;
@@ -650,7 +684,7 @@
             50%      { box-shadow: 0 0 14px rgba(255, 75, 110, 0.45); }
         }
         .transcript {
-            margin-top: 20px;
+            margin-top: 10px;
             padding: 0 15px;
             text-align: center;
             font-size: 1rem;
@@ -793,7 +827,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(26, 26, 46, 0.97);
+            background: rgba(255, 246, 242, 0.97);
             z-index: 1100;
             display: none;
             align-items: center;
@@ -804,7 +838,8 @@
             display: flex;
         }
         .leaderboard-container {
-            background: rgba(255, 255, 255, 0.05);
+            background: var(--hw-card);
+            border: 1px solid var(--hw-line);
             border-radius: 20px;
             padding: 30px;
             max-width: 440px;
@@ -812,18 +847,18 @@
             max-height: 80vh;
             display: flex;
             flex-direction: column;
+            box-shadow: 0 20px 50px rgba(58, 38, 32, 0.15);
         }
         .leaderboard-title {
             font-size: 2rem;
-            font-weight: bold;
+            font-weight: 800;
             text-align: center;
-            color: #f9ca24;
-            text-shadow: 0 0 20px rgba(249, 202, 36, 0.5);
+            color: var(--hw-ink);
             margin-bottom: 4px;
         }
         .leaderboard-subtitle {
             text-align: center;
-            color: #888;
+            color: var(--hw-sub);
             font-size: 0.9rem;
             margin-bottom: 20px;
         }
@@ -832,16 +867,26 @@
             flex: 1;
             min-height: 0;
         }
+        .leaderboard-section-label {
+            font-size: 0.78rem;
+            font-weight: 700;
+            color: var(--hw-sub);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin: 12px 0 8px;
+            padding-top: 8px;
+            border-top: 1px solid var(--hw-line);
+        }
         .leaderboard-percentile {
             text-align: center;
             padding: 10px 16px;
             margin-bottom: 16px;
             border-radius: 12px;
-            background: linear-gradient(135deg, rgba(249, 202, 36, 0.15), rgba(249, 202, 36, 0.05));
-            border: 1px solid rgba(249, 202, 36, 0.3);
-            color: #f9ca24;
+            background: var(--hw-gold);
+            border: 1px solid var(--hw-gold);
+            color: #4a3200;
             font-size: 1rem;
-            font-weight: 600;
+            font-weight: 700;
         }
         .leaderboard-entry {
             display: flex;
@@ -849,12 +894,12 @@
             padding: 10px 14px;
             border-radius: 10px;
             margin-bottom: 6px;
-            background: rgba(255, 255, 255, 0.03);
+            background: var(--hw-bg);
             transition: background 0.2s;
         }
         .leaderboard-entry.is-you {
-            background: rgba(62, 190, 203, 0.15);
-            border: 1px solid rgba(62, 190, 203, 0.3);
+            background: var(--hw-accent-soft);
+            border: 1px solid var(--hw-accent);
         }
         .leaderboard-rank {
             font-size: 1.3rem;
@@ -863,8 +908,8 @@
             text-align: center;
             flex-shrink: 0;
         }
-        .leaderboard-rank.gold { color: #f9ca24; }
-        .leaderboard-rank.silver { color: #c0c0c0; }
+        .leaderboard-rank.gold { color: var(--hw-gold); }
+        .leaderboard-rank.silver { color: #b0b0b0; }
         .leaderboard-rank.bronze { color: #cd7f32; }
         .leaderboard-details {
             flex: 1;
@@ -874,6 +919,8 @@
         }
         .leaderboard-players {
             font-size: 1rem;
+            color: var(--hw-ink);
+            font-weight: 600;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
@@ -883,31 +930,31 @@
             gap: 8px;
             margin-top: 2px;
             font-size: 0.75rem;
-            color: #666;
+            color: var(--hw-sub);
         }
         .leaderboard-hash {
-            font-family: monospace;
-            color: #888;
+            font-family: ui-monospace, monospace;
+            color: var(--hw-sub);
         }
         .leaderboard-time {
-            color: #666;
+            color: var(--hw-sub);
         }
         .leaderboard-score {
             font-size: 1.2rem;
-            font-weight: bold;
-            color: #3EBECB;
+            font-weight: 800;
+            color: var(--hw-accent);
             margin-left: 10px;
             flex-shrink: 0;
         }
         .leaderboard-empty {
             text-align: center;
-            color: #666;
+            color: var(--hw-sub);
             padding: 30px;
             font-size: 1.1rem;
         }
         .leaderboard-divider {
             border: none;
-            border-top: 1px solid rgba(255, 255, 255, 0.08);
+            border-top: 1px solid var(--hw-line);
             margin: 12px 0;
         }
         .leaderboard-grouped {
@@ -917,39 +964,40 @@
             padding: 6px 14px;
             border-radius: 8px;
             margin-bottom: 4px;
-            background: rgba(255, 255, 255, 0.02);
+            background: var(--hw-bg);
         }
         .leaderboard-grouped-score {
-            font-weight: 600;
-            color: #aaa;
+            font-weight: 700;
+            color: var(--hw-ink);
         }
         .leaderboard-grouped-count {
             font-size: 0.85rem;
-            color: #666;
+            color: var(--hw-sub);
         }
         .leaderboard-total {
             text-align: center;
-            color: #555;
+            color: var(--hw-sub);
             font-size: 0.85rem;
             margin-top: 12px;
             padding-top: 12px;
-            border-top: 1px solid rgba(255, 255, 255, 0.08);
+            border-top: 1px solid var(--hw-line);
         }
         .leaderboard-close {
             margin-top: 16px;
             padding: 12px 30px;
             font-size: 1.1rem;
+            font-weight: 700;
             border: none;
             border-radius: 25px;
             cursor: pointer;
-            background: linear-gradient(135deg, #B4975A 0%, #9a7d45 100%);
+            background: var(--hw-mint);
             color: #fff;
             transition: all 0.3s ease;
             align-self: center;
         }
         .leaderboard-close:hover {
             transform: translateY(-2px);
-            box-shadow: 0 5px 20px rgba(180, 151, 90, 0.4);
+            box-shadow: 0 5px 20px rgba(31, 184, 138, 0.35);
         }
 
         /* Game Summary Overlay */
@@ -1858,10 +1906,6 @@
             display: none;
         }
 
-        .word-display.orientation-hidden:active {
-            background: var(--hw-accent-soft);
-        }
-
         /* Close Match Anticipation Overlay */
         .close-match-overlay {
             position: fixed;
@@ -2153,15 +2197,17 @@
             <button class="gotit-btn btn-inactive" id="gotItBtn">Got It!</button>
             <button class="play-again-btn" id="playAgainBtn" style="display: none;">Play Again</button>
         </div>
-        <div class="listen-row">
-            <button class="clue-btn" id="clueBtn">💡 Show Clue</button>
-            <button class="listen-btn" id="listenBtn" disabled title="Tap to talk">🎤</button>
-            <button class="type-toggle-btn" id="typeToggleBtn">⌨️</button>
-        </div>
 
         <div class="type-answer-row" id="typeAnswerRow">
-            <input type="text" id="typeAnswerInput" class="type-answer-input" placeholder="Type your answer..." autocomplete="off" />
-            <button class="type-answer-btn" id="typeAnswerBtn">Check</button>
+            <input type="text" id="typeAnswerInput" class="type-answer-input" placeholder="Type your answer..." autocorrect="off" autocapitalize="off" spellcheck="false" inputmode="text" data-lpignore="true" data-1p-ignore data-form-type="other" />
+        </div>
+
+        <div class="listen-row">
+            <button class="clue-btn" id="clueBtn">💡 Show Clue</button>
+            <button class="listen-btn reveal-btn" id="revealBtn" title="Hold to reveal">👁️</button>
+            <button class="listen-btn" id="listenBtn" disabled title="Tap to talk">🎤</button>
+            <button class="listen-btn orientation-toggle-btn" id="orientationToggleBtn" title="Tilt to reveal">🤳</button>
+            <button class="type-toggle-btn" id="typeToggleBtn">⌨️</button>
         </div>
 
         <div class="transcript" id="transcriptBox">
@@ -2199,7 +2245,7 @@
     <!-- Game Summary Overlay -->
     <div class="game-summary-overlay" id="gameSummaryOverlay">
         <div class="game-summary">
-            <div class="game-summary-title">Game Over!</div>
+            <div class="game-summary-title" id="gameSummaryTitle">Game Over!</div>
             <div class="game-summary-score" id="gameSummaryScore"></div>
             <div class="game-summary-phrases" id="gameSummaryPhrases"></div>
             <div class="game-summary-buttons">
@@ -2283,7 +2329,8 @@
          * ============================================================================
          * - 2+ players share one device
          * - 60-second timer runs continuously
-         * - Current player sees phrase (press & hold to reveal)
+         * - Current player sees phrase (hold 👁️ to reveal, or tilt vertical if the
+         *   🤳 toggle is on)
          * - Say the phrase or press "Got It!" to pass to next player
          * - "Skip" gets a new phrase but stays with current player
          * - Player holding when timer expires loses
@@ -2318,7 +2365,8 @@
          *   localModeClaimVictory() - Handle correct guess
          *   localModeSkipWord()     - Skip to a new phrase
          *   showClue()              - Reveal the next fallback hint
-         *   enableOrientationDetection() - Tilt-to-reveal (press-hold fallback)
+         *   enableOrientationDetection() - Tilt-to-reveal (🤳 toggle, opt-in on mobile)
+         *   startReveal() / stopReveal() - 👁️ button (and Space on desktop)
          *   renderWordProgress()    - Update "Player: #### ###" display
          *
          * Online Mode (hidden behind /online):
@@ -2363,6 +2411,8 @@
         const wordContainer = document.getElementById('wordContainer');
         const statusEl = document.getElementById('status');
         const listenBtn = document.getElementById('listenBtn');
+        const revealBtn = document.getElementById('revealBtn');
+        const orientationToggleBtn = document.getElementById('orientationToggleBtn');
         const skipBtn = document.getElementById('skipBtn');
         const gotItBtn = document.getElementById('gotItBtn');
         // Helper: set button active/inactive (stays focusable unlike disabled)
@@ -2384,6 +2434,7 @@
         const closeMatchPct = document.getElementById('closeMatchPct');
         const scoreCountEl = document.getElementById('scoreCount');
         const gameSummaryOverlay = document.getElementById('gameSummaryOverlay');
+        const gameSummaryTitle = document.getElementById('gameSummaryTitle');
         const gameSummaryScore = document.getElementById('gameSummaryScore');
         const gameSummaryPhrases = document.getElementById('gameSummaryPhrases');
         const gameSummaryPlayAgain = document.getElementById('gameSummaryPlayAgain');
@@ -2442,6 +2493,11 @@
         const IS_ANDROID = /Android/i.test(navigator.userAgent);
         const FUZZY_THRESHOLD = IS_ANDROID ? 0.75 : 0.85;
         const WORD_FUZZY_THRESHOLD = IS_ANDROID ? 0.75 : 0.85;
+        // Typed answers get a stricter bar than speech. Voice needs the looser threshold
+        // to compensate for STT mishearing words; typing has no such excuse, and since
+        // auto-accept fires on every keystroke, a threshold as loose as speech's risks
+        // accepting a still-in-progress partial phrase before the player finishes typing.
+        const TYPED_FUZZY_THRESHOLD = 0.92;
         let hasClaimedVictory = false;
         let currentRoomId = '';
         let isReconnecting = false;
@@ -2461,6 +2517,7 @@
         let currentPlayerIndex = 0;
         let phraseHistory = [];
         let usedPhrasesThisRound = new Set();
+        let correctPhrasesThisRound = new Set(); // distinct phrases won via Got It this round, local mode only
         let phraseStartTime = 0;
 
         // Show Clue state (AI-generated fallback hints, revealed progressively, fetched lazily)
@@ -2473,7 +2530,12 @@
         let orientationHandler = null;
         let orientationDataReceived = false;
         let orientationCheckTimeout = null;
-        let tapToRevealEnabled = false;
+        // Tilt reveal must see the device go flat again before it'll reveal a new word —
+        // otherwise claiming a phrase while still holding the phone upright immediately
+        // reveals the next one too (the very next orientation sample sees the same
+        // still-upright tilt and flips it back on).
+        let revealArmed = true;
+        let manualRevealEnabled = false;
         let pressRevealing = false;
         let revealStartTime = 0;
         let minRevealTimer = null;
@@ -2551,9 +2613,10 @@
             return false;
         }
 
-        // Update revealed words based on transcript
+        // Update revealed words based on transcript. Returns whether any word was newly
+        // revealed by this call (callers use this to know when to clear a typed answer).
         function updateRevealedWords(transcript) {
-            if (!isLocalMode || currentWords.length === 0) return;
+            if (!isLocalMode || currentWords.length === 0) return false;
 
             let anyNewReveals = false;
             for (let i = 0; i < currentWords.length; i++) {
@@ -2572,12 +2635,15 @@
                     localModeClaimVictory();
                 }
             }
+            return anyNewReveals;
         }
 
-        // Update revealed words for online mode (send WORD_MATCH to server)
+        // Update revealed words for online mode (send WORD_MATCH to server). Returns
+        // whether any word was newly revealed by this call.
         function updateRevealedWordsOnline(transcript) {
-            if (isLocalMode || isHotPlayer || currentWords.length === 0) return;
+            if (isLocalMode || isHotPlayer || currentWords.length === 0) return false;
 
+            let anyNewReveals = false;
             for (let i = 0; i < currentWords.length; i++) {
                 if (!onlineRevealedWords[i] && checkWordInTranscript(currentWords[i], transcript)) {
                     // Send WORD_MATCH to server
@@ -2592,8 +2658,10 @@
                     // Optimistically mark as revealed locally
                     onlineRevealedWords[i] = true;
                     renderWordProgress();
+                    anyNewReveals = true;
                 }
             }
+            return anyNewReveals;
         }
 
         // Track which words the describer has already slipped on (to avoid duplicate messages)
@@ -2870,11 +2938,15 @@
         let activeTopic = null; // null = default (built-in), or topic id string
         let topicPhrases = null; // loaded phrases array for active topic
 
-        function getRandomPhrase() {
-            const pool = customPhrases && customPhrases.length > 0 ? customPhrases
+        function getActivePhrasePool() {
+            return customPhrases && customPhrases.length > 0 ? customPhrases
                 : topicPhrases && topicPhrases.length > 0 ? topicPhrases
                 : rkoTakeoverActive ? rkoGameWords
                 : localGameWords;
+        }
+
+        function getRandomPhrase() {
+            const pool = getActivePhrasePool();
 
             // Filter out already-used phrases this round
             const available = pool.filter(p => !usedPhrasesThisRound.has(p));
@@ -3321,7 +3393,7 @@
         }
 
         // End game
-        function endGame() {
+        function endGame(categoryComplete = false) {
             gameActive = false;
             const tar = document.getElementById('typeAnswerRow');
             if (tar) { tar.querySelector('input').value = ''; }
@@ -3343,7 +3415,9 @@
             listenBtn.classList.remove('active');
             transcriptBox.classList.remove('listening');
 
-            statusEl.textContent = isPracticeMode ? `Practice complete! Score: ${localScore}` : `Time's up! Final score: ${localScore}`;
+            statusEl.textContent = categoryComplete
+                ? `Congratulations! You completed this category! Score: ${localScore}`
+                : (isPracticeMode ? `Practice complete! Score: ${localScore}` : `Time's up! Final score: ${localScore}`);
             statusEl.classList.remove('listening');
 
             // Reset clue state
@@ -3364,15 +3438,16 @@
                 setBtnActive(skipBtn, false);
                 setBtnActive(gotItBtn, false);
 
-                // Add the phrase that was active when game ended
-                if (currentWord) {
+                // Add the phrase that was active when game ended (already recorded as
+                // 'got-it' when the category was completed via localModeClaimVictory)
+                if (currentWord && !categoryComplete) {
                     phraseHistory.push({ phrase: currentWord, status: isPracticeMode ? 'skipped' : 'timed-out', time: Math.round((Date.now() - phraseStartTime) / 1000) });
                 }
 
                 playAgainBtn.style.display = 'none';
 
                 // Show game summary overlay
-                showGameSummary(localScore, phraseHistory);
+                showGameSummary(localScore, phraseHistory, categoryComplete);
             } else {
                 // Online mode: track timed-out phrase and show summary
                 if (currentWord) {
@@ -3530,7 +3605,7 @@
 
             function renderSection(label, data) {
                 if (!data.topRounds || data.topRounds.length === 0) return '';
-                let s = `<div style="font-size: 0.85rem; color: #888; text-transform: uppercase; letter-spacing: 1px; margin: 12px 0 8px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.1);">${label}</div>`;
+                let s = `<div class="leaderboard-section-label">${label}</div>`;
                 let nonPracticeRank = 0;
                 data.topRounds.forEach((round, i) => {
                     const rank = i + 1;
@@ -3547,7 +3622,7 @@
                     const playerCount = round.players.length;
                     const modeLabel = round.mode === 'online'
                         ? `${playerCount} player${playerCount !== 1 ? 's' : ''}`
-                        : playerCount <= 1 ? 'Party' : 'Pass & Play';
+                        : round.practice ? 'Free Play' : 'Timed';
                     const timeAgo = formatTimeAgo(round.timestamp);
                     const practiceLabel = round.practice ? ' · practice' : '';
                     const durationLabel = !round.practice && round.duration ? ` · ${round.duration}s` : '';
@@ -3586,7 +3661,8 @@
 
         // ========== GAME SUMMARY ==========
 
-        function showGameSummary(score, history) {
+        function showGameSummary(score, history, categoryComplete = false) {
+            gameSummaryTitle.textContent = categoryComplete ? 'Congratulations! You completed this category!' : 'Game Over!';
             const fires = '\u{1F525}'.repeat(Math.min(score, 15));
             gameSummaryScore.innerHTML = `<span style="font-size: 2.5rem;">${score}</span> ${fires}`;
 
@@ -3642,7 +3718,7 @@
         }
 
         // Check if transcript matches current phrase (with fuzzy matching)
-        function checkMatch(transcript) {
+        function checkMatch(transcript, threshold = FUZZY_THRESHOLD) {
             if (!currentWord || hasClaimedVictory) return { matched: false, similarity: 0 };
 
             const targetLower = currentWord.toLowerCase().trim();
@@ -3683,9 +3759,8 @@
                 }
             }
 
-            // Fuzzy match threshold (85% desktop / 75% Android — Android STT is noisier)
             return {
-                matched: bestSimilarity >= FUZZY_THRESHOLD,
+                matched: bestSimilarity >= threshold,
                 similarity: bestSimilarity
             };
         }
@@ -4494,6 +4569,7 @@
                     dismissLeaderboard();
                     phraseHistory = [];
             usedPhrasesThisRound.clear();
+            correctPhrasesThisRound.clear();
                     localScore = 0;
                     updateScoreDisplay(0);
                     hasClaimedVictory = false;
@@ -4815,31 +4891,17 @@
                 // so stale baseline would cause all new results to be skipped
                 speechResultBaseline = 0;
                 speechResultsLength = 0;
-                // Tap mode: don't auto-restart. The user tapped to start a listening
-                // burst; when silence ends it, surface that visually so they know to
-                // tap again. Avoids the ding loop entirely.
-                if (micMode !== 'continuous') {
-                    if (isListening) {
-                        setIsListening(false);
-                        // Resume timer when silence ends the tap burst
-                        if (isLocalMode && gameActive) timerPaused = false;
-                        listenBtn.textContent = '🎤';
-                        listenBtn.classList.remove('active');
-                        statusEl.textContent = 'Tap mic to talk again';
-                        statusEl.classList.remove('listening');
-                        transcriptBox.classList.remove('listening');
-                    }
-                    micMode = 'idle';
-                    return;
-                }
-                // Continuous mode: debounced restart to suppress rapid onend→start
-                // cycles on Android (each start() plays a "ding"). If recognition
-                // fires onend again during the wait, the timer resets.
+                // Both tap and continuous mode keep listening until the user explicitly
+                // stops it — a tap used to end the listening burst the instant the
+                // browser's own silence detection fired, which was easy to trip before
+                // you'd finished saying the phrase. Debounced restart suppresses rapid
+                // onend→start cycles on Android (each start() plays a "ding"). If
+                // recognition fires onend again during the wait, the timer resets.
                 if (isListening) {
                     if (recognitionRestartTimer) clearTimeout(recognitionRestartTimer);
                     recognitionRestartTimer = setTimeout(() => {
                         recognitionRestartTimer = null;
-                        if (isListening && micMode === 'continuous') silentStart();
+                        if (isListening) silentStart();
                     }, 2000);
                 }
             };
@@ -4883,37 +4945,12 @@
                 initSpeechRecognition();
             }
         }
-        async function micStartTap() {
-            await ensureRecognitionReady();
-            micMode = 'tap';
-            setIsListening(true);
-            silentStart();
-            // Pause timer while talking in local mode — clock shouldn't tick during guesses
-            if (isLocalMode && gameActive) timerPaused = true;
-            listenBtn.textContent = '🎙️';
-            listenBtn.classList.add('active');
-            statusEl.textContent = 'Listening... Say your guess!';
-            statusEl.classList.add('listening');
-            transcriptBox.classList.add('listening');
-        }
-        function micStopTap() {
-            setIsListening(false);
-            silentStop();
-            micMode = 'idle';
-            // Resume timer when done talking
-            if (isLocalMode && gameActive) timerPaused = false;
-            listenBtn.textContent = '🎤';
-            listenBtn.classList.remove('active');
-            statusEl.textContent = 'Tap mic to talk';
-            statusEl.classList.remove('listening');
-            transcriptBox.classList.remove('listening');
-        }
         async function micStartContinuous() {
             await ensureRecognitionReady();
             micMode = 'continuous';
             setIsListening(true);
             silentStart();
-            listenBtn.textContent = '🎙️';
+            listenBtn.textContent = '👂';
             listenBtn.classList.add('active');
             statusEl.textContent = 'Listening... Say your guess!';
             statusEl.classList.add('listening');
@@ -4939,7 +4976,13 @@
             }
         }
 
-        let micMode = 'idle'; // 'idle' | 'tap' | 'continuous'
+        let micMode = 'idle'; // 'idle' | 'continuous' — a tap and a long-press both just
+                              // toggle continuous listening; long-press has no separate
+                              // behavior anymore (a "tap" mode used to stop listening on
+                              // the browser's own silence detection and also, by pausing
+                              // the round timer to give the player a beat to talk, ended up
+                              // making the speech-result handler discard everything they
+                              // said — see the `if (timerPaused) return;` guard above).
         let micLongPressTimer = null;
         let micLongPressTriggered = false;
         const MIC_LONG_PRESS_MS = 500;
@@ -4947,28 +4990,27 @@
         function cancelMicLongPress() {
             if (micLongPressTimer) { clearTimeout(micLongPressTimer); micLongPressTimer = null; }
         }
+        // A tap and a long-press do the exact same toggle — long-press just fires it
+        // ~500ms sooner for someone who holds the button down instead of releasing it.
+        function toggleMic() {
+            if (micMode === 'continuous') {
+                micStopContinuous();
+            } else {
+                micStartContinuous();
+            }
+        }
         listenBtn.addEventListener('pointerdown', (e) => {
             e.preventDefault();
             micLongPressTriggered = false;
             micLongPressTimer = setTimeout(() => {
                 micLongPressTriggered = true;
-                if (micMode === 'continuous') {
-                    micStopContinuous();
-                } else {
-                    if (micMode === 'tap') micStopTap();
-                    micStartContinuous();
-                }
+                toggleMic();
             }, MIC_LONG_PRESS_MS);
         });
         listenBtn.addEventListener('pointerup', async () => {
             cancelMicLongPress();
             if (micLongPressTriggered) return;
-            if (micMode === 'tap') {
-                micStopTap();
-            } else if (micMode === 'idle') {
-                await micStartTap();
-            }
-            // micMode === 'continuous': a short tap is a no-op — long-press to stop.
+            await toggleMic();
         });
         listenBtn.addEventListener('pointerleave', cancelMicLongPress);
         listenBtn.addEventListener('pointercancel', cancelMicLongPress);
@@ -5018,7 +5060,6 @@
         // Type-to-answer: collapsed by default, opened via the ⌨️ toggle button
         const typeAnswerRow = document.getElementById('typeAnswerRow');
         const typeAnswerInput = document.getElementById('typeAnswerInput');
-        const typeAnswerBtn = document.getElementById('typeAnswerBtn');
         const typeToggleBtn = document.getElementById('typeToggleBtn');
 
         typeToggleBtn.addEventListener('click', () => {
@@ -5027,7 +5068,11 @@
             if (expanded) typeAnswerInput.focus();
         });
 
-        function processTypedAnswer() {
+        // Checked on every keystroke (see 'input' listener below) rather than requiring
+        // a manual submit — cheap enough per-call (short strings, bounded Levenshtein,
+        // already run far more often during live speech recognition) that there's no
+        // meaningful cost to running it on every edit instead of on demand.
+        function processTypedAnswer({ clearOnNoMatch = false } = {}) {
             if (timerPaused) return;
             if (!gameActive || hasClaimedVictory) return;
             if (!isLocalMode && isHotPlayer) return;
@@ -5036,15 +5081,20 @@
 
             // Run through same matching pipeline as speech
             if (partialWordReveal && isLocalMode) {
-                updateRevealedWords(text);
-                if (hasClaimedVictory) { typeAnswerInput.value = ''; return; }
+                const newlyRevealed = updateRevealedWords(text);
+                if (hasClaimedVictory) { typeAnswerInput.value = ''; similarityEl.textContent = ''; return; }
+                // A word from the phrase just got locked in — clear the box so the
+                // player can keep typing the rest without deleting what's already
+                // been accepted.
+                if (newlyRevealed) { typeAnswerInput.value = ''; similarityEl.textContent = ''; return; }
             }
             if (partialWordReveal && !isLocalMode && !isHotPlayer) {
-                updateRevealedWordsOnline(text);
-                if (onlineRevealedWords.every(r => r)) { typeAnswerInput.value = ''; return; }
+                const newlyRevealed = updateRevealedWordsOnline(text);
+                if (onlineRevealedWords.every(r => r)) { typeAnswerInput.value = ''; similarityEl.textContent = ''; return; }
+                if (newlyRevealed) { typeAnswerInput.value = ''; similarityEl.textContent = ''; return; }
             }
 
-            const result = checkMatch(text);
+            const result = checkMatch(text, TYPED_FUZZY_THRESHOLD);
             if (result.similarity > 0 && result.similarity < 1) {
                 const pct = Math.round(result.similarity * 100);
                 similarityEl.textContent = `${pct}% match`;
@@ -5060,15 +5110,20 @@
                     hasClaimedVictory = true;
                     claimVictory();
                 }
+                typeAnswerInput.value = '';
+            } else if (clearOnNoMatch) {
+                typeAnswerInput.value = '';
             }
-            typeAnswerInput.value = '';
         }
 
-        typeAnswerBtn.addEventListener('click', processTypedAnswer);
+        // Auto-accept as soon as what's typed matches — no separate Check button.
+        typeAnswerInput.addEventListener('input', () => processTypedAnswer());
+        // Enter still works as an explicit "give up on this attempt" — clears the box
+        // even without a match, e.g. mobile keyboards' "Go"/"Done" action key.
         typeAnswerInput.addEventListener('keydown', (e) => {
             if (e.code === 'Enter') {
                 e.preventDefault();
-                processTypedAnswer();
+                processTypedAnswer({ clearOnNoMatch: true });
             }
         });
 
@@ -5094,6 +5149,7 @@
                 localScore = 0;
                 phraseHistory = [];
                 usedPhrasesThisRound.clear();
+            correctPhrasesThisRound.clear();
                 await launchLocalGame();
             } else if (ws && ws.readyState === WebSocket.OPEN) {
                 ws.send(JSON.stringify({ type: 'NEW_ROUND', theme: getActiveThemeForServer() }));
@@ -5520,11 +5576,11 @@
         function showOnboardRules() {
             const isDesktop = !('ontouchstart' in window) && navigator.maxTouchPoints === 0;
             const rulesText = isPracticeMode
-                ? 'Hold your phone upright to reveal the word, then say or type your guess!'
-                : `Hold your phone upright to reveal the word before your ${customRoundTime}s runs out!`;
+                ? 'Tilt your phone upright to reveal the word, then say or type your guess!'
+                : `Tilt your phone upright to reveal the word before your ${customRoundTime}s runs out!`;
             const hintText = isDesktop
                 ? 'Hold Spacebar to reveal. Stuck? Tap Show Clue for a hint.'
-                : 'Tilt the phone upright to reveal, flat to hide. Stuck? Tap Show Clue for a hint.';
+                : 'Flat to hide, upright to reveal — or hold 👁️ instead. Toggle tilt off with 🤳. Stuck? Tap Show Clue.';
             document.getElementById('onboardRulesTitle').textContent = rulesText;
             document.getElementById('onboardRulesHint').textContent = hintText;
             document.getElementById('onboardRules').classList.add('active');
@@ -5548,10 +5604,17 @@
             localScore = 0;
             phraseHistory = [];
             usedPhrasesThisRound.clear();
+            correctPhrasesThisRound.clear();
             currentRoomId = getRandomRoomName();
 
-            // Request permissions on this user gesture (needed for iOS)
-            await enableOrientationDetection();
+            // Request permissions on this user gesture (needed for iOS). Respect the
+            // player's saved tilt-to-reveal preference — if they've turned it off, don't
+            // re-prompt for the (iOS) orientation permission every game.
+            if (localStorage.getItem('hotwords_orientation_pref') === 'off') {
+                enableManualReveal();
+            } else {
+                await enableOrientationDetection();
+            }
             const micGranted = await ensureMicPermission();
 
             launchLocalGame(micGranted);
@@ -5677,22 +5740,32 @@
             // Initialize word-by-word tracking
             currentWords = word.trim().split(/\s+/);
             revealedWords = new Array(currentWords.length).fill(false);
-            wordDisplay.textContent = currentWord;
-            applyWordFontSize(currentWord);
-            renderWordProgress();
 
-            // Reset Show Clue state — clues are fetched lazily on first tap
-            clueList = [];
-            cluesShown = 0;
-            clueDisplayEl.innerHTML = '';
-            clueBtn.disabled = false;
-            clueBtn.textContent = '💡 Show Clue';
-
-            // Reset to hidden state for new word (flat = hidden)
-            if (orientationEnabled || tapToRevealEnabled) {
+            // Reset to hidden state for new word (flat = hidden). If tilt/press reveal is
+            // active, snap the card to hidden *before* swapping in the new word text and
+            // with transitions suppressed for this frame — otherwise the card was still
+            // showing the previous (revealed) word when the text changed underneath it,
+            // and the 0.3s opacity fade let players see the new word cross-fading in
+            // instead of it just being hidden. Also require the device to be seen flat
+            // again before it can reveal this new word — otherwise claiming a phrase
+            // while still holding the phone upright would flash the next one immediately.
+            if (orientationEnabled || manualRevealEnabled) {
+                wordContainer.classList.add('no-transition');
                 deviceIsFlat = true;
+                revealArmed = false;
                 updateWordVisibilityByOrientation();
+                wordDisplay.textContent = currentWord;
+                applyWordFontSize(currentWord);
+                renderWordProgress();
+                // Force layout so the hidden state above is committed before re-enabling
+                // transitions on the next frame (otherwise the browser can coalesce it
+                // with the reveal transition instead of applying it instantly).
+                void wordContainer.offsetHeight;
+                requestAnimationFrame(() => wordContainer.classList.remove('no-transition'));
             } else {
+                wordDisplay.textContent = currentWord;
+                applyWordFontSize(currentWord);
+                renderWordProgress();
                 wordContainer.classList.remove('redacted', 'orientation-hidden');
                 if (redactTimer) clearTimeout(redactTimer);
                 redactTimer = setTimeout(() => {
@@ -5700,6 +5773,13 @@
                 }, REDACT_DELAY);
             }
             redactLabelEl.innerHTML = getHiddenLabel();
+
+            // Reset Show Clue state — clues are fetched lazily on first tap
+            clueList = [];
+            cluesShown = 0;
+            clueDisplayEl.innerHTML = '';
+            clueBtn.disabled = false;
+            clueBtn.textContent = '💡 Show Clue';
 
             statusEl.textContent = '';
             statusEl.classList.remove('winner', 'skipped', 'listening');
@@ -5768,6 +5848,16 @@
             phraseHistory.push({ phrase: currentWord, status: 'got-it', time: Math.round((Date.now() - phraseStartTime) / 1000) });
             localScore++;
             updateScoreDisplay(localScore);
+            correctPhrasesThisRound.add(currentWord);
+
+            closeMatchOverlay.classList.remove('active');
+            showCelebrationLocal(currentWord, localScore);
+
+            // Category complete: every phrase in the active pool has been guessed
+            if (correctPhrasesThisRound.size >= getActivePhrasePool().length) {
+                endGame(true);
+                return;
+            }
 
             // Add 4 seconds when under 6s remaining (not in practice mode)
             if (!isPracticeMode && timeRemaining < 6) {
@@ -5778,8 +5868,6 @@
                 showTimerBonus(4);
             }
 
-            closeMatchOverlay.classList.remove('active');
-            showCelebrationLocal(currentWord, localScore);
             nextPhrase();
         }
 
@@ -5835,25 +5923,35 @@
             const isDesktopHint = !('ontouchstart' in window) && navigator.maxTouchPoints === 0;
             const hint = isDesktopHint
                 ? 'Hold Spacebar to reveal'
-                : (orientationEnabled ? 'Tilt vertical or press & hold to reveal' : 'Press & hold to reveal');
+                : (orientationEnabled ? 'Tilt vertical or hold 👁️ to reveal' : 'Hold 👁️ to reveal');
             return `<div class="reveal-pattern">${pattern}</div><div class="reveal-hint">${hint}</div>`;
         }
 
         // ========== DEVICE TILT / PRESS-AND-HOLD REVEAL ==========
-        // Tilt-to-reveal is primary on phones/tablets (hold the phone upright to see the
-        // word, flat to hide it); press-and-hold is the fallback for desktop or devices
+        // Tilt-to-reveal is opt-in via the 🤳 toggle on phones/tablets (hold the phone
+        // upright to see the word, flat to hide it); the 👁️ reveal button is the manual
+        // alternative — always available, and the only option on desktop or devices
         // without DeviceOrientationEvent support.
 
-        async function enableOrientationDetection() {
+        function isOrientationCapableDevice() {
             const isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || (navigator.msMaxTouchPoints > 0);
             const isMobileUA = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+            return (isTouchDevice || isMobileUA) && !!window.DeviceOrientationEvent;
+        }
 
-            if (!isTouchDevice && !isMobileUA) {
-                enableTapToReveal();
-                return;
-            }
-            if (!window.DeviceOrientationEvent) {
-                enableTapToReveal();
+        // Hide the tilt toggle entirely where it can never do anything (desktop, or a
+        // touch device without an orientation sensor/API).
+        if (!isOrientationCapableDevice()) {
+            orientationToggleBtn.style.display = 'none';
+        }
+
+        function updateOrientationToggleUI() {
+            orientationToggleBtn.classList.toggle('active', orientationEnabled);
+        }
+
+        async function enableOrientationDetection() {
+            if (!isOrientationCapableDevice()) {
+                enableManualReveal();
                 return;
             }
             // iOS 13+ requires permission, requested on this user gesture
@@ -5861,9 +5959,9 @@
                 try {
                     const response = await DeviceOrientationEvent.requestPermission();
                     if (response === 'granted') startOrientationListening();
-                    else enableTapToReveal();
+                    else enableManualReveal();
                 } catch (err) {
-                    enableTapToReveal();
+                    enableManualReveal();
                 }
             } else {
                 startOrientationListening();
@@ -5873,6 +5971,7 @@
         function startOrientationListening() {
             orientationEnabled = true;
             orientationDataReceived = false;
+            updateOrientationToggleUI();
 
             orientationHandler = (event) => {
                 const beta = event.beta;   // -180..180, front-to-back tilt
@@ -5886,6 +5985,7 @@
                 if (beta !== null) {
                     const absBeta = Math.abs(beta);
                     if (absBeta < flatThreshold && Math.abs(gamma) < flatThreshold) {
+                        revealArmed = true;
                         if (!deviceIsFlat && !pressRevealing) {
                             deviceIsFlat = true;
                             updateWordVisibilityByOrientation();
@@ -5893,7 +5993,7 @@
                         wordContainer.style.opacity = '';
                         redactLabelEl.style.opacity = '';
                     } else if (absBeta >= uprightThreshold) {
-                        if (deviceIsFlat) {
+                        if (deviceIsFlat && revealArmed) {
                             deviceIsFlat = false;
                             updateWordVisibilityByOrientation();
                             if (timerPaused) {
@@ -5905,7 +6005,11 @@
                         }
                         wordContainer.style.opacity = '';
                         redactLabelEl.style.opacity = '';
-                    } else if (absBeta >= fadeStart && absBeta < fadeEnd && deviceIsFlat) {
+                    } else if (absBeta >= fadeStart && absBeta < fadeEnd && deviceIsFlat && revealArmed) {
+                        // Only preview-fade once the device has been confirmed flat since the
+                        // last word change (revealArmed) — otherwise a phone resting at this
+                        // in-between angle right as a new phrase loads peeks the next word
+                        // before the player has actually gone flat-then-tilted to reveal it.
                         const progress = (absBeta - fadeStart) / (fadeEnd - fadeStart);
                         redactLabelEl.style.opacity = String(1 - progress);
                         const wordText = wordContainer.querySelector('.word-text');
@@ -5916,43 +6020,35 @@
 
             window.addEventListener('deviceorientation', orientationHandler);
 
-            // Press-to-reveal also works as a manual alternative while tilt is active
-            wordContainer.style.cursor = 'pointer';
-            wordContainer.addEventListener('mousedown', startReveal);
-            wordContainer.addEventListener('mouseup', stopReveal);
-            wordContainer.addEventListener('mouseleave', stopReveal);
-            wordContainer.addEventListener('touchstart', startReveal, { passive: true });
-            wordContainer.addEventListener('touchend', stopReveal, { passive: true });
-            wordContainer.addEventListener('touchcancel', stopReveal, { passive: true });
-            wordContainer.addEventListener('contextmenu', preventContextMenu);
-
-            // If no real orientation data arrives within 1s, fall back to press-and-hold
+            // If no real orientation data arrives within 1s, fall back to manual reveal
             orientationCheckTimeout = setTimeout(() => {
-                if (!orientationDataReceived) enableTapToReveal();
+                if (!orientationDataReceived) enableManualReveal();
             }, 1000);
 
             updateWordVisibilityByOrientation();
         }
 
-        function enableTapToReveal() {
+        function enableManualReveal() {
             orientationEnabled = false;
-            tapToRevealEnabled = true;
+            manualRevealEnabled = true;
             deviceIsFlat = true;
-
             wordContainer.classList.add('orientation-hidden');
-            wordContainer.style.cursor = 'pointer';
-            wordContainer.addEventListener('mousedown', startReveal);
-            wordContainer.addEventListener('mouseup', stopReveal);
-            wordContainer.addEventListener('mouseleave', stopReveal);
-            wordContainer.addEventListener('touchstart', startReveal, { passive: true });
-            wordContainer.addEventListener('touchend', stopReveal, { passive: true });
-            wordContainer.addEventListener('touchcancel', stopReveal, { passive: true });
-            wordContainer.addEventListener('contextmenu', preventContextMenu);
+            updateOrientationToggleUI();
         }
+
+        // Wired once — the 👁️ button is the manual reveal control regardless of whether
+        // tilt is on (previously this was tapping the phrase card itself).
+        revealBtn.addEventListener('pointerdown', (e) => { e.preventDefault(); startReveal(); });
+        revealBtn.addEventListener('pointerup', stopReveal);
+        revealBtn.addEventListener('pointerleave', stopReveal);
+        revealBtn.addEventListener('pointercancel', stopReveal);
+        revealBtn.addEventListener('click', (e) => e.preventDefault());
+        revealBtn.addEventListener('contextmenu', preventContextMenu);
 
         function startReveal(e) {
             if (!isLocalMode || !gameActive) return;
             pressRevealing = true;
+            revealBtn.classList.add('active');
             revealStartTime = Date.now();
             if (minRevealTimer) { clearTimeout(minRevealTimer); minRevealTimer = null; }
             deviceIsFlat = false;
@@ -5975,6 +6071,7 @@
         function stopReveal(e) {
             if (!isLocalMode || !gameActive) return;
             pressRevealing = false;
+            revealBtn.classList.remove('active');
             if (orientationEnabled) {
                 updateWordVisibilityByOrientation();
                 return;
@@ -5999,7 +6096,7 @@
         }
 
         function updateWordVisibilityByOrientation() {
-            if (!orientationEnabled && !tapToRevealEnabled) return;
+            if (!orientationEnabled && !manualRevealEnabled) return;
 
             redactLabelEl.style.opacity = '';
             const wordText = wordContainer.querySelector('.word-text');
@@ -6015,12 +6112,7 @@
             }
         }
 
-        function disableOrientationDetection() {
-            orientationEnabled = false;
-            deviceIsFlat = false;
-            tapToRevealEnabled = false;
-            pressRevealing = false;
-            if (minRevealTimer) { clearTimeout(minRevealTimer); minRevealTimer = null; }
+        function stopListeningForOrientation() {
             if (orientationHandler) {
                 window.removeEventListener('deviceorientation', orientationHandler);
                 orientationHandler = null;
@@ -6029,16 +6121,33 @@
                 clearTimeout(orientationCheckTimeout);
                 orientationCheckTimeout = null;
             }
-            wordContainer.removeEventListener('mousedown', startReveal);
-            wordContainer.removeEventListener('mouseup', stopReveal);
-            wordContainer.removeEventListener('mouseleave', stopReveal);
-            wordContainer.removeEventListener('touchstart', startReveal);
-            wordContainer.removeEventListener('touchend', stopReveal);
-            wordContainer.removeEventListener('touchcancel', stopReveal);
-            wordContainer.removeEventListener('contextmenu', preventContextMenu);
-            wordContainer.style.cursor = '';
-            wordContainer.classList.remove('orientation-hidden');
         }
+
+        function disableOrientationDetection() {
+            orientationEnabled = false;
+            deviceIsFlat = false;
+            manualRevealEnabled = false;
+            pressRevealing = false;
+            if (minRevealTimer) { clearTimeout(minRevealTimer); minRevealTimer = null; }
+            stopListeningForOrientation();
+            wordContainer.classList.remove('orientation-hidden');
+            revealBtn.classList.remove('active');
+            updateOrientationToggleUI();
+        }
+
+        // 🤳 toggle — mobile-only (hidden entirely on desktop above), remembers the
+        // player's preference across games via localStorage.
+        orientationToggleBtn.addEventListener('click', async () => {
+            if (!isLocalMode || !gameActive) return;
+            if (orientationEnabled) {
+                stopListeningForOrientation();
+                localStorage.setItem('hotwords_orientation_pref', 'off');
+                enableManualReveal();
+            } else {
+                localStorage.setItem('hotwords_orientation_pref', 'on');
+                await enableOrientationDetection();
+            }
+        });
 
         // Keyboard shortcuts
         document.addEventListener('keydown', (e) => {

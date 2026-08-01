@@ -10,7 +10,7 @@ plugins {
 }
 
 group = "com.hotwords"
-version = "0.13.67"
+version = "0.13.74"
 
 // This is what the Shadow plugin was looking for
 application {
