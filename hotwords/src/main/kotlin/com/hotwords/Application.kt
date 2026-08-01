@@ -227,24 +227,30 @@ private val validStatuses = setOf("got-it", "skipped", "timed-out")
 @Serializable
 data class PersistedState(
     val leaderboard: List<RoundEntry> = emptyList(),
-    val categories: Map<String, CachedCategory> = emptyMap()
+    val categories: Map<String, CachedCategory> = emptyMap(),
+    val clues: Map<String, List<String>> = emptyMap()
 )
 
-fun saveState(roundEntries: ConcurrentHashMap<String, RoundEntry>, categoriesOfTheDay: ConcurrentHashMap<String, CachedCategory>) {
+fun saveState(
+    roundEntries: ConcurrentHashMap<String, RoundEntry>,
+    categoriesOfTheDay: ConcurrentHashMap<String, CachedCategory>,
+    clueCache: ConcurrentHashMap<String, List<String>>
+) {
     synchronized(persistLock) {
         try {
             val leaderboard = roundEntries.values.toList()
             val categories = categoriesOfTheDay.toMap()
+            val clues = clueCache.toMap()
 
             // Never let an empty in-memory state (e.g. a load failure on startup) silently
             // overwrite a previously-saved non-empty file — this is how a single bad boot
             // used to permanently wipe custom categories and the leaderboard.
-            if (leaderboard.isEmpty() && categories.isEmpty() && leaderboardFile.exists() && leaderboardFile.length() > 2) {
+            if (leaderboard.isEmpty() && categories.isEmpty() && clues.isEmpty() && leaderboardFile.exists() && leaderboardFile.length() > 2) {
                 println("saveState: skipping write — in-memory state is empty but ${leaderboardFile.path} is not; refusing to overwrite")
                 return
             }
 
-            val state = PersistedState(leaderboard = leaderboard, categories = categories)
+            val state = PersistedState(leaderboard = leaderboard, categories = categories, clues = clues)
             val json = Json.encodeToString(PersistedState.serializer(), state)
 
             // Write-then-atomic-rename so a process kill mid-save (e.g. systemd stopping the
@@ -262,12 +268,17 @@ fun saveState(roundEntries: ConcurrentHashMap<String, RoundEntry>, categoriesOfT
     }
 }
 
-fun loadState(roundEntries: ConcurrentHashMap<String, RoundEntry>, categoriesOfTheDay: ConcurrentHashMap<String, CachedCategory>) {
+fun loadState(
+    roundEntries: ConcurrentHashMap<String, RoundEntry>,
+    categoriesOfTheDay: ConcurrentHashMap<String, CachedCategory>,
+    clueCache: ConcurrentHashMap<String, List<String>>
+) {
     try {
         if (leaderboardFile.exists()) {
             val state = jsonLenient.decodeFromString(PersistedState.serializer(), leaderboardFile.readText())
             state.leaderboard.forEach { roundEntries[it.id] = it }
             state.categories.forEach { (k, v) -> categoriesOfTheDay[k] = v }
+            state.clues.forEach { (k, v) -> clueCache[k] = v }
         }
     } catch (e: Exception) {
         // Corrupted file — preserve it for recovery instead of silently discarding, since
@@ -330,9 +341,12 @@ fun Application.module() {
     // Categories of the week: category name -> (timestamp, cached phrases) — resets Monday 3am PT
     val categoriesOfTheDay = ConcurrentHashMap<String, CachedCategory>()
 
-    // Load persisted leaderboard and categories from disk
-    loadState(roundEntries, categoriesOfTheDay)
-    log.info("Loaded ${roundEntries.size} leaderboard entries and ${categoriesOfTheDay.size} categories from disk")
+    // Clue cache: normalized phrase -> list of clues (avoids re-generating for same phrase)
+    val clueCache = ConcurrentHashMap<String, List<String>>()
+
+    // Load persisted leaderboard, categories, and clues from disk
+    loadState(roundEntries, categoriesOfTheDay, clueCache)
+    log.info("Loaded ${roundEntries.size} leaderboard entries, ${categoriesOfTheDay.size} categories, and ${clueCache.size} cached clues from disk")
 
     // Rate limiting for POST /api/scores: IP -> list of timestamps
     val scoreRateLimit = ConcurrentHashMap<String, MutableList<Long>>()
@@ -349,9 +363,6 @@ fun Application.module() {
     // Global daily cap on Claude API calls (~$2-3/day at Haiku pricing)
     val dailyClaudeCallCount = java.util.concurrent.atomic.AtomicInteger(0)
     var dailyClaudeCallResetTime = System.currentTimeMillis()
-
-    // Clue cache: normalized phrase -> list of clues (avoids re-generating for same phrase)
-    val clueCache = ConcurrentHashMap<String, List<String>>()
 
     // Track when rooms became empty for cleanup
     val roomEmptySince = ConcurrentHashMap<String, Long>()
@@ -387,7 +398,7 @@ fun Application.module() {
             // Persist leaderboard and categories every 60 seconds
             if (now - lastPersistTime >= 60_000L) {
                 lastPersistTime = now
-                saveState(roundEntries, categoriesOfTheDay)
+                saveState(roundEntries, categoriesOfTheDay, clueCache)
             }
 
             // Clean up round entries older than weekly reset (Monday 3am PT)
@@ -562,7 +573,7 @@ fun Application.module() {
     environment.monitor.subscribe(ApplicationStopped) {
         cleanupJob.cancel()
         // Persist state before shutdown
-        saveState(roundEntries, categoriesOfTheDay)
+        saveState(roundEntries, categoriesOfTheDay, clueCache)
     }
     // Kid-friendly phrases saved in phrases/kid-phrases.txt
     val gameWords = listOf(

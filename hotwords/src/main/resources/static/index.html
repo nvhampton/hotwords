@@ -1532,11 +1532,12 @@
             position: relative;
         }
         .lobby h1 {
-            font-size: 3.1rem;
-            font-weight: 900;
-            letter-spacing: -0.02em;
-            margin-bottom: 30px;
-            color: var(--hw-ink);
+            font-size: 0.9rem;
+            font-weight: 800;
+            letter-spacing: 0.09em;
+            text-transform: uppercase;
+            margin: 0 0 16px;
+            color: var(--hw-sub);
             cursor: pointer;
             display: inline-block;
         }
@@ -1958,6 +1959,22 @@
             box-shadow: 0 5px 20px rgba(31, 184, 138, 0.35);
         }
 
+        .lobby-leaderboard-link {
+            display: inline-block;
+            margin-top: 28px;
+            color: var(--hw-sub);
+            font-size: 0.8rem;
+            font-weight: 700;
+            letter-spacing: 0.02em;
+            text-decoration: none;
+            transition: color 0.2s ease;
+        }
+        .lobby-leaderboard-link:hover {
+            color: var(--hw-ink);
+            text-decoration: underline;
+            text-underline-offset: 3px;
+        }
+
         /* Version number */
         .version {
             position: fixed;
@@ -2043,7 +2060,7 @@
 
     <!-- Lobby Screen -->
     <div class="lobby" id="lobbyScreen">
-        <h1 id="titleHotwords" title="View leaderboard">Hotwords</h1>
+        <h1 id="titleHotwords">Pick a Category</h1>
 
         <div class="topic-picker" id="topicPicker"></div>
 
@@ -2076,9 +2093,7 @@
             </div>
         </div>
 
-        <div style="margin-top: 10px; text-align: center;">
-            <a href="#" id="lobbyLeaderboardLink" style="color: #B4975A; font-size: 0.85rem; font-weight: bold; text-decoration: none;">Leaderboard</a>
-        </div>
+        <a href="#" id="lobbyLeaderboardLink" class="lobby-leaderboard-link">Leaderboard</a>
         <div class="version">v@@VERSION@@</div>
     </div>
 
@@ -5324,17 +5339,14 @@
             }
         }
 
-        // Title: click → leaderboard, long-press (1.5s) → RKO easter egg toggle
+        // "Pick a Category" heading doubles as the RKO easter egg — long-press 1.5s to toggle
         let rkoLongPressTimer = null;
-        let rkoLongPressTriggered = false;
         function cancelRkoLongPress() {
             if (rkoLongPressTimer) { clearTimeout(rkoLongPressTimer); rkoLongPressTimer = null; }
         }
         const titleHotwords = document.getElementById('titleHotwords');
         titleHotwords.addEventListener('pointerdown', () => {
-            rkoLongPressTriggered = false;
             rkoLongPressTimer = setTimeout(() => {
-                rkoLongPressTriggered = true;
                 rkoTakeoverActive = !rkoTakeoverActive;
                 localStorage.setItem('hotwords_rko_takeover', rkoTakeoverActive.toString());
                 activeTopic = null;
@@ -5347,10 +5359,6 @@
         titleHotwords.addEventListener('pointerup', cancelRkoLongPress);
         titleHotwords.addEventListener('pointerleave', cancelRkoLongPress);
         titleHotwords.addEventListener('pointercancel', cancelRkoLongPress);
-        titleHotwords.addEventListener('click', () => {
-            if (rkoLongPressTriggered) { rkoLongPressTriggered = false; return; }
-            showLeaderboardView('local', null, null);
-        });
 
         // Customize phrases overlay (opened from the "+" pill in the topic picker)
         const customizeOverlay = document.getElementById('customizeOverlay');
