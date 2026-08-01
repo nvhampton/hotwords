@@ -67,6 +67,16 @@ if command -v docker-compose &> /dev/null; then
     docker-compose down --remove-orphans 2>/dev/null || true
 fi
 
+# Back up persisted state (leaderboard + custom categories) before touching anything.
+# Belt-and-suspenders: protects against data loss regardless of what a stop/restart cycle
+# might do to an in-flight save. Keeps the last 10 backups.
+if [ -f /opt/hotwords/data/state.json ]; then
+    echo "Backing up state.json..."
+    sudo mkdir -p /opt/hotwords/data/backups
+    sudo cp /opt/hotwords/data/state.json "/opt/hotwords/data/backups/state.json.$(date +%Y%m%dT%H%M%S)"
+    sudo ls -1t /opt/hotwords/data/backups/state.json.* 2>/dev/null | tail -n +11 | sudo xargs -r rm --
+fi
+
 # Stop existing services
 echo "Stopping existing services..."
 sudo systemctl stop hotwords 2>/dev/null || true

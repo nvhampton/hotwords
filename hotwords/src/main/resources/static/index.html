@@ -11,10 +11,21 @@
         * {
             box-sizing: border-box;
         }
+        :root {
+            --hw-bg: #fff6f2;
+            --hw-ink: #3a2620;
+            --hw-sub: #8a6f66;
+            --hw-card: #ffffff;
+            --hw-line: #ffe1d4;
+            --hw-accent: #ff4b6e;
+            --hw-accent-soft: #fff0ec;
+            --hw-gold: #ffc93c;
+            --hw-mint: #1fb88a;
+        }
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-            color: #fff;
+            font-family: ui-rounded, "SF Pro Rounded", "Nunito Sans", -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--hw-bg);
+            color: var(--hw-ink);
             min-height: 100vh;
             margin: 0;
             -webkit-user-select: none;
@@ -26,6 +37,13 @@
             justify-content: center;
             padding: 20px;
         }
+        /* In-round: anchor content near the top instead of dead-centering it —
+           on tall viewports, centering the round screen left huge empty gaps
+           above/below the action buttons. */
+        body.in-round {
+            justify-content: flex-start;
+            padding-top: 68px;
+        }
         input, textarea {
             -webkit-user-select: text;
             user-select: text;
@@ -33,34 +51,33 @@
         h1 {
             font-size: 2.5rem;
             margin-bottom: 10px;
-            text-shadow: 0 0 20px rgba(180, 151, 90, 0.5);
+            color: var(--hw-ink);
         }
         .word-progress {
             font-size: 1.75rem;
             font-weight: bold;
             margin-bottom: 15px;
-            font-family: monospace;
+            font-family: ui-monospace, monospace;
             letter-spacing: 2px;
             min-height: 40px;
         }
         .word-progress .word-hidden {
-            color: #666;
-            background: rgba(255, 255, 255, 0.1);
+            color: var(--hw-sub);
+            background: var(--hw-accent-soft);
             padding: 2px 6px;
             border-radius: 4px;
             margin: 0 3px;
             display: inline-block;
         }
         .word-progress .word-revealed {
-            color: #3EBECB;
-            text-shadow: 0 0 10px rgba(62, 190, 203, 0.8);
+            color: var(--hw-mint);
             margin: 0 3px;
             display: inline-block;
             animation: wordReveal 0.3s ease-out;
         }
         .word-display .word-hidden {
-            color: #666;
-            background: rgba(255, 255, 255, 0.1);
+            color: var(--hw-sub);
+            background: var(--hw-accent-soft);
             padding: 4px 10px;
             border-radius: 6px;
             margin: 0 4px;
@@ -75,48 +92,27 @@
         }
         .letter-count {
             font-size: 0.45em;
-            color: rgba(255, 255, 255, 0.3);
+            color: var(--hw-sub);
+            opacity: 0.6;
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             letter-spacing: 0;
             line-height: 1;
             margin-bottom: 2px;
         }
         .word-display .word-revealed {
-            color: #3EBECB;
-            text-shadow: 0 0 10px rgba(62, 190, 203, 0.8);
+            color: var(--hw-mint);
             margin: 0 4px;
             display: inline-block;
             animation: wordReveal 0.3s ease-out;
         }
         @keyframes wordReveal {
-            0% { transform: scale(1.3); color: #f9ca24; }
+            0% { transform: scale(1.3); color: var(--hw-gold); }
             100% { transform: scale(1); color: #3EBECB; }
         }
-        /* Solo mode clue display */
-        .solo-clue-mode .redact-label { display: none; }
-        .solo-clues { text-align: center; padding: 10px; }
-        .solo-pattern { font-size: 2rem; letter-spacing: 3px; margin-bottom: 16px; font-family: monospace; }
-        .solo-clue { font-size: 1.1rem; color: #ccc; margin: 8px 0; padding: 8px 16px; background: rgba(255,255,255,0.05); border-radius: 8px; }
-        .solo-clue-new { color: #3EBECB; font-weight: bold; animation: soloClueIn 0.3s ease-out; }
-        .solo-clues-remaining { font-size: 0.85rem; color: #666; margin-top: 12px; }
-        .solo-hint-inline {
-            display: inline-block;
-            margin-left: 10px;
-            padding: 6px 14px;
-            background: #2a2a2a;
-            border: 1px solid #B4975A;
-            border-radius: 16px;
-            color: #B4975A;
-            font-size: 0.85rem;
-            font-weight: bold;
-            cursor: pointer;
-            -webkit-tap-highlight-color: transparent;
-        }
-        .solo-hint-inline:active { background: #B4975A; color: #1a1a1a; }
-        .solo-hint-inline.give-up { border-color: #c75; color: #c75; margin-top: 12px; margin-left: 0; display: block; }
-        .solo-hint-inline.give-up:active { background: #c75; color: #1a1a1a; }
-        .solo-answer-reveal { font-size: 2rem; color: #B4975A; font-weight: bold; text-align: center; padding: 20px; }
-        @keyframes soloClueIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+        /* Show Clue fallback hints */
+        .clue-display { text-align: center; padding: 0 10px; }
+        .clue-line { font-size: 1rem; margin: 6px 0; padding: 8px 16px; border-radius: 8px; animation: clueIn 0.3s ease-out; }
+        @keyframes clueIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
         .container {
             text-align: center;
             max-width: 500px;
@@ -176,14 +172,14 @@
             transform: none;
         }
         .word-display {
-            font-size: 3.3rem;
-            font-weight: bold;
-            margin: 40px 0;
+            font-size: var(--word-size, 2.6rem);
+            font-weight: 800;
+            margin: 0;
             padding: 30px;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 20px;
-            text-shadow: 0 0 30px rgba(62, 190, 203, 0.8);
-            color: #3EBECB;
+            background: var(--hw-card);
+            border: 2px solid var(--hw-line);
+            border-radius: 22px;
+            color: var(--hw-ink);
             min-height: 140px;
             display: flex;
             align-items: center;
@@ -196,12 +192,15 @@
             -webkit-user-select: none;
             -webkit-touch-callout: none;
             touch-action: manipulation;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.03), 0 10px 24px rgba(0,0,0,0.05);
         }
-        .word-display.redacted {
-            background: linear-gradient(135deg, #B4975A 0%, #9a7d45 100%);
-            text-shadow: none;
+        .word-display.redacted,
+        .word-display.orientation-hidden {
+            background: var(--hw-accent-soft);
+            border-color: var(--hw-accent);
         }
-        .word-display.redacted .word-text {
+        .word-display.redacted .word-text,
+        .word-display.orientation-hidden .word-text {
             opacity: 0;
         }
         .word-display .word-text {
@@ -218,8 +217,7 @@
             align-items: center;
             justify-content: center;
             text-align: center;
-            color: rgba(255, 255, 255, 0.9);
-            text-shadow: none;
+            color: var(--hw-sub);
             opacity: 0;
             transition: opacity 0.3s ease;
             pointer-events: none;
@@ -231,14 +229,25 @@
         .word-display.orientation-hidden .redact-label {
             opacity: 1;
         }
-        .redact-label .reveal-hint {
-            font-size: 1.2rem;
-            color: rgba(255, 255, 255, 0.7);
+        .redact-label .reveal-pattern {
+            font-size: var(--word-size, clamp(1.3rem, 6.5vw, 2.4rem));
+            letter-spacing: clamp(1px, 1vw, 4px);
+            color: var(--hw-ink);
+            font-weight: 800;
             line-height: 1.6;
+            word-break: keep-all;
+            max-width: 100%;
         }
-        .redact-label .hint-keys {
-            font-size: 0.9rem;
-            opacity: 0.6;
+        .redact-label .reveal-hint {
+            font-size: 0.95rem;
+            color: var(--hw-sub);
+            font-weight: 700;
+            margin-top: 10px;
+        }
+        @media (max-width: 420px) {
+            body { padding: 12px; }
+            .word-display { padding: 22px 14px; }
+            .redact-label { padding: 10px; }
         }
         .key-hint {
             font-size: 0.7em;
@@ -249,7 +258,7 @@
         /* Dramatic countdown flash */
         @keyframes dangerFlash {
             0%, 100% { background-color: transparent; }
-            50% { background-color: rgba(255, 0, 0, 0.3); }
+            50% { background-color: rgba(255, 75, 110, 0.15); }
         }
         .danger-flash {
             animation: dangerFlash 1s ease-in-out;
@@ -258,49 +267,73 @@
             animation: dangerPulse 0.7s ease-in-out infinite;
         }
         @keyframes dangerPulse {
-            0%, 100% { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); }
-            50% { background: linear-gradient(135deg, #6b1a1a 0%, #4a0e0e 100%); }
+            0%, 100% { background: var(--hw-bg); }
+            50% { background: #ffe2da; }
         }
         .score-display {
             position: fixed;
-            top: 22px;
+            top: 20px;
             right: 20px;
             z-index: 100;
-            text-align: right;
+            text-align: center;
+            background: var(--hw-card);
+            border: 1px solid var(--hw-line);
+            border-radius: 14px;
+            padding: 6px 16px 8px;
+            box-shadow: 0 4px 12px rgba(58, 38, 32, 0.06);
         }
         .score-number {
-            font-size: 2.4rem;
-            font-weight: bold;
-            color: #f9ca24;
-            text-shadow: 0 0 15px rgba(249, 202, 36, 0.4);
-            line-height: 1.2;
+            font-size: 1.6rem;
+            font-weight: 800;
+            color: var(--hw-accent);
+            line-height: 1.15;
         }
         .score-label {
-            font-size: 0.85rem;
-            color: #888;
+            font-size: 0.62rem;
+            color: var(--hw-sub);
+            font-weight: 700;
             text-transform: uppercase;
             letter-spacing: 1px;
         }
-        .timer-display {
+        /* Stage: the phrase card plus its overlapping timer badge */
+        .stage {
             position: relative;
-            display: inline-block;
-            font-size: 2rem;
-            font-weight: bold;
-            color: #3EBECB;
-            margin-bottom: 15px;
-            opacity: 0.5;
-            transition: font-size 0.3s ease, color 0.3s ease;
+            margin: 34px 0 4px;
+        }
+        .timer-display {
+            position: absolute;
+            top: -16px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 3;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--hw-card);
+            border: 2px solid var(--hw-line);
+            border-radius: 999px;
+            padding: 5px 16px;
+            margin: 0;
+            font-size: 1.15rem;
+            font-weight: 800;
+            color: var(--hw-sub);
+            font-variant-numeric: tabular-nums;
+            box-shadow: 0 6px 16px rgba(58, 38, 32, 0.1);
+            transition: font-size 0.3s ease, color 0.3s ease, border-color 0.3s ease;
         }
         .timer-display.active {
-            opacity: 1;
+            color: var(--hw-ink);
         }
         .timer-display.warning {
-            color: #f9ca24;
-            font-size: 3rem;
+            color: var(--hw-gold);
+            border-color: var(--hw-gold);
+            font-size: 1.5rem;
         }
         .timer-display.danger {
-            color: #ff4444;
-            font-size: 5rem;
+            color: var(--hw-accent);
+            border-color: var(--hw-accent);
+            font-size: 2.4rem;
+            padding: 6px 22px;
             animation: pulse 0.5s ease-in-out infinite;
         }
         .timer-display.paused {
@@ -313,7 +346,7 @@
             display: none;
             position: fixed;
             top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(0, 0, 0, 0.85);
+            background: rgba(58, 38, 32, 0.55);
             z-index: 1060;
             align-items: center;
             justify-content: center;
@@ -323,13 +356,16 @@
         }
         .pause-dialog {
             text-align: center;
+            background: var(--hw-card);
+            border-radius: 20px;
+            padding: 30px 26px;
         }
         .timer-bonus {
             position: absolute;
             top: -5px;
             right: -40px;
             font-size: 1rem;
-            color: #4ade80;
+            color: var(--hw-mint);
             font-weight: bold;
             animation: bonusFade 1s ease-out forwards;
             pointer-events: none;
@@ -339,46 +375,69 @@
             100% { opacity: 0; transform: translateY(-20px); }
         }
         .status {
-            font-size: 1.2rem;
-            color: #888;
-            margin-bottom: 20px;
+            font-size: 1.05rem;
+            font-weight: 600;
+            color: var(--hw-sub);
+            margin: 10px 0 14px;
             min-height: 30px;
         }
         .status.listening {
-            color: #3EBECB;
+            color: var(--hw-accent);
         }
         .status.winner {
-            color: #B4975A;
+            color: var(--hw-mint);
             font-weight: bold;
             animation: pulse 0.5s ease-in-out 3;
         }
         .status.skipped {
-            color: #f9ca24;
+            color: var(--hw-gold);
         }
         .type-answer-row {
-            display: flex;
+            display: none;
             align-items: center;
             gap: 8px;
             justify-content: center;
-            margin-bottom: 12px;
+            margin-top: 14px;
+        }
+        .type-answer-row.expanded {
+            display: flex;
+        }
+        .type-toggle-btn {
+            background: var(--hw-card);
+            border: 1.5px solid var(--hw-line);
+            color: var(--hw-sub);
+            font-size: 0.95rem;
+            padding: 9px 12px;
+            margin: 0;
+            border-radius: 999px;
+            line-height: 1;
+            cursor: pointer;
+        }
+        .type-toggle-btn:hover {
+            background: var(--hw-accent-soft);
+            border-color: var(--hw-accent);
+        }
+        .type-toggle-btn.expanded {
+            background: var(--hw-ink);
+            border-color: var(--hw-ink);
         }
         .type-answer-input {
-            background: rgba(255,255,255,0.08);
-            border: 1px solid rgba(255,255,255,0.15);
+            background: var(--hw-card);
+            border: 1.5px solid var(--hw-line);
             border-radius: 8px;
-            color: #fff;
+            color: var(--hw-ink);
             font-size: 1rem;
             padding: 8px 12px;
             width: 220px;
             outline: none;
         }
         .type-answer-input:focus {
-            border-color: #3EBECB;
-            box-shadow: 0 0 0 2px rgba(62,190,203,0.2);
+            border-color: var(--hw-accent);
+            box-shadow: 0 0 0 2px rgba(255, 75, 110, 0.15);
         }
         .type-answer-btn {
-            background: #3EBECB;
-            color: #1a1a2e;
+            background: var(--hw-ink);
+            color: #fff;
             border: none;
             border-radius: 8px;
             font-size: 1rem;
@@ -387,10 +446,10 @@
             cursor: pointer;
         }
         .type-answer-btn:hover {
-            background: #5ac7d4;
+            background: #52362d;
         }
         .share-invite {
-            color: #3EBECB;
+            color: var(--hw-accent);
             cursor: pointer;
             text-decoration: underline;
             text-underline-offset: 3px;
@@ -398,13 +457,13 @@
             display: inline-block;
         }
         .share-invite:hover {
-            color: #7ee8e0;
+            color: #ff7a8f;
         }
         .share-invite:active {
             transform: scale(0.97);
         }
         .share-invite.copied {
-            color: #2ecc71;
+            color: var(--hw-mint);
             text-decoration: none;
         }
         @keyframes pulse {
@@ -419,6 +478,7 @@
             cursor: pointer;
             transition: all 0.3s ease;
             margin: 10px;
+            font-family: inherit;
         }
         button:disabled {
             opacity: 0.5;
@@ -429,36 +489,45 @@
             cursor: not-allowed;
         }
         button:focus-visible, a:focus-visible {
-            outline: 2px solid #B4975A;
+            outline: 2px solid var(--hw-accent);
             outline-offset: 2px;
         }
         .gotit-btn {
-            background: linear-gradient(135deg, #3EBECB 0%, #007485 100%);
+            background: var(--hw-mint);
             color: #fff;
-            font-size: 1.8rem;
-            padding: 50px 50px;
+            font-size: 1.15rem;
+            font-weight: 800;
+            padding: 22px 20px;
             border-radius: 16px;
             touch-action: manipulation;
+            box-shadow: 0 8px 18px rgba(31, 184, 138, 0.3);
         }
         .gotit-btn:hover:not(:disabled) {
             transform: translateY(-2px);
-            box-shadow: 0 10px 30px rgba(62, 190, 203, 0.4);
+            box-shadow: 0 10px 24px rgba(31, 184, 138, 0.4);
+        }
+        .gotit-btn:active:not(:disabled) {
+            transform: scale(0.97);
         }
         .skip-btn {
-            background: linear-gradient(135deg, #f9ca24 0%, #f0932b 100%);
-            color: #1a1a2e;
-            font-weight: bold;
-            font-size: 1.8rem;
-            padding: 50px 40px;
+            background: var(--hw-card);
+            color: var(--hw-sub);
+            font-weight: 800;
+            font-size: 1.15rem;
+            padding: 22px 20px;
             border-radius: 16px;
+            border: 2px solid var(--hw-line) !important;
             touch-action: manipulation;
         }
         .skip-btn:hover:not(:disabled) {
             transform: translateY(-2px);
-            box-shadow: 0 10px 30px rgba(249, 202, 36, 0.4);
+            border-color: var(--hw-sub) !important;
+        }
+        .skip-btn:active:not(:disabled) {
+            transform: scale(0.97);
         }
         .play-again-btn {
-            background: linear-gradient(135deg, #007485 0%, #005a68 100%);
+            background: var(--hw-mint);
             color: #fff;
             font-weight: bold;
             padding: 12px 30px;
@@ -469,107 +538,106 @@
         }
         .play-again-btn:hover {
             transform: translateY(-2px);
-            box-shadow: 0 10px 30px rgba(0, 116, 133, 0.4);
+            box-shadow: 0 10px 24px rgba(31, 184, 138, 0.35);
         }
         .skip-row {
             text-align: center;
             margin-bottom: 10px;
         }
-        .skip-row .skip-btn {
-            padding: 20px 40px;
-            font-size: 1.4rem;
-            width: 100%;
-        }
-        .local-mode .word-display {
-            margin-top: 10px;
-        }
-        .local-mode .button-row .gotit-btn {
-            width: 100%;
-            padding: 70px 20px;
-            font-size: 2rem;
-        }
         .button-row {
             display: flex;
             justify-content: center;
             flex-wrap: wrap;
-            gap: 10px;
+            gap: 12px;
+            margin: 0;
+        }
+        .button-row .gotit-btn,
+        .button-row .skip-btn,
+        .button-row .play-again-btn {
+            /* Override the global button{margin:10px} — the row's own `gap`
+               handles spacing; the extra per-button margin was stacking on
+               top of it and made the row's whitespace uneven. */
+            margin: 0;
+        }
+        .button-row .gotit-btn,
+        .button-row .skip-btn {
+            flex: 1;
+            min-width: 130px;
         }
         .listen-row {
-            position: fixed;
-            top: 20px;
-            left: 110px;
-            z-index: 100;
-            margin: 0;
             display: flex;
             align-items: center;
-            gap: 8px;
+            justify-content: center;
+            gap: 12px;
+            margin: 16px 0 18px;
         }
-        .listen-peek-toggle {
-            font-size: 1rem;
-            opacity: 0.8;
+        .listen-row .clue-btn,
+        .listen-row .listen-btn,
+        .listen-row .type-toggle-btn {
+            height: 44px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .clue-btn {
+            background: var(--hw-gold);
+            color: #4a3200;
+            border: none;
+            font-weight: 800;
+            font-size: 0.85rem;
+            padding: 0 18px;
+            margin: 0;
+            border-radius: 999px;
             cursor: pointer;
-            display: none;
-            user-select: none;
-            -webkit-user-select: none;
-            margin-left: 6px;
         }
-        .listen-peek-toggle.visible {
-            display: block;
-        }
-        .listen-peek {
-            font-size: 0.65rem;
-            color: rgba(255, 255, 255, 0.3);
-            max-width: 180px;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-            display: none;
-            cursor: pointer;
-            user-select: none;
-            -webkit-user-select: none;
-        }
-        .listen-peek.visible {
-            display: block;
+        .clue-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
         }
         .listen-btn {
-            background: rgba(255, 255, 255, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            color: #888;
-            font-size: 0.85rem;
-            padding: 8px 14px;
+            background: var(--hw-card);
+            border: 1.5px solid var(--hw-line);
+            color: var(--hw-sub);
+            width: 44px;
+            height: 44px;
+            padding: 0;
             margin: 0;
-            border-radius: 8px;
-            line-height: 1.2;
+            border-radius: 50%;
+            font-size: 1.25rem;
+            line-height: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
         .listen-btn:hover:not(:disabled) {
-            background: rgba(255, 255, 255, 0.15);
-            color: #fff;
+            background: var(--hw-accent-soft);
+            border-color: var(--hw-accent);
+            transform: translateY(-1px);
         }
         .listen-btn.active {
-            background: rgba(62, 190, 203, 0.25);
-            border-color: #3EBECB;
-            color: #3EBECB;
-            box-shadow: 0 0 14px rgba(62, 190, 203, 0.55), inset 0 0 8px rgba(62, 190, 203, 0.25);
+            background: var(--hw-accent);
+            border-color: var(--hw-accent);
+            color: #fff;
+            box-shadow: 0 0 14px rgba(255, 75, 110, 0.5);
             animation: listenBtnPulse 1.4s ease-in-out infinite;
         }
         @keyframes listenBtnPulse {
-            0%, 100% { box-shadow: 0 0 14px rgba(62, 190, 203, 0.55), inset 0 0 8px rgba(62, 190, 203, 0.25); }
-            50%      { box-shadow: 0 0 22px rgba(62, 190, 203, 0.9),  inset 0 0 14px rgba(62, 190, 203, 0.45); }
+            0%, 100% { box-shadow: 0 0 14px rgba(255, 75, 110, 0.4); }
+            50%      { box-shadow: 0 0 22px rgba(255, 75, 110, 0.7); }
         }
         /* Listening indicator — applied to the phrase box itself (not viewport) */
         .word-display {
-            border: 2px solid transparent;
             transition: border-color 0.25s ease, box-shadow 0.25s ease, background 0.25s ease;
         }
         /* Mic open but no recent voice — dim sustained glow */
         body.is-listening .word-display {
-            border-color: rgba(62, 190, 203, 0.55);
-            box-shadow: 0 0 18px rgba(62, 190, 203, 0.35), inset 0 0 14px rgba(62, 190, 203, 0.18);
+            border-color: var(--hw-accent);
+            box-shadow: 0 0 18px rgba(255, 75, 110, 0.25);
         }
         /* Voice just heard — bright flash, fades back to dim */
         body.is-hearing .word-display {
-            border-color: #3EBECB;
-            box-shadow: 0 0 36px rgba(62, 190, 203, 0.85), inset 0 0 24px rgba(62, 190, 203, 0.4);
+            border-color: var(--hw-accent);
+            box-shadow: 0 0 30px rgba(255, 75, 110, 0.45);
             transition: border-color 0.05s ease, box-shadow 0.05s ease;
         }
         /* Mic affordance — when idle (not listening), gently pulse the mic button
@@ -578,27 +646,28 @@
             animation: pttIdlePulse 2.4s ease-in-out infinite;
         }
         @keyframes pttIdlePulse {
-            0%, 100% { box-shadow: 0 0 0 rgba(180, 151, 90, 0); }
-            50%      { box-shadow: 0 0 18px rgba(180, 151, 90, 0.55); }
+            0%, 100% { box-shadow: 0 0 0 rgba(255, 75, 110, 0); }
+            50%      { box-shadow: 0 0 14px rgba(255, 75, 110, 0.45); }
         }
         .transcript {
-            margin-top: 30px;
-            padding: 15px;
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 10px;
-            font-size: 0.9rem;
-            color: #888;
-            min-height: 50px;
-            display: none;
+            margin-top: 20px;
+            padding: 0 15px;
+            text-align: center;
+            font-size: 1rem;
+            color: var(--hw-sub);
+            min-height: 24px;
         }
         .transcript span {
-            color: #3EBECB;
+            color: var(--hw-ink);
+            font-weight: 700;
         }
         .audio-disclaimer {
             display: none;
+            text-align: center;
             font-size: 0.7rem;
-            color: rgba(255, 255, 255, 0.4);
-            margin-top: 8px;
+            color: var(--hw-sub);
+            opacity: 0.6;
+            margin-top: 6px;
             font-style: italic;
         }
         .transcript.listening .audio-disclaimer {
@@ -606,17 +675,17 @@
         }
         .similarity {
             font-size: 0.8rem;
-            color: #666;
+            color: var(--hw-sub);
             margin-top: 5px;
         }
         .similarity.close {
-            color: #f9ca24;
+            color: var(--hw-gold);
         }
         .player-input {
             display: none;
         }
         .error {
-            color: #ff4444;
+            color: var(--hw-accent);
             margin-top: 20px;
         }
 
@@ -631,7 +700,7 @@
             z-index: 1000;
             overflow: hidden;
             opacity: 0;
-            background: rgba(26, 26, 46, 0.95);
+            background: rgba(255, 246, 242, 0.97);
             transition: opacity 0.3s ease;
         }
         .celebration.active {
@@ -648,18 +717,17 @@
         }
         .celebration-text {
             font-size: 15vw;
-            font-weight: bold;
-            color: #3EBECB;
-            text-shadow: 0 0 40px rgba(62, 190, 203, 1), 0 0 80px rgba(62, 190, 203, 0.8), 0 0 120px rgba(62, 190, 203, 0.6);
+            font-weight: 800;
+            color: var(--hw-mint);
             animation: celebratePulse 0.4s ease-in-out infinite alternate;
             line-height: 1.1;
             text-transform: uppercase;
         }
         .celebration-winner {
             font-size: 1.5rem;
-            color: #B4975A;
+            color: var(--hw-accent);
             margin-top: 30px;
-            text-shadow: 0 0 20px rgba(180, 151, 90, 0.8);
+            font-weight: 700;
         }
         @keyframes celebratePulse {
             0% { transform: scale(1); }
@@ -891,7 +959,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(26, 26, 46, 0.97);
+            background: rgba(255, 246, 242, 0.97);
             z-index: 1050;
             display: none;
             align-items: center;
@@ -902,7 +970,8 @@
             display: flex;
         }
         .game-summary {
-            background: rgba(255, 255, 255, 0.05);
+            background: var(--hw-card);
+            border: 1px solid var(--hw-line);
             border-radius: 20px;
             padding: 30px;
             max-width: 440px;
@@ -911,19 +980,21 @@
             display: flex;
             flex-direction: column;
             align-items: center;
+            box-shadow: 0 20px 50px rgba(58, 38, 32, 0.15);
         }
         .game-summary-title {
             font-size: 2rem;
-            font-weight: bold;
+            font-weight: 800;
             text-align: center;
-            color: #f9ca24;
-            text-shadow: 0 0 20px rgba(249, 202, 36, 0.5);
+            color: var(--hw-ink);
             margin-bottom: 8px;
         }
         .game-summary-score {
             font-size: 2.5rem;
             text-align: center;
             margin-bottom: 16px;
+            color: var(--hw-accent);
+            font-weight: 800;
         }
         .game-summary-phrases {
             width: 100%;
@@ -937,26 +1008,27 @@
         .game-summary-phrase {
             font-size: 0.95rem;
             padding: 6px 0;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            border-bottom: 1px solid var(--hw-line);
             display: flex;
             justify-content: space-between;
             align-items: center;
+            color: var(--hw-ink);
         }
         .game-summary-time {
-            color: rgba(255, 255, 255, 0.25);
+            color: var(--hw-sub);
             font-size: 0.8rem;
             margin-left: 12px;
             flex-shrink: 0;
         }
         .game-summary-phrase.got-it {
-            color: rgba(62, 190, 203, 0.8);
+            color: var(--hw-mint);
         }
         .game-summary-phrase.skipped {
-            color: rgba(255, 255, 255, 0.3);
+            color: var(--hw-sub);
             text-decoration: line-through;
         }
         .game-summary-phrase.timed-out {
-            color: rgba(255, 255, 255, 0.3);
+            color: var(--hw-sub);
             font-style: italic;
         }
         .game-summary-buttons {
@@ -969,29 +1041,32 @@
         .game-summary-btn {
             padding: 12px 30px;
             font-size: 1.1rem;
+            font-weight: 700;
             border: none;
             border-radius: 25px;
             cursor: pointer;
-            background: linear-gradient(135deg, #B4975A 0%, #9a7d45 100%);
+            background: var(--hw-mint);
             color: #fff;
             transition: all 0.3s ease;
         }
         .game-summary-btn:hover {
             transform: translateY(-2px);
-            box-shadow: 0 5px 20px rgba(180, 151, 90, 0.4);
+            box-shadow: 0 5px 20px rgba(31, 184, 138, 0.35);
         }
         .game-summary-btn.secondary {
-            background: rgba(255, 255, 255, 0.1);
+            background: var(--hw-card);
+            border: 2px solid var(--hw-line);
+            color: var(--hw-sub);
         }
         .game-summary-btn.secondary:hover {
-            background: rgba(255, 255, 255, 0.18);
-            box-shadow: 0 5px 20px rgba(255, 255, 255, 0.1);
+            background: var(--hw-accent-soft);
+            box-shadow: none;
         }
         .game-summary-back {
             margin-top: 16px;
             background: none;
             border: none;
-            color: rgba(255, 255, 255, 0.4);
+            color: var(--hw-sub);
             font-size: 0.85rem;
             cursor: pointer;
             padding: 4px 8px;
@@ -1003,20 +1078,21 @@
 
         .local-start-btn {
             width: 100%;
-            padding: 16px;
-            font-size: 1.2rem;
-            font-weight: bold;
+            padding: 17px;
+            font-size: 1.15rem;
+            font-weight: 800;
             border: none;
-            border-radius: 14px;
+            border-radius: 16px;
             cursor: pointer;
-            background: linear-gradient(135deg, #007485 0%, #005a68 100%);
+            background: var(--hw-mint);
             color: #fff;
             margin-top: 8px;
             transition: all 0.3s ease;
+            box-shadow: 0 8px 18px rgba(31, 184, 138, 0.3);
         }
         .local-start-btn:hover {
             transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(0, 116, 133, 0.4);
+            box-shadow: 0 10px 24px rgba(31, 184, 138, 0.4);
         }
         /* Online Player List Panel */
         .online-player-panel {
@@ -1165,7 +1241,7 @@
             display: none;
             position: fixed;
             top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(0, 0, 0, 0.92);
+            background: rgba(58, 38, 32, 0.5);
             z-index: 1060;
             align-items: center;
             justify-content: center;
@@ -1175,36 +1251,37 @@
             display: flex;
         }
         .onboard-card {
-            background: linear-gradient(135deg, #1e1e3a 0%, #2a2a4a 100%);
-            border: 1px solid rgba(255, 255, 255, 0.15);
+            background: var(--hw-card);
+            border: 1px solid var(--hw-line);
             border-radius: 24px;
             padding: 40px 30px;
             max-width: 380px;
             width: 90%;
             text-align: center;
+            box-shadow: 0 20px 50px rgba(58, 38, 32, 0.2);
         }
         .onboard-emoji {
             font-size: 4rem;
             margin-bottom: 16px;
         }
         .onboard-title {
-            font-size: 2rem;
-            font-weight: bold;
-            color: #fff;
+            font-size: 1.7rem;
+            font-weight: 800;
+            color: var(--hw-ink);
             margin-bottom: 12px;
             line-height: 1.4;
         }
         .onboard-hint {
-            font-size: 1.3rem;
-            color: #aaa;
+            font-size: 1.05rem;
+            color: var(--hw-sub);
             margin-bottom: 28px;
             line-height: 1.5;
         }
         .onboard-btn {
             width: 100%;
             padding: 18px;
-            font-size: 1.3rem;
-            font-weight: bold;
+            font-size: 1.15rem;
+            font-weight: 800;
             border: none;
             border-radius: 16px;
             cursor: pointer;
@@ -1215,26 +1292,26 @@
             transform: translateY(-2px);
         }
         .onboard-btn.play {
-            background: linear-gradient(135deg, #B4975A 0%, #9a7d45 100%);
-            box-shadow: 0 6px 20px rgba(154, 125, 69, 0.4);
+            background: var(--hw-mint);
+            box-shadow: 0 8px 20px rgba(31, 184, 138, 0.3);
         }
         .onboard-btn.reveal {
-            background: linear-gradient(135deg, #3EBECB 0%, #007485 100%);
-            box-shadow: 0 6px 20px rgba(62, 190, 203, 0.4);
+            background: var(--hw-accent);
+            box-shadow: 0 8px 20px rgba(255, 75, 110, 0.3);
         }
         .onboard-back {
             position: fixed;
             bottom: 30px;
             left: 20px;
             font-size: 0.85rem;
-            color: #888;
+            color: var(--hw-sub);
             background: none;
             border: none;
             cursor: pointer;
             padding: 8px 16px;
         }
         .onboard-back:hover {
-            color: #fff;
+            color: var(--hw-ink);
         }
         .onboard-skip {
             position: fixed;
@@ -1455,37 +1532,15 @@
             position: relative;
         }
         .lobby h1 {
-            font-size: 3rem;
+            font-size: 3.1rem;
+            font-weight: 900;
+            letter-spacing: -0.02em;
             margin-bottom: 30px;
-            color: #B4975A;
-        }
-
-        /* Preset fire (🔥 in title) */
-        .preset-fire {
+            color: var(--hw-ink);
             cursor: pointer;
             display: inline-block;
-            transition: transform 0.2s ease;
-        }
-        .preset-fire:hover {
-            transform: scale(1.3);
-        }
-        .preset-fire.active {
-            filter: drop-shadow(0 0 8px rgba(180, 151, 90, 0.8));
         }
 
-        /* Customize balloon (💬 in title) */
-        .customize-balloon {
-            cursor: pointer;
-            display: inline-block;
-            transition: transform 0.2s ease;
-            animation: balloon-hint 3s ease-in-out 2s 2;
-        }
-        .customize-balloon:hover {
-            transform: scale(1.3);
-        }
-        .customize-balloon.has-custom {
-            filter: drop-shadow(0 0 8px rgba(180, 151, 90, 0.8));
-        }
         /* Custom phrases active banner (replaces topic picker) */
         .custom-active-banner {
             display: flex;
@@ -1508,7 +1563,7 @@
             animation: dot-pulse 2s ease-in-out infinite;
         }
         .custom-active-banner .custom-active-text {
-            color: rgba(255, 255, 255, 0.85);
+            color: var(--hw-ink);
             font-size: 0.9rem;
         }
         .custom-active-banner .custom-active-count {
@@ -1537,72 +1592,63 @@
             0%, 100% { opacity: 1; }
             50% { opacity: 0.4; }
         }
-        @keyframes balloon-hint {
-            0%, 100% { transform: rotate(0deg); }
-            15% { transform: rotate(-12deg) scale(1.15); }
-            30% { transform: rotate(10deg) scale(1.15); }
-            45% { transform: rotate(-8deg); }
-            60% { transform: rotate(0deg); }
-        }
 
         /* Customize overlay */
         .customize-overlay {
             display: none;
             position: fixed;
             top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(0, 0, 0, 0.85);
+            background: rgba(58, 38, 32, 0.55);
             z-index: 1060;
             align-items: center;
             justify-content: center;
+            padding: 20px;
         }
         .customize-overlay.active {
             display: flex;
         }
         .customize-dialog {
-            background: linear-gradient(135deg, #1e1e3a 0%, #2a2a4a 100%);
-            border: 1px solid rgba(255, 255, 255, 0.15);
+            background: var(--hw-card);
+            border: 1px solid var(--hw-line);
             border-radius: 20px;
             padding: 30px;
             max-width: 440px;
-            width: 90%;
+            width: 100%;
             text-align: center;
+            box-shadow: 0 20px 50px rgba(58, 38, 32, 0.15);
         }
         .customize-dialog h2 {
             font-size: 1.4rem;
+            font-weight: 800;
             margin: 0 0 8px;
-            color: #fff;
+            color: var(--hw-ink);
         }
         .customize-dialog .customize-desc {
-            font-size: 0.85rem;
-            color: #aaa;
+            font-size: 0.9rem;
+            color: var(--hw-sub);
             margin-bottom: 16px;
             line-height: 1.4;
         }
-        .customize-dialog textarea {
+        .customize-input {
             width: 100%;
-            min-height: 140px;
-            background: rgba(0, 0, 0, 0.3);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 12px;
-            color: #fff;
-            font-size: 0.9rem;
-            padding: 12px;
-            resize: vertical;
-            font-family: inherit;
             box-sizing: border-box;
+            background: var(--hw-card);
+            border: 1.5px solid var(--hw-line);
+            border-radius: 10px;
+            color: var(--hw-ink);
+            font-size: 1rem;
+            padding: 12px 14px;
+            margin-bottom: 10px;
+            font-family: inherit;
         }
-        .customize-dialog textarea::placeholder {
-            color: rgba(255, 255, 255, 0.3);
+        .customize-input::placeholder {
+            color: var(--hw-sub);
+            opacity: 0.7;
         }
-        .customize-dialog textarea:focus {
+        .customize-input:focus {
             outline: none;
-            border-color: #B4975A;
-        }
-        .customize-count {
-            font-size: 0.8rem;
-            color: #888;
-            margin: 8px 0 16px;
-            text-align: right;
+            border-color: var(--hw-accent);
+            box-shadow: 0 0 0 2px rgba(255, 75, 110, 0.15);
         }
         .customize-buttons {
             display: flex;
@@ -1612,37 +1658,31 @@
             flex: 1;
             padding: 14px;
             font-size: 1rem;
-            font-weight: bold;
+            font-weight: 800;
             border: none;
-            border-radius: 12px;
+            border-radius: 14px;
             cursor: pointer;
             transition: all 0.2s ease;
         }
         .customize-btn.save {
-            background: linear-gradient(135deg, #B4975A 0%, #8a7040 100%);
+            background: var(--hw-mint);
             color: #fff;
+            box-shadow: 0 8px 18px rgba(31, 184, 138, 0.3);
         }
-        .customize-btn.save:hover {
+        .customize-btn.save:hover:not(:disabled) {
             transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(180, 151, 90, 0.4);
+            box-shadow: 0 10px 24px rgba(31, 184, 138, 0.4);
         }
         .customize-btn.clear {
-            background: rgba(255, 255, 255, 0.1);
-            color: #aaa;
+            background: var(--hw-card);
+            color: var(--hw-sub);
+            border: 2px solid var(--hw-line);
         }
         .customize-btn.clear:hover {
-            background: rgba(255, 255, 255, 0.15);
-            color: #fff;
+            border-color: var(--hw-sub);
+            color: var(--hw-ink);
         }
 
-        /* RKO mode active indicator on fire icon */
-        .preset-fire.rko-active {
-            animation: rko-flame 0.6s ease-in-out 3;
-        }
-        @keyframes rko-flame {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.4); filter: drop-shadow(0 0 12px rgba(231, 76, 60, 0.9)); }
-        }
         .mode-buttons {
             display: flex;
             flex-direction: column;
@@ -1652,35 +1692,38 @@
         .home-toggle {
             display: flex;
             gap: 0;
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 14px;
+            background: var(--hw-card);
+            border-radius: 16px;
             overflow: hidden;
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            border: 1px solid var(--hw-line);
+            padding: 5px;
         }
         .home-toggle-btn {
             flex: 1;
-            padding: 16px 0;
-            font-size: 1.05rem;
-            font-weight: bold;
+            padding: 13px 0;
+            border-radius: 12px;
+            font-size: 1.02rem;
+            font-weight: 800;
             border: none;
             background: transparent;
-            color: #888;
+            color: var(--hw-sub);
             cursor: pointer;
             transition: all 0.25s ease;
         }
         .home-toggle-btn.active {
-            background: linear-gradient(135deg, #007485 0%, #005a68 100%);
+            background: linear-gradient(135deg, #52525b, #3f3f46);
             color: #fff;
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.18);
         }
         .home-toggle-btn:not(.active):hover {
-            color: #ccc;
-            background: rgba(255, 255, 255, 0.05);
+            color: var(--hw-ink);
+            background: var(--hw-accent-soft);
         }
         .home-toggle-desc {
             text-align: center;
             font-size: 0.85rem;
-            color: #999;
-            margin: 2px 0 4px;
+            color: var(--hw-sub);
+            margin: 12px 0 10px;
         }
         .mode-section {
             border-radius: 18px;
@@ -1785,11 +1828,12 @@
             top: 20px;
             left: 20px;
             font-size: 0.85rem;
+            font-weight: 700;
             padding: 8px 16px;
-            background: rgba(255, 255, 255, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.2);
+            background: var(--hw-card);
+            border: 1px solid var(--hw-line);
             border-radius: 8px;
-            color: #fff;
+            color: var(--hw-sub);
             cursor: pointer;
             z-index: 100;
             display: none;
@@ -1797,7 +1841,8 @@
             line-height: 1.2;
         }
         .back-btn:hover {
-            background: rgba(255, 255, 255, 0.2);
+            background: var(--hw-accent-soft);
+            color: var(--hw-ink);
         }
         .back-btn.active {
             display: block;
@@ -1812,59 +1857,8 @@
             display: none;
         }
 
-        /* Current Player Indicator */
-        .current-player-indicator {
-            display: none;
-            margin-bottom: 15px;
-            padding: 10px 20px;
-            background: rgba(62, 190, 203, 0.2);
-            border: 2px solid rgba(62, 190, 203, 0.4);
-            border-radius: 25px;
-            color: #3EBECB;
-            font-weight: bold;
-        }
-        .current-player-indicator.active {
-            display: inline-block;
-        }
-
-        /* Orientation Indicator */
-        .orientation-indicator {
-            display: none;
-            margin-bottom: 15px;
-            padding: 10px 20px;
-            background: rgba(249, 202, 36, 0.2);
-            border: 2px solid rgba(249, 202, 36, 0.4);
-            border-radius: 25px;
-            color: #f9ca24;
-            font-size: 0.9rem;
-        }
-        .orientation-indicator.active {
-            display: block;
-        }
-        .orientation-indicator.flat {
-            background: rgba(62, 190, 203, 0.2);
-            border-color: rgba(62, 190, 203, 0.4);
-            color: #3EBECB;
-        }
-
-        /* Word hidden by orientation/press */
-        .word-display.orientation-hidden {
-            background: linear-gradient(135deg, #2d2d44 0%, #1a1a2e 100%);
-            cursor: pointer;
-        }
-        .word-display.orientation-hidden .word-text {
-            opacity: 0;
-        }
-        .word-display.orientation-hidden .redact-label {
-            opacity: 1;
-        }
         .word-display.orientation-hidden:active {
-            background: rgba(255, 255, 255, 0.1);
-        }
-
-        /* Hide elements in local mode */
-        .local-mode .orientation-indicator {
-            display: none !important;
+            background: var(--hw-accent-soft);
         }
 
         /* Close Match Anticipation Overlay */
@@ -1913,7 +1907,7 @@
             display: none;
             position: fixed;
             top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(0, 0, 0, 0.7);
+            background: rgba(58, 38, 32, 0.5);
             z-index: 1000;
             align-items: center;
             justify-content: center;
@@ -1922,12 +1916,13 @@
             display: flex;
         }
         .mic-dialog {
-            background: linear-gradient(135deg, #1e1e3a 0%, #2a2a4a 100%);
-            border: 1px solid rgba(255, 255, 255, 0.15);
+            background: var(--hw-card);
+            border: 1px solid var(--hw-line);
             border-radius: 20px;
             padding: 30px;
             max-width: 360px;
             text-align: center;
+            box-shadow: 0 20px 50px rgba(58, 38, 32, 0.2);
         }
         .mic-dialog-icon {
             font-size: 3rem;
@@ -1935,21 +1930,21 @@
         }
         .mic-dialog-title {
             font-size: 1.3rem;
-            font-weight: bold;
-            color: #fff;
+            font-weight: 800;
+            color: var(--hw-ink);
             margin-bottom: 12px;
         }
         .mic-dialog-body {
             font-size: 0.9rem;
-            color: #bbb;
+            color: var(--hw-sub);
             line-height: 1.5;
             margin-bottom: 20px;
         }
         .mic-dialog-body strong {
-            color: #3EBECB;
+            color: var(--hw-accent);
         }
         .mic-dialog-btn {
-            background: linear-gradient(135deg, #3EBECB 0%, #007485 100%);
+            background: var(--hw-mint);
             color: #fff;
             font-size: 1.1rem;
             padding: 14px 36px;
@@ -1960,7 +1955,7 @@
         }
         .mic-dialog-btn:hover {
             transform: translateY(-2px);
-            box-shadow: 0 5px 20px rgba(62, 190, 203, 0.4);
+            box-shadow: 0 5px 20px rgba(31, 184, 138, 0.35);
         }
 
         /* Version number */
@@ -1969,18 +1964,21 @@
             bottom: 10px;
             right: 10px;
             font-size: 0.7rem;
-            color: rgba(255, 255, 255, 0.2);
-        }
-
-        /* Make orientation indicator clickable */
-        .orientation-indicator {
-            cursor: pointer;
-        }
-        .orientation-indicator:hover {
-            background: rgba(249, 202, 36, 0.3);
+            color: var(--hw-sub);
+            opacity: 0.5;
         }
 
         /* Topic picker */
+        .topic-pill.random-pill {
+            border-style: dashed;
+            border-color: var(--hw-sub);
+        }
+        .topic-pill.random-pill:hover {
+            border-color: var(--hw-accent);
+        }
+        .topic-pill.random-pill.active {
+            border-style: solid;
+        }
         .topic-picker {
             display: flex;
             flex-wrap: wrap;
@@ -1991,9 +1989,9 @@
         .topic-pill {
             padding: 6px 14px;
             border-radius: 20px;
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            background: rgba(255, 255, 255, 0.05);
-            color: rgba(255, 255, 255, 0.5);
+            border: 1px solid var(--hw-line);
+            background: var(--hw-card);
+            color: var(--hw-sub);
             font-size: 0.85rem;
             cursor: pointer;
             transition: all 0.25s ease;
@@ -2001,41 +1999,41 @@
             -webkit-user-select: none;
         }
         .topic-pill:hover, .topic-pill:focus-visible {
-            border-color: rgba(255, 255, 255, 0.3);
-            color: rgba(255, 255, 255, 0.7);
-            background: rgba(255, 255, 255, 0.1);
+            border-color: var(--hw-accent);
+            color: var(--hw-ink);
+            background: var(--hw-accent-soft);
             outline: none;
         }
         .topic-pill.active {
-            background: linear-gradient(135deg, #B4975A 0%, #8a7040 100%);
-            border-color: #B4975A;
-            color: #fff;
-            box-shadow: 0 0 12px rgba(180, 151, 90, 0.4);
+            background: var(--hw-gold);
+            border-color: var(--hw-gold);
+            color: #4a3200;
+            box-shadow: 0 0 12px rgba(255, 201, 60, 0.5);
         }
         .topic-pill.hot-category {
-            border-color: #ff4444;
-            box-shadow: 0 0 10px rgba(255, 68, 68, 0.5), 0 0 20px rgba(255, 68, 68, 0.2);
+            border-color: var(--hw-accent);
+            box-shadow: 0 0 10px rgba(255, 75, 110, 0.35), 0 0 20px rgba(255, 75, 110, 0.15);
             animation: hotGlow 2s ease-in-out infinite alternate;
         }
         @keyframes hotGlow {
-            from { box-shadow: 0 0 8px rgba(255, 68, 68, 0.4); }
-            to { box-shadow: 0 0 16px rgba(255, 68, 68, 0.7), 0 0 30px rgba(255, 68, 68, 0.2); }
+            from { box-shadow: 0 0 8px rgba(255, 75, 110, 0.3); }
+            to { box-shadow: 0 0 16px rgba(255, 75, 110, 0.55), 0 0 30px rgba(255, 75, 110, 0.15); }
         }
         .topic-pill.active.hot-category {
-            border-color: #B4975A;
-            box-shadow: 0 0 12px rgba(180, 151, 90, 0.4);
+            border-color: var(--hw-gold);
+            box-shadow: 0 0 12px rgba(255, 201, 60, 0.5);
             animation: none;
         }
         .topic-pill.add-category {
             font-weight: bold;
             padding: 6px 16px;
-            border-color: rgba(155, 89, 182, 0.4);
-            color: rgba(155, 89, 182, 0.8);
+            border-color: rgba(155, 89, 182, 0.35);
+            color: rgba(155, 89, 182, 0.9);
         }
         .topic-pill.add-category:hover {
-            border-color: rgba(155, 89, 182, 0.7);
-            color: rgba(155, 89, 182, 1);
-            background: rgba(155, 89, 182, 0.15);
+            border-color: rgba(155, 89, 182, 0.6);
+            color: #9b59b6;
+            background: rgba(155, 89, 182, 0.1);
         }
     </style>
 </head>
@@ -2045,23 +2043,23 @@
 
     <!-- Lobby Screen -->
     <div class="lobby" id="lobbyScreen">
-        <h1><span class="preset-fire" id="presetFire" title="Hottest this week">🔥</span> <span id="titleHotwords" style="cursor: pointer;">Hotwords</span> <span class="customize-balloon" id="customizeBalloon" title="Custom phrases">💬</span></h1>
+        <h1 id="titleHotwords" title="View leaderboard">Hotwords</h1>
 
         <div class="topic-picker" id="topicPicker"></div>
 
         <div class="mode-buttons" id="homeButtons">
             <div class="home-toggle" id="homeToggle">
-                <button class="home-toggle-btn active" id="freePlayToggle">🎯 Free Play</button>
-                <button class="home-toggle-btn" id="timedToggle">⏱️ Timed</button>
+                <button class="home-toggle-btn active" id="freePlayToggle">Free Play</button>
+                <button class="home-toggle-btn" id="timedToggle">Timed</button>
             </div>
             <div class="home-toggle-desc" id="homeToggleDesc">No clock — get clues, guess at your own pace</div>
-            <button class="local-start-btn" id="startGameBtn">▶ Start</button>
+            <button class="local-start-btn" id="startGameBtn">Start</button>
         </div>
 
         <!-- Online Mode Section: hidden on /, shown only when routed to /online -->
         <div class="mode-section" id="onlineSection" style="display: none;">
             <button class="mode-btn online" id="onlineModeBtn">
-                <span class="mode-btn-title">🌐 Online</span>
+                <span class="mode-btn-title">Online</span>
                 <span class="mode-btn-sub">Play with friends anywhere</span>
             </button>
             <div class="mode-detail">Join a room and ready up with other players. Each player takes turns getting everyone to guess the words, using their own device.</div>
@@ -2074,7 +2072,7 @@
                     <button class="join-btn" id="randomBtn">Random</button>
                     <button class="join-btn" id="shareBtn">Share</button>
                 </div>
-                <button class="local-start-btn" id="onlineStartBtn">▶ Join</button>
+                <button class="local-start-btn" id="onlineStartBtn">Join</button>
             </div>
         </div>
 
@@ -2089,11 +2087,11 @@
         <div class="customize-dialog">
             <h2>Custom Category</h2>
             <div class="customize-desc">Enter a category and we'll generate phrases for you.</div>
-            <input type="text" id="customizeCategoryInput" class="name-input" placeholder="e.g. 80s movies, breakfast foods, famous dogs..." maxlength="100" style="width: 100%; box-sizing: border-box; margin-bottom: 10px;">
+            <input type="text" id="customizeCategoryInput" class="customize-input" placeholder="e.g. 80s movies, breakfast foods, famous dogs..." maxlength="100">
             <div class="custom-status" id="customizeCategoryStatus"></div>
             <div class="customize-buttons">
                 <button class="customize-btn clear" id="customizeClear">Clear</button>
-                <button class="customize-btn save" id="customizeSave">✨ Generate</button>
+                <button class="customize-btn save" id="customizeSave">Generate</button>
             </div>
         </div>
     </div>
@@ -2116,39 +2114,43 @@
             <input type="text" id="playerName" placeholder="Enter your name" maxlength="20">
         </div>
 
-        <div class="word-display" id="wordContainer">
-            <span class="word-text" id="currentWord">Connecting...</span>
-            <div class="redact-label" id="redactLabel"></div>
-        </div>
-
         <div class="score-display" id="scoreDisplay">
             <div class="score-number" id="scoreCount">0</div>
             <div class="score-label">points</div>
         </div>
 
-        <div class="timer-display" id="timerDisplay">
-            <span id="timerCount">30</span>s
+        <div class="stage">
+            <div class="timer-display" id="timerDisplay">
+                <span id="timerCount">30</span>s
+            </div>
+            <div class="word-display" id="wordContainer">
+                <span class="word-text" id="currentWord">Connecting...</span>
+                <div class="redact-label" id="redactLabel"></div>
+            </div>
         </div>
 
+        <div class="clue-display" id="clueDisplay"></div>
+
         <div class="status" id="status">Click the button to start listening</div>
+
+        <div class="button-row">
+            <button class="skip-btn btn-inactive" id="skipBtn">Skip</button>
+            <button class="gotit-btn btn-inactive" id="gotItBtn">Got It!</button>
+            <button class="play-again-btn" id="playAgainBtn" style="display: none;">Play Again</button>
+        </div>
+        <div class="listen-row">
+            <button class="clue-btn" id="clueBtn">💡 Show Clue</button>
+            <button class="listen-btn" id="listenBtn" disabled title="Tap to talk">🎤</button>
+            <button class="type-toggle-btn" id="typeToggleBtn">⌨️</button>
+        </div>
+
         <div class="type-answer-row" id="typeAnswerRow">
             <input type="text" id="typeAnswerInput" class="type-answer-input" placeholder="Type your answer..." autocomplete="off" />
             <button class="type-answer-btn" id="typeAnswerBtn">Check</button>
         </div>
 
-        <div class="button-row">
-            <button class="gotit-btn btn-inactive" id="gotItBtn">Got It!</button>
-            <button class="skip-btn btn-inactive" id="skipBtn">Skip</button>
-            <button class="play-again-btn" id="playAgainBtn" style="display: none;">Play Again</button>
-        </div>
-        <div class="listen-row">
-            <button class="listen-btn" id="listenBtn" disabled>🎤 Tap to Talk</button>
-            <span class="listen-peek-toggle" id="listenPeekToggle">💬</span>
-            <span class="listen-peek" id="listenPeek"></span>
-        </div>
-
         <div class="transcript" id="transcriptBox">
-            Heard: <span id="transcript">-</span>
+            <span id="transcript"></span>
             <div class="similarity" id="similarity"></div>
             <div class="audio-disclaimer">All audio processing is performed locally and nothing is saved.</div>
         </div>
@@ -2295,11 +2297,13 @@
          *   showGameScreen()        - Switch to game view
          *   showLobby()             - Return to lobby
          *
-         * Local (Solo) Mode — Free Play / Timed:
+         * Local Mode (reveal card) — Free Play / Timed:
          *   startLocalGame()        - Initialize local game
-         *   showNewWordSoloMode()   - Display AI-clue round for a phrase
+         *   showNewWordLocalMode()  - Load a phrase, reset reveal + clue state
          *   localModeClaimVictory() - Handle correct guess
-         *   soloModeHintOrGiveUp()  - Reveal next hint, or give up
+         *   localModeSkipWord()     - Skip to a new phrase
+         *   showClue()              - Reveal the next fallback hint
+         *   enableOrientationDetection() - Tilt-to-reveal (press-hold fallback)
          *   renderWordProgress()    - Update "Player: #### ###" display
          *
          * Online Mode (hidden behind /online):
@@ -2352,7 +2356,6 @@
         }
         const playAgainBtn = document.getElementById('playAgainBtn');
         const transcriptEl = document.getElementById('transcript');
-        const listenPeek = document.getElementById('listenPeek');
         const similarityEl = document.getElementById('similarity');
         const playerNameInput = document.getElementById('playerName');
         const onlineNameInput = document.getElementById('onlineNameInput');
@@ -2384,6 +2387,8 @@
         }
         const wordProgressEl = document.getElementById('wordProgress');
         const redactLabelEl = document.getElementById('redactLabel');
+        const clueDisplayEl = document.getElementById('clueDisplay');
+        const clueBtn = document.getElementById('clueBtn');
         const timerDisplayEl = document.getElementById('timerDisplay');
         const timerCountEl = document.getElementById('timerCount');
         const transcriptBox = document.getElementById('transcriptBox');
@@ -2414,7 +2419,6 @@
             }, 350);
         }
         let isPrewarming = false;  // Recognition running before game starts (warm-up only)
-        const IS_TOUCH_DEVICE = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
         // Online mode lives at /online — hidden from the default home screen entirely.
         const IS_ONLINE_ROUTE = window.location.pathname.replace(/\/$/, '') === '/online';
 
@@ -2444,12 +2448,20 @@
         let usedPhrasesThisRound = new Set();
         let phraseStartTime = 0;
 
-        // Solo mode state
-        let isSoloMode = false;
-        let soloClues = [];
-        let soloCluesShown = 0;
-        let soloNextClues = null;
-        let soloNextPhrase = null;
+        // Show Clue state (AI-generated fallback hints, revealed progressively, fetched lazily)
+        let clueList = [];
+        let cluesShown = 0;
+
+        // Device-tilt / press-and-hold reveal state
+        let orientationEnabled = false;
+        let deviceIsFlat = false;
+        let orientationHandler = null;
+        let orientationDataReceived = false;
+        let orientationCheckTimeout = null;
+        let tapToRevealEnabled = false;
+        let pressRevealing = false;
+        let revealStartTime = 0;
+        let minRevealTimer = null;
 
         // Manual claim flag: true when Got It pressed manually (lighter celebration)
         let manualClaim = false;
@@ -2537,11 +2549,7 @@
             }
 
             if (anyNewReveals) {
-                if (isSoloMode) {
-                    renderSoloClues();
-                } else {
-                    renderWordProgress();
-                }
+                renderWordProgress();
 
                 // Check if all words revealed
                 if (revealedWords.every(r => r)) {
@@ -2878,6 +2886,30 @@
                 const topics = await res.json();
                 const picker = document.getElementById('topicPicker');
                 picker.innerHTML = '';
+
+                // Random pill — toggles on like any other pill, but rolls a random pick
+                // from whatever other categories/topics exist rather than representing one itself.
+                const randomPill = document.createElement('span');
+                randomPill.className = 'topic-pill random-pill';
+                randomPill.textContent = '🎲 Random';
+                randomPill.dataset.topicId = 'random';
+                randomPill.tabIndex = 0;
+                randomPill.setAttribute('role', 'button');
+                const selectRandomPill = () => {
+                    const candidates = Array.from(picker.querySelectorAll('.topic-pill:not(.add-category):not(.random-pill)'));
+                    if (candidates.length === 0) return;
+                    const choice = candidates[Math.floor(Math.random() * candidates.length)];
+                    choice.click();
+                    // choice.click() sets the real underlying category/topic state (customCategory,
+                    // activeTopic, etc.) correctly — only override which pill LOOKS selected so
+                    // Random stays the visible selection instead of the pill it happened to pick.
+                    document.querySelectorAll('.topic-pill').forEach(p => p.classList.remove('active'));
+                    randomPill.classList.add('active');
+                };
+                randomPill.addEventListener('click', selectRandomPill);
+                randomPill.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); selectRandomPill(); } });
+                picker.appendChild(randomPill);
+
                 topics.forEach(t => {
                     const pill = document.createElement('span');
                     pill.className = 'topic-pill' + ((!activeTopic && t.id === 'default') || activeTopic === t.id ? ' active' : '');
@@ -2986,6 +3018,13 @@
             document.querySelectorAll('.topic-pill').forEach(p => {
                 p.classList.toggle('active', p.dataset.topicId === topicId);
             });
+
+            // Selecting any built-in topic (this function is never called for custom
+            // AI-generated categories, which manage their own state) always abandons
+            // whatever custom category may have been active.
+            customPhrases = null;
+            customCategory = null;
+            updateCustomActiveUI();
 
             if (topicId === 'default') {
                 activeTopic = null;
@@ -3283,24 +3322,20 @@
             if (isListening && recognition) {
                 setIsListening(false);
                 silentStop();
-                listenPeekToggle.classList.remove('visible');
-                listenPeek.classList.remove('visible');
-                listenPeekExpanded = false;
             }
             micMode = 'idle';
-            listenBtn.textContent = '🎤 Tap to Talk';
+            listenBtn.textContent = '🎤';
             listenBtn.classList.remove('active');
             transcriptBox.classList.remove('listening');
 
             statusEl.textContent = isPracticeMode ? `Practice complete! Score: ${localScore}` : `Time's up! Final score: ${localScore}`;
             statusEl.classList.remove('listening');
 
-            // Reset solo mode state
-            soloClues = [];
-            soloCluesShown = 0;
-            soloNextClues = null;
-            soloNextPhrase = null;
-            wordContainer.classList.remove('solo-clue-mode');
+            // Reset clue state
+            clueList = [];
+            cluesShown = 0;
+            clueDisplayEl.innerHTML = '';
+            disableOrientationDetection();
 
             wordProgressEl.innerHTML = '';
             // Show the final word that was active when time expired
@@ -4412,7 +4447,7 @@
                         if (readyMicEnabled && recognition) {
                             if (recognitionRunning) silentStop();
                             micMode = 'idle';
-                            listenBtn.textContent = '🎤 Tap to Talk';
+                            listenBtn.textContent = '🎤';
                             listenBtn.classList.remove('active');
                             listenBtn.disabled = false;
                             statusEl.textContent = 'Tap the mic to talk';
@@ -4426,7 +4461,7 @@
                                     await ensureMicPermission(true);
                                     initSpeechRecognition();
                                     micMode = 'idle';
-                                    listenBtn.textContent = '🎤 Tap to Talk';
+                                    listenBtn.textContent = '🎤';
                                     listenBtn.classList.remove('active');
                                     listenBtn.disabled = false;
                                     statusEl.textContent = 'Tap the mic to talk';
@@ -4436,9 +4471,6 @@
                                 }
                             })();
                         }
-                        // Auto-focus type answer input on desktop
-                        const isDesktop = !('ontouchstart' in window) && navigator.maxTouchPoints === 0;
-                        if (isDesktop) typeAnswerInput.focus();
                     }
                 } else if (msg.type === 'NEW_ROUND') {
                     // New round requested - reset state and show ready overlay
@@ -4682,8 +4714,7 @@
                 }
                 // Top hypothesis drives the visible transcript display
                 const transcript = transcripts[0];
-                transcriptEl.textContent = transcript || '-';
-                listenPeek.textContent = transcript || '';
+                transcriptEl.textContent = transcript || '';
 
                 // In local mode, check for individual word reveals across all alternatives
                 if (partialWordReveal && isLocalMode && gameActive && !hasClaimedVictory) {
@@ -4752,14 +4783,11 @@
                     // Reset listen button state since mic never started
                     setIsListening(false);
                     micMode = 'idle';
-                    listenBtn.textContent = '🎤 Tap to Talk';
+                    listenBtn.textContent = '🎤';
                     listenBtn.classList.remove('active');
                     listenBtn.disabled = false;
                     statusEl.classList.remove('listening');
                     transcriptBox.classList.remove('listening');
-                    listenPeekToggle.classList.remove('visible');
-                    listenPeek.classList.remove('visible');
-                    listenPeekExpanded = false;
                 } else if (event.error !== 'aborted') {
                     console.log('Speech recognition error:', event.error);
                     recognitionRunning = false;
@@ -4780,7 +4808,7 @@
                         setIsListening(false);
                         // Resume timer when silence ends the tap burst
                         if (isLocalMode && gameActive) timerPaused = false;
-                        listenBtn.textContent = '🎤 Tap to Talk';
+                        listenBtn.textContent = '🎤';
                         listenBtn.classList.remove('active');
                         statusEl.textContent = 'Tap mic to talk again';
                         statusEl.classList.remove('listening');
@@ -4828,20 +4856,6 @@
             }
         }
 
-        // Toggle listening
-        const listenPeekToggle = document.getElementById('listenPeekToggle');
-        let listenPeekExpanded = false;
-
-        listenPeekToggle.addEventListener('click', () => {
-            listenPeekExpanded = true;
-            listenPeekToggle.classList.remove('visible');
-            listenPeek.classList.add('visible');
-        });
-        listenPeek.addEventListener('click', () => {
-            listenPeekExpanded = false;
-            listenPeek.classList.remove('visible');
-            listenPeekToggle.classList.add('visible');
-        });
 
         // ===== Mic gesture: tap once to speak, long-press to toggle continuous =====
         // Tap fires one recognition burst, which runs until Android's silence
@@ -4861,9 +4875,8 @@
             silentStart();
             // Pause timer while talking in local mode — clock shouldn't tick during guesses
             if (isLocalMode && gameActive) timerPaused = true;
-            listenBtn.textContent = '🎙️ Listening...';
+            listenBtn.textContent = '🎙️';
             listenBtn.classList.add('active');
-            listenPeekToggle.classList.add('visible');
             statusEl.textContent = 'Listening... Say your guess!';
             statusEl.classList.add('listening');
             transcriptBox.classList.add('listening');
@@ -4874,7 +4887,7 @@
             micMode = 'idle';
             // Resume timer when done talking
             if (isLocalMode && gameActive) timerPaused = false;
-            listenBtn.textContent = '🎤 Tap to Talk';
+            listenBtn.textContent = '🎤';
             listenBtn.classList.remove('active');
             statusEl.textContent = 'Tap mic to talk';
             statusEl.classList.remove('listening');
@@ -4885,9 +4898,8 @@
             micMode = 'continuous';
             setIsListening(true);
             silentStart();
-            listenBtn.textContent = 'Stop Listening';
+            listenBtn.textContent = '🎙️';
             listenBtn.classList.add('active');
-            listenPeekToggle.classList.add('visible');
             statusEl.textContent = 'Listening... Say your guess!';
             statusEl.classList.add('listening');
             transcriptBox.classList.add('listening');
@@ -4900,15 +4912,12 @@
             setIsListening(false);
             silentStop();
             micMode = 'idle';
-            listenBtn.textContent = '🎤 Tap to Talk';
+            listenBtn.textContent = '🎤';
             listenBtn.classList.remove('active');
             statusEl.textContent = 'Stopped listening';
             statusEl.classList.remove('listening');
             transcriptBox.classList.remove('listening');
             closeMatchOverlay.classList.remove('active');
-            listenPeekToggle.classList.remove('visible');
-            listenPeek.classList.remove('visible');
-            listenPeekExpanded = false;
             // End game if manually stopped (online mode only)
             if (gameActive && !isLocalMode) {
                 endGame();
@@ -4984,23 +4993,24 @@
                 e.preventDefault();
                 if (skipBtn.classList.contains('btn-inactive')) return;
                 if (isLocalMode && gameActive) {
-                    soloModeHintOrGiveUp();
+                    localModeSkipWord();
                 } else if (!isLocalMode) {
                     skipWord();
                 }
             }
         });
 
-        // Type-to-answer: click "Listening..." status to show text input
+        // Type-to-answer: collapsed by default, opened via the ⌨️ toggle button
         const typeAnswerRow = document.getElementById('typeAnswerRow');
         const typeAnswerInput = document.getElementById('typeAnswerInput');
         const typeAnswerBtn = document.getElementById('typeAnswerBtn');
+        const typeToggleBtn = document.getElementById('typeToggleBtn');
 
-        // Hide the type-to-answer row on touch devices — keyboard input is awkward
-        // on phones, and the mic flow is the primary input there.
-        if (IS_TOUCH_DEVICE) {
-            typeAnswerRow.style.display = 'none';
-        }
+        typeToggleBtn.addEventListener('click', () => {
+            const expanded = typeAnswerRow.classList.toggle('expanded');
+            typeToggleBtn.classList.toggle('expanded', expanded);
+            if (expanded) typeAnswerInput.focus();
+        });
 
         function processTypedAnswer() {
             if (timerPaused) return;
@@ -5049,6 +5059,8 @@
 
         function hideTypeAnswerRow() {
             typeAnswerInput.value = '';
+            typeAnswerRow.classList.remove('expanded');
+            typeToggleBtn.classList.remove('expanded');
         }
 
         // Play Again button (also serves as Quit in practice mode)
@@ -5149,7 +5161,7 @@
             const categoryLabel = document.getElementById('categoryLabel');
             if (!categoryLabel) return;
             const cat = getActiveCategory();
-            categoryLabel.textContent = cat !== 'classic' ? cat : '';
+            categoryLabel.textContent = cat !== 'classic' ? `"${cat}"` : '';
         }
 
         // Show game screen, hide lobby
@@ -5157,6 +5169,7 @@
             lobbyScreen.classList.add('hidden');
             gameScreen.classList.add('active');
             backBtn.classList.add('active');
+            document.body.classList.add('in-round');
             updateCategoryLabel();
             // Push history so device back button returns to lobby instead of leaving
             history.pushState({ screen: 'game' }, '');
@@ -5164,7 +5177,6 @@
 
         // Show lobby, hide game screen
         function showLobby() {
-            isSoloMode = false;
             isSpectating = false;
             hideTypeAnswerRow();
             // Disconnect WebSocket first to prevent message handlers from re-showing overlays
@@ -5202,10 +5214,12 @@
             gameScreen.classList.remove('active', 'local-mode', 'online-mode');
             lobbyScreen.classList.remove('hidden');
             backBtn.classList.remove('active');
-            document.body.classList.remove('countdown-danger');
+            document.body.classList.remove('countdown-danger', 'in-round');
 
-            // Move skip button back to button-row
-            document.querySelector('.button-row').insertBefore(skipBtn, playAgainBtn);
+            // Reset button-row order: Skip, Got It, Play Again
+            const buttonRow = document.querySelector('.button-row');
+            buttonRow.insertBefore(skipBtn, gotItBtn);
+            buttonRow.insertBefore(gotItBtn, playAgainBtn);
 
             // Reset button visibility
             listenBtn.style.display = '';
@@ -5226,11 +5240,6 @@
             // Refresh topic picker (picks up new categories of the day)
             loadTopicPicker();
         }
-
-        // Title click → show leaderboard from lobby
-        document.getElementById('titleHotwords').addEventListener('click', async () => {
-            showLeaderboardView('local', null, null);
-        });
 
         // Device back button / browser back
         // Push an initial state so first back doesn't leave the app
@@ -5315,59 +5324,38 @@
             }
         }
 
-        // RKO easter egg — long-press 🔥 for 1.5s to toggle
+        // Title: click → leaderboard, long-press (1.5s) → RKO easter egg toggle
         let rkoLongPressTimer = null;
         let rkoLongPressTriggered = false;
+        function cancelRkoLongPress() {
+            if (rkoLongPressTimer) { clearTimeout(rkoLongPressTimer); rkoLongPressTimer = null; }
+        }
+        const titleHotwords = document.getElementById('titleHotwords');
+        titleHotwords.addEventListener('pointerdown', () => {
+            rkoLongPressTriggered = false;
+            rkoLongPressTimer = setTimeout(() => {
+                rkoLongPressTriggered = true;
+                rkoTakeoverActive = !rkoTakeoverActive;
+                localStorage.setItem('hotwords_rko_takeover', rkoTakeoverActive.toString());
+                activeTopic = null;
+                topicPhrases = null;
+                loadTopicPicker().then(() => {
+                    if (rkoTakeoverActive) selectTopic('company_jargon');
+                });
+            }, 1500);
+        });
+        titleHotwords.addEventListener('pointerup', cancelRkoLongPress);
+        titleHotwords.addEventListener('pointerleave', cancelRkoLongPress);
+        titleHotwords.addEventListener('pointercancel', cancelRkoLongPress);
+        titleHotwords.addEventListener('click', () => {
+            if (rkoLongPressTriggered) { rkoLongPressTriggered = false; return; }
+            showLeaderboardView('local', null, null);
+        });
 
-        // Customize phrases (💬 balloon)
-        const customizeBalloon = document.getElementById('customizeBalloon');
+        // Customize phrases overlay (opened from the "+" pill in the topic picker)
         const customizeOverlay = document.getElementById('customizeOverlay');
-        const customizeInput = document.getElementById('customizeInput'); // null — replaced by customizeCategoryInput
-        const customizeCount = document.getElementById('customizeCount');
         const customizeSave = document.getElementById('customizeSave');
         const customizeClear = document.getElementById('customizeClear');
-
-        function parseCustomPhrases(raw) {
-            return raw.split(',').map(s => s.trim()).filter(s => s.length > 0);
-        }
-
-        let customPhraseSource = ''; // 'ai' or 'fallback' — for UI feedback
-
-        async function buildCustomPhraseList(userPhrases) {
-            if (userPhrases.length === 0) return null;
-            if (userPhrases.length >= 70) { customPhraseSource = 'custom'; return userPhrases; }
-
-            const needed = 70 - userPhrases.length;
-
-            // Try API-generated similar phrases first
-            try {
-                const res = await fetch('/api/generate-phrases', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ phrases: userPhrases, count: needed })
-                });
-                if (res.ok) {
-                    const data = await res.json();
-                    if (data.phrases && data.phrases.length > 0) {
-                        const generated = data.phrases.filter(p => !userPhrases.includes(p));
-                        customPhraseSource = 'ai';
-                        return [...userPhrases, ...generated.slice(0, needed)];
-                    }
-                }
-            } catch (e) {
-                // Fall through to default padding
-            }
-
-            // Fallback: pad with random built-in phrases
-            customPhraseSource = 'fallback';
-            const padded = [...userPhrases];
-            const shuffled = [...localGameWords].sort(() => Math.random() - 0.5);
-            for (const phrase of shuffled) {
-                if (padded.length >= 70) break;
-                if (!padded.includes(phrase)) padded.push(phrase);
-            }
-            return padded;
-        }
 
         function updateCustomActiveUI() {
             const picker = document.getElementById('topicPicker');
@@ -5400,63 +5388,6 @@
             }
         }
 
-        function updateCustomizeCount() {
-            // Legacy — no longer used with category-based input
-        }
-
-        // Legacy custom phrases loading removed — now using category-based generation
-
-        // Preset fire (🔥) — tap to use built-in defaults, long-press for RKO easter egg
-        const presetFire = document.getElementById('presetFire');
-        if (!customPhrases) presetFire.classList.add('active');
-
-        presetFire.addEventListener('pointerdown', (e) => {
-            rkoLongPressTriggered = false;
-            rkoLongPressTimer = setTimeout(() => {
-                rkoLongPressTriggered = true;
-                // Toggle RKO mode
-                rkoTakeoverActive = !rkoTakeoverActive;
-                localStorage.setItem('hotwords_rko_takeover', rkoTakeoverActive.toString());
-                // Visual feedback — flame burst animation
-                presetFire.classList.remove('rko-active');
-                void presetFire.offsetWidth; // force reflow
-                presetFire.classList.add('rko-active');
-                setTimeout(() => presetFire.classList.remove('rko-active'), 2000);
-                // Reset topic selection and reload picker for the new mode
-                activeTopic = null;
-                topicPhrases = null;
-                // Clear custom phrases when switching to RKO
-                if (rkoTakeoverActive) {
-                    customPhrases = null;
-                    customCategory = null;
-                    customizeBalloon.classList.remove('has-custom');
-                    updateCustomActiveUI();
-                }
-                loadTopicPicker().then(() => {
-                    if (rkoTakeoverActive) selectTopic('company_jargon');
-                });
-            }, 1500);
-        });
-        function cancelRkoLongPress() {
-            if (rkoLongPressTimer) { clearTimeout(rkoLongPressTimer); rkoLongPressTimer = null; }
-        }
-        presetFire.addEventListener('pointerup', cancelRkoLongPress);
-        presetFire.addEventListener('pointerleave', cancelRkoLongPress);
-        presetFire.addEventListener('pointercancel', cancelRkoLongPress);
-
-        presetFire.addEventListener('click', (e) => {
-            e.stopPropagation();
-            if (rkoLongPressTriggered) return; // Long-press already handled
-            // Clear custom phrases and use built-in defaults
-            customPhrases = null;
-            customCategory = null;
-            customizeBalloon.classList.remove('has-custom');
-            presetFire.classList.add('active');
-            updateCustomActiveUI();
-            // Select default topic
-            selectTopic('default');
-        });
-
         const customizeCategoryInput = document.getElementById('customizeCategoryInput');
         const customizeCategoryStatus = document.getElementById('customizeCategoryStatus');
 
@@ -5465,11 +5396,6 @@
             if (customCategory) customizeCategoryInput.value = customCategory;
             customizeCategoryInput.focus();
         }
-
-        customizeBalloon.addEventListener('click', (e) => {
-            e.stopPropagation();
-            openCustomizeOverlay();
-        });
 
         customizeSave.addEventListener('click', async () => {
             const category = customizeCategoryInput.value.trim().split(/\s+/).slice(0, 3).join(' ').toLowerCase();
@@ -5483,7 +5409,7 @@
                 const res = await fetch('/api/generate-phrases', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ category: category, count: 70 })
+                    body: JSON.stringify({ category: category, count: 50 })
                 });
                 const data = await res.json();
                 if (data.phrases && data.phrases.length > 0) {
@@ -5514,7 +5440,7 @@
             } catch (e) {
                 customizeCategoryStatus.textContent = 'Error generating. Try again.';
             }
-            customizeSave.textContent = '✨ Generate';
+            customizeSave.textContent = 'Generate';
             customizeSave.disabled = false;
         });
 
@@ -5527,8 +5453,6 @@
             customizeCategoryInput.value = '';
             customPhrases = null;
             customCategory = null;
-            customizeBalloon.classList.remove('has-custom');
-            presetFire.classList.add('active');
             customizeOverlay.classList.remove('active');
             updateCustomActiveUI();
             sendPhrasesToServer();
@@ -5586,13 +5510,13 @@
         onlineStartBtn.addEventListener('click', () => startOnlineGame());
 
         function showOnboardRules() {
-            const duration = getGameDuration();
+            const isDesktop = !('ontouchstart' in window) && navigator.maxTouchPoints === 0;
             const rulesText = isPracticeMode
-                ? 'You\'ll receive clues — guess the phrase by speaking or typing!'
-                : 'Hints are available — guess the words before the timer expires!';
-            const hintText = isPracticeMode
-                ? 'Speak or type your answers.'
-                : 'Timer starts when you reveal the first clue.';
+                ? 'Hold your phone upright to reveal the word, then say or type your guess!'
+                : `Hold your phone upright to reveal the word before your ${customRoundTime}s runs out!`;
+            const hintText = isDesktop
+                ? 'Hold Spacebar to reveal. Stuck? Tap Show Clue for a hint.'
+                : 'Tilt the phone upright to reveal, flat to hide. Stuck? Tap Show Clue for a hint.';
             document.getElementById('onboardRulesTitle').textContent = rulesText;
             document.getElementById('onboardRulesHint').textContent = hintText;
             document.getElementById('onboardRules').classList.add('active');
@@ -5609,8 +5533,7 @@
             hideOnboardRules();
             localStorage.setItem('hotwords_rules_seen', Date.now().toString());
 
-            // Set up local (solo) mode state
-            isSoloMode = true;
+            // Set up local mode state
             localModePlayers = ['You'];
             isLocalMode = true;
             currentPlayerIndex = 0;
@@ -5620,6 +5543,7 @@
             currentRoomId = getRandomRoomName();
 
             // Request permissions on this user gesture (needed for iOS)
+            await enableOrientationDetection();
             const micGranted = await ensureMicPermission();
 
             launchLocalGame(micGranted);
@@ -5653,35 +5577,22 @@
                 if (!recognition) {
                     initSpeechRecognition();
                 }
-                listenBtn.textContent = '🎤 Tap to Talk';
+                listenBtn.textContent = '🎤';
                 listenBtn.classList.remove('active');
             }
             listenBtn.disabled = false;
             setBtnActive(skipBtn, true);
             setBtnActive(gotItBtn, true);
+            gotItBtn.style.display = '';
+            skipBtn.style.display = '';
 
-            // Move skip/hint button above the word box in local mode
-            document.getElementById('skipRow').appendChild(skipBtn);
-
-            // Solo mode wins by speaking the phrase aloud — no manual "Got It" needed
-            gotItBtn.style.display = 'none';
-            // Hint button is rendered inline below clues (easier to reach on small screens)
-            skipBtn.style.display = 'none';
-
-            if (micGranted !== false) {
-                statusEl.textContent = 'Say your guess!';
-                statusEl.classList.add('listening');
-                transcriptBox.classList.add('listening');
-            } else {
-                statusEl.textContent = '';
-            }
+            statusEl.textContent = '';
 
             gameActive = true;
 
             const word = getRandomPhrase();
-            await showNewWordSoloMode(word);
+            showNewWordLocalMode(word);
 
-            // Start timer after clues are ready so generation time doesn't count
             if (isPracticeMode) {
                 startPracticeMode();
                 timerDisplayEl.style.display = 'none';
@@ -5730,61 +5641,60 @@
         // Route-based lobby setup — /online shows the online section instead of Free Play/Timed
         initHomeRoute();
 
-        // ========== SOLO MODE ==========
+        // ========== LOCAL MODE (reveal card) ==========
 
-        async function showNewWordSoloMode(word) {
+        // Long phrases at the default font size overflow the card regardless of viewport
+        // width, since that's a text-length problem, not just a small-screen one.
+        function applyWordFontSize(word) {
+            const len = word.length;
+            let size = null;
+            if (len > 28) size = '1.1rem';
+            else if (len > 22) size = '1.3rem';
+            else if (len > 16) size = '1.6rem';
+            else if (len > 11) size = '2rem';
+            if (size) wordContainer.style.setProperty('--word-size', size);
+            else wordContainer.style.removeProperty('--word-size');
+        }
+
+        function showNewWordLocalMode(word) {
             currentWord = word;
             hasClaimedVictory = false;
+            manualClaim = false;
             phraseStartTime = Date.now();
             speechResultBaseline = speechResultsLength; // ignore stale speech from previous phrase
 
-            // Initialize word-by-word tracking (needed for speech matching)
+            const tar = document.getElementById('typeAnswerRow');
+            if (tar) { tar.querySelector('input').value = ''; }
+
+            // Initialize word-by-word tracking
             currentWords = word.trim().split(/\s+/);
             revealedWords = new Array(currentWords.length).fill(false);
+            wordDisplay.textContent = currentWord;
+            applyWordFontSize(currentWord);
+            renderWordProgress();
 
-            // Add solo-clue-mode class to hide the word text
-            wordContainer.classList.add('solo-clue-mode');
-            wordContainer.classList.remove('orientation-hidden', 'redacted');
+            // Reset Show Clue state — clues are fetched lazily on first tap
+            clueList = [];
+            cluesShown = 0;
+            clueDisplayEl.innerHTML = '';
+            clueBtn.disabled = false;
+            clueBtn.textContent = '💡 Show Clue';
 
-            // Check for pre-fetched clues
-            if (soloNextPhrase === word && soloNextClues) {
-                try {
-                    soloClues = await soloNextClues;
-                } catch {
-                    soloClues = generateFallbackClues(word);
-                }
+            // Reset to hidden state for new word (flat = hidden)
+            if (orientationEnabled || tapToRevealEnabled) {
+                deviceIsFlat = true;
+                updateWordVisibilityByOrientation();
             } else {
-                // Show loading, hide buttons while generating
-                wordDisplay.innerHTML = '<div class="solo-clues" style="color: #888;">Generating clues, please wait...</div>';
-                gotItBtn.style.display = 'none';
-                skipBtn.style.display = 'none';
-                try {
-                    soloClues = await fetchCluesForPhrase(word);
-                } catch {
-                    soloClues = generateFallbackClues(word);
-                }
-                // Solo mode keeps Got It and top Skip hidden — Hint is rendered inline
+                wordContainer.classList.remove('redacted', 'orientation-hidden');
+                if (redactTimer) clearTimeout(redactTimer);
+                redactTimer = setTimeout(() => {
+                    wordContainer.classList.add('redacted');
+                }, REDACT_DELAY);
             }
+            redactLabelEl.innerHTML = getHiddenLabel();
 
-            soloNextPhrase = null;
-            soloNextClues = null;
-
-            // Guard: game may have ended during async clue fetch
-            if (!gameActive) return;
-
-            soloCluesShown = Math.min(1, soloClues.length);
-            renderSoloClues();
-
-            // Pipeline: pre-fetch next phrase's clues
-            prefetchNextSoloPhrase();
-
-            statusEl.classList.remove('winner', 'skipped');
-            if (isListening) {
-                statusEl.textContent = 'Listening... Say your guess! (or click here to type)';
-                statusEl.classList.add('listening');
-            } else {
-                statusEl.textContent = '';
-            }
+            statusEl.textContent = '';
+            statusEl.classList.remove('winner', 'skipped', 'listening');
         }
 
         async function fetchCluesForPhrase(phrase) {
@@ -5803,145 +5713,46 @@
             const clues = [];
             clues.push(`This is ${words.length} word${words.length !== 1 ? 's' : ''}`);
             clues.push(`${phrase.replace(/\s/g, '').length} letters total`);
-            clues.push('Clue generation unavailable — use the hints above!');
-            clues.push('Try saying words related to what you see');
-            clues.push('Ask for another hint or give up to skip');
-            clues.push('No more clues available');
+            clues.push(`Starts with "${words.map(w => w[0].toUpperCase()).join(' ')}"`);
             return clues.slice(0, 6);
         }
 
-        function prefetchNextSoloPhrase() {
-            const nextWord = getRandomPhrase();
-            soloNextPhrase = nextWord;
-            soloNextClues = fetchCluesForPhrase(nextWord).catch(() => generateFallbackClues(nextWord));
-        }
-
-        function renderSoloClues() {
-            // Build the #### pattern — after 4 hints reveal first letters, after 5 also last letters
-            const showFirstLetters = soloCluesShown >= 4;
-            const showLastLetters = soloCluesShown >= 5;
-            let pattern = '';
-
-            function letterPattern(w) {
-                const first = `<span style="color: #B4975A;">${escapeHtml(w[0].toUpperCase())}</span>`;
-                const last = `<span style="color: #B4975A;">${escapeHtml(w[w.length - 1].toUpperCase())}</span>`;
-                if (w.length === 1) return first;
-                if (!showLastLetters) return first + '⎕'.repeat(w.length - 1);
-                if (w.length === 2) return first + last;
-                return first + '⎕'.repeat(w.length - 2) + last;
+        // Fallback hint for whoever's stuck guessing — shared, not tied to who's holding the phone.
+        async function showClue() {
+            if (!isLocalMode || !gameActive) return;
+            clueBtn.disabled = true;
+            if (clueList.length === 0) {
+                try { clueList = await fetchCluesForPhrase(currentWord); }
+                catch { clueList = generateFallbackClues(currentWord); }
             }
-
-            if (partialWordReveal) {
-                pattern = currentWords.map((w, i) => {
-                    if (revealedWords && revealedWords[i]) {
-                        return `<span style="color: #3EBECB;">${escapeHtml(w)}</span>`;
-                    }
-                    if (showFirstLetters && w.length > 0) {
-                        if (w.length >= 5) {
-                            return `<span class="word-group"><span class="letter-count">${w.length}</span><span>${letterPattern(w)}</span></span>`;
-                        }
-                        return letterPattern(w);
-                    }
-                    if (w.length >= 5) {
-                        return `<span class="word-group"><span class="letter-count">${w.length}</span><span>${'⎕'.repeat(w.length)}</span></span>`;
-                    }
-                    return '⎕'.repeat(w.length);
-                }).join(' ');
+            if (cluesShown < clueList.length) {
+                const line = document.createElement('div');
+                line.className = 'clue-line';
+                line.textContent = clueList[cluesShown];
+                clueDisplayEl.appendChild(line);
+                cluesShown++;
+            }
+            if (cluesShown >= clueList.length) {
+                clueBtn.textContent = 'No more clues';
+                clueBtn.disabled = true;
             } else {
-                const count = currentWords.length;
-                if (showFirstLetters) {
-                    pattern = currentWords.map(w => {
-                        if (w.length >= 5) {
-                            return `<span class="word-group"><span class="letter-count">${w.length}</span><span>${letterPattern(w)}</span></span>`;
-                        }
-                        return letterPattern(w);
-                    }).join(' ');
-                } else {
-                    pattern = `${count} word${count !== 1 ? 's' : ''}`;
-                }
-            }
-
-            let html = `<div class="solo-clues">`;
-            html += `<div class="solo-pattern">${pattern}</div>`;
-
-            for (let i = 0; i < soloCluesShown && i < soloClues.length; i++) {
-                const isNewest = (i === soloCluesShown - 1);
-                html += `<div class="solo-clue${isNewest ? ' solo-clue-new' : ''}">${escapeHtml(soloClues[i])}</div>`;
-            }
-
-            const remaining = soloClues.length - soloCluesShown;
-            if (remaining > 0) {
-                html += `<div class="solo-clues-remaining">${remaining} more clue${remaining !== 1 ? 's' : ''} available`;
-                html += `<button class="solo-hint-inline" id="soloHintInline">Hint</button>`;
-                html += `</div>`;
-            } else {
-                html += `<button class="solo-hint-inline give-up" id="soloHintInline">Give Up</button>`;
-            }
-
-            html += `</div>`;
-            wordDisplay.innerHTML = html;
-
-            // Wire up inline hint button (re-rendered each call, so re-attach handler)
-            const inlineHint = document.getElementById('soloHintInline');
-            if (inlineHint) {
-                inlineHint.addEventListener('pointerdown', (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    soloModeHintOrGiveUp();
-                });
-                inlineHint.addEventListener('click', (e) => e.preventDefault());
-            }
-
-            // Update button text (still keeps skipBtn label in sync for keyboard shortcut)
-            updateSoloButtonText();
-        }
-
-        function updateSoloButtonText() {
-            if (!isSoloMode) return;
-            const isDesktop = !('ontouchstart' in window) && navigator.maxTouchPoints === 0;
-            if (soloCluesShown < soloClues.length) {
-                skipBtn.innerHTML = 'Hint' + (isDesktop ? ' <span class="key-hint">[Space]</span>' : '');
-            } else {
-                skipBtn.innerHTML = 'Give Up' + (isDesktop ? ' <span class="key-hint">[Space]</span>' : '');
+                clueBtn.disabled = false;
             }
         }
+        clueBtn.addEventListener('click', () => showClue());
 
-        function soloModeHintOrGiveUp() {
-            if (!isSoloMode || !gameActive || hasClaimedVictory) return;
-
-            if (soloCluesShown < soloClues.length) {
-                // Reveal next clue
-                soloCluesShown++;
-                renderSoloClues();
-            } else {
-                // Give up — show answer briefly, then move on
-                phraseHistory.push({ phrase: currentWord, status: 'gave-up', time: Math.round((Date.now() - phraseStartTime) / 1000) });
-                wordDisplay.innerHTML = `<div class="solo-answer-reveal">${escapeHtml(currentWord)}</div>`;
-                hasClaimedVictory = true; // prevent speech matching during reveal
-
-                setTimeout(() => {
-                    if (!gameActive) return;
-                    // Keep hasClaimedVictory=true during async load; showNewWordSoloMode resets it
-                    nextSoloPhrase();
-                }, 1500);
-            }
-        }
-
-        async function nextSoloPhrase() {
-            transcriptEl.textContent = '-';
+        function nextPhrase() {
+            transcriptEl.textContent = '';
             similarityEl.textContent = '';
             similarityEl.classList.remove('close');
-
-            const word = soloNextPhrase || getRandomPhrase();
-            await showNewWordSoloMode(word);
+            showNewWordLocalMode(getRandomPhrase());
         }
 
-        // Local (solo) mode: Claim victory
+        // Local mode: Claim victory
         function localModeClaimVictory() {
             if (!isLocalMode || !gameActive || hasClaimedVictory || gotItCooldown || timerPaused) return;
             hasClaimedVictory = true;
 
-            // Brief cooldown, no timer pause
             gotItCooldown = true;
             setBtnActive(gotItBtn, false);
             setTimeout(() => { gotItCooldown = false; setBtnActive(gotItBtn, true); }, 400);
@@ -5961,27 +5772,39 @@
 
             closeMatchOverlay.classList.remove('active');
             showCelebrationLocal(currentWord, localScore);
-            nextSoloPhrase();
+            nextPhrase();
         }
 
-        // Override skip button for local mode
-        // Use pointerdown for instant response on mobile
+        // Local mode: Skip phrase (hot potato — new phrase, no score change)
+        function localModeSkipWord() {
+            if (!isLocalMode || !gameActive || skipCooldown || timerPaused) return;
+            startSkipCooldown();
+
+            phraseHistory.push({ phrase: currentWord, status: 'skipped', time: Math.round((Date.now() - phraseStartTime) / 1000) });
+            statusEl.textContent = 'Skipped!';
+            statusEl.classList.add('skipped');
+            closeMatchOverlay.classList.remove('active');
+            transcriptEl.textContent = '';
+            similarityEl.textContent = '';
+            similarityEl.classList.remove('close');
+            nextPhrase();
+        }
+
+        // Skip button — local mode uses pointerdown for instant response on mobile
         skipBtn.addEventListener('pointerdown', (e) => {
             if (skipBtn.classList.contains('btn-inactive')) return;
             if (isLocalMode && gameActive) {
                 e.preventDefault();
                 e.stopPropagation();
-                soloModeHintOrGiveUp();
+                localModeSkipWord();
             }
         }, true);
         skipBtn.addEventListener('click', (e) => {
             if (isLocalMode) e.preventDefault();
         });
 
-        // Update button text
-        // getHiddenLabel() is still used by renderWordProgress() (shared with online mode's
-        // per-word progress display), so it's kept even though the device-tilt/press-to-reveal
-        // mechanic it originally supported (Pass & Play) has been removed.
+        // getHiddenLabel() also backs renderWordProgress()'s local-mode branch and the
+        // device-tilt/press-to-reveal functions below.
         function getHiddenLabel() {
             let pattern = '';
             if (currentWords && currentWords.length > 0) {
@@ -6001,7 +5824,212 @@
                     pattern = `${count} word${count !== 1 ? 's' : ''}`;
                 }
             }
-            return `<div class="reveal-hint" style="font-size: 3rem; letter-spacing: 4px; color: #fff; font-weight: bold; line-height: 1.4; word-break: keep-all;">${pattern}</div>`;
+            const isDesktopHint = !('ontouchstart' in window) && navigator.maxTouchPoints === 0;
+            const hint = isDesktopHint
+                ? 'Hold Spacebar to reveal'
+                : (orientationEnabled ? 'Tilt vertical or press & hold to reveal' : 'Press & hold to reveal');
+            return `<div class="reveal-pattern">${pattern}</div><div class="reveal-hint">${hint}</div>`;
+        }
+
+        // ========== DEVICE TILT / PRESS-AND-HOLD REVEAL ==========
+        // Tilt-to-reveal is primary on phones/tablets (hold the phone upright to see the
+        // word, flat to hide it); press-and-hold is the fallback for desktop or devices
+        // without DeviceOrientationEvent support.
+
+        async function enableOrientationDetection() {
+            const isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || (navigator.msMaxTouchPoints > 0);
+            const isMobileUA = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
+            if (!isTouchDevice && !isMobileUA) {
+                enableTapToReveal();
+                return;
+            }
+            if (!window.DeviceOrientationEvent) {
+                enableTapToReveal();
+                return;
+            }
+            // iOS 13+ requires permission, requested on this user gesture
+            if (typeof DeviceOrientationEvent.requestPermission === 'function') {
+                try {
+                    const response = await DeviceOrientationEvent.requestPermission();
+                    if (response === 'granted') startOrientationListening();
+                    else enableTapToReveal();
+                } catch (err) {
+                    enableTapToReveal();
+                }
+            } else {
+                startOrientationListening();
+            }
+        }
+
+        function startOrientationListening() {
+            orientationEnabled = true;
+            orientationDataReceived = false;
+
+            orientationHandler = (event) => {
+                const beta = event.beta;   // -180..180, front-to-back tilt
+                const gamma = event.gamma; // -90..90, left-to-right tilt
+
+                if (beta !== null && beta !== 0) orientationDataReceived = true;
+
+                // beta ~= 0: flat (facing up); beta ~= 90: upright. Hysteresis avoids flicker.
+                const flatThreshold = 75, uprightThreshold = 80, fadeStart = 75, fadeEnd = 80;
+
+                if (beta !== null) {
+                    const absBeta = Math.abs(beta);
+                    if (absBeta < flatThreshold && Math.abs(gamma) < flatThreshold) {
+                        if (!deviceIsFlat && !pressRevealing) {
+                            deviceIsFlat = true;
+                            updateWordVisibilityByOrientation();
+                        }
+                        wordContainer.style.opacity = '';
+                        redactLabelEl.style.opacity = '';
+                    } else if (absBeta >= uprightThreshold) {
+                        if (deviceIsFlat) {
+                            deviceIsFlat = false;
+                            updateWordVisibilityByOrientation();
+                            if (timerPaused) {
+                                timerPaused = false;
+                                timerDisplayEl.classList.remove('paused');
+                                startGotItCooldown();
+                                startSkipCooldown();
+                            }
+                        }
+                        wordContainer.style.opacity = '';
+                        redactLabelEl.style.opacity = '';
+                    } else if (absBeta >= fadeStart && absBeta < fadeEnd && deviceIsFlat) {
+                        const progress = (absBeta - fadeStart) / (fadeEnd - fadeStart);
+                        redactLabelEl.style.opacity = String(1 - progress);
+                        const wordText = wordContainer.querySelector('.word-text');
+                        if (wordText) wordText.style.opacity = String(progress * 0.5);
+                    }
+                }
+            };
+
+            window.addEventListener('deviceorientation', orientationHandler);
+
+            // Press-to-reveal also works as a manual alternative while tilt is active
+            wordContainer.style.cursor = 'pointer';
+            wordContainer.addEventListener('mousedown', startReveal);
+            wordContainer.addEventListener('mouseup', stopReveal);
+            wordContainer.addEventListener('mouseleave', stopReveal);
+            wordContainer.addEventListener('touchstart', startReveal, { passive: true });
+            wordContainer.addEventListener('touchend', stopReveal, { passive: true });
+            wordContainer.addEventListener('touchcancel', stopReveal, { passive: true });
+            wordContainer.addEventListener('contextmenu', preventContextMenu);
+
+            // If no real orientation data arrives within 1s, fall back to press-and-hold
+            orientationCheckTimeout = setTimeout(() => {
+                if (!orientationDataReceived) enableTapToReveal();
+            }, 1000);
+
+            updateWordVisibilityByOrientation();
+        }
+
+        function enableTapToReveal() {
+            orientationEnabled = false;
+            tapToRevealEnabled = true;
+            deviceIsFlat = true;
+
+            wordContainer.classList.add('orientation-hidden');
+            wordContainer.style.cursor = 'pointer';
+            wordContainer.addEventListener('mousedown', startReveal);
+            wordContainer.addEventListener('mouseup', stopReveal);
+            wordContainer.addEventListener('mouseleave', stopReveal);
+            wordContainer.addEventListener('touchstart', startReveal, { passive: true });
+            wordContainer.addEventListener('touchend', stopReveal, { passive: true });
+            wordContainer.addEventListener('touchcancel', stopReveal, { passive: true });
+            wordContainer.addEventListener('contextmenu', preventContextMenu);
+        }
+
+        function startReveal(e) {
+            if (!isLocalMode || !gameActive) return;
+            pressRevealing = true;
+            revealStartTime = Date.now();
+            if (minRevealTimer) { clearTimeout(minRevealTimer); minRevealTimer = null; }
+            deviceIsFlat = false;
+            wordContainer.classList.remove('orientation-hidden');
+            if (timerPaused) {
+                timerPaused = false;
+                timerDisplayEl.classList.remove('paused');
+                hasClaimedVictory = false;
+                gotItCooldown = false;
+                setBtnActive(gotItBtn, true);
+                skipCooldown = false;
+                setBtnActive(skipBtn, true);
+            }
+        }
+
+        function preventContextMenu(e) {
+            e.preventDefault();
+        }
+
+        function stopReveal(e) {
+            if (!isLocalMode || !gameActive) return;
+            pressRevealing = false;
+            if (orientationEnabled) {
+                updateWordVisibilityByOrientation();
+                return;
+            }
+            // Ensure a minimum 1s reveal so a quick tap isn't invisible
+            const elapsed = Date.now() - revealStartTime;
+            if (elapsed < 1000) {
+                if (minRevealTimer) clearTimeout(minRevealTimer);
+                minRevealTimer = setTimeout(() => {
+                    minRevealTimer = null;
+                    if (!pressRevealing && gameActive) {
+                        deviceIsFlat = true;
+                        wordContainer.classList.add('orientation-hidden');
+                        redactLabelEl.innerHTML = getHiddenLabel();
+                    }
+                }, 1000 - elapsed);
+                return;
+            }
+            deviceIsFlat = true;
+            wordContainer.classList.add('orientation-hidden');
+            redactLabelEl.innerHTML = getHiddenLabel();
+        }
+
+        function updateWordVisibilityByOrientation() {
+            if (!orientationEnabled && !tapToRevealEnabled) return;
+
+            redactLabelEl.style.opacity = '';
+            const wordText = wordContainer.querySelector('.word-text');
+            if (wordText) wordText.style.opacity = '';
+
+            if (deviceIsFlat) {
+                wordContainer.classList.add('orientation-hidden');
+                wordContainer.classList.remove('redacted');
+                redactLabelEl.innerHTML = getHiddenLabel();
+            } else {
+                wordContainer.classList.remove('orientation-hidden');
+                wordContainer.classList.remove('redacted');
+            }
+        }
+
+        function disableOrientationDetection() {
+            orientationEnabled = false;
+            deviceIsFlat = false;
+            tapToRevealEnabled = false;
+            pressRevealing = false;
+            if (minRevealTimer) { clearTimeout(minRevealTimer); minRevealTimer = null; }
+            if (orientationHandler) {
+                window.removeEventListener('deviceorientation', orientationHandler);
+                orientationHandler = null;
+            }
+            if (orientationCheckTimeout) {
+                clearTimeout(orientationCheckTimeout);
+                orientationCheckTimeout = null;
+            }
+            wordContainer.removeEventListener('mousedown', startReveal);
+            wordContainer.removeEventListener('mouseup', stopReveal);
+            wordContainer.removeEventListener('mouseleave', stopReveal);
+            wordContainer.removeEventListener('touchstart', startReveal);
+            wordContainer.removeEventListener('touchend', stopReveal);
+            wordContainer.removeEventListener('touchcancel', stopReveal);
+            wordContainer.removeEventListener('contextmenu', preventContextMenu);
+            wordContainer.style.cursor = '';
+            wordContainer.classList.remove('orientation-hidden');
         }
 
         // Keyboard shortcuts
@@ -6043,10 +6071,10 @@
             if (!gameActive) return;
 
             if (isLocalMode) {
-                // Space or Tab: reveal next hint (or give up once all hints are shown)
-                if ((e.code === 'Space' && !e.repeat) || e.code === 'Tab') {
+                // Space: press-and-hold reveal (desktop fallback for tilt)
+                if (e.code === 'Space' && !e.repeat) {
                     e.preventDefault();
-                    soloModeHintOrGiveUp();
+                    startReveal();
                 }
                 // Enter: Got it!
                 if (e.code === 'Enter') {
@@ -6055,6 +6083,16 @@
                         manualClaim = true;
                         localModeClaimVictory();
                     }
+                }
+                // Tab: Skip
+                if (e.code === 'Tab') {
+                    e.preventDefault();
+                    localModeSkipWord();
+                }
+                // H: Show Clue
+                if (e.code === 'KeyH') {
+                    e.preventDefault();
+                    showClue();
                 }
             } else {
                 // Online mode: Enter = Got It, Tab = Skip (desktop only)
@@ -6070,6 +6108,14 @@
                     e.preventDefault();
                     skipWord();
                 }
+            }
+        });
+
+        document.addEventListener('keyup', (e) => {
+            if (!isLocalMode || !gameActive) return;
+            if (e.code === 'Space') {
+                e.preventDefault();
+                stopReveal();
             }
         });
 

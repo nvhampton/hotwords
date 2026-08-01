@@ -233,12 +233,32 @@ data class PersistedState(
 fun saveState(roundEntries: ConcurrentHashMap<String, RoundEntry>, categoriesOfTheDay: ConcurrentHashMap<String, CachedCategory>) {
     synchronized(persistLock) {
         try {
-            val state = PersistedState(
-                leaderboard = roundEntries.values.toList(),
-                categories = categoriesOfTheDay.toMap()
+            val leaderboard = roundEntries.values.toList()
+            val categories = categoriesOfTheDay.toMap()
+
+            // Never let an empty in-memory state (e.g. a load failure on startup) silently
+            // overwrite a previously-saved non-empty file — this is how a single bad boot
+            // used to permanently wipe custom categories and the leaderboard.
+            if (leaderboard.isEmpty() && categories.isEmpty() && leaderboardFile.exists() && leaderboardFile.length() > 2) {
+                println("saveState: skipping write — in-memory state is empty but ${leaderboardFile.path} is not; refusing to overwrite")
+                return
+            }
+
+            val state = PersistedState(leaderboard = leaderboard, categories = categories)
+            val json = Json.encodeToString(PersistedState.serializer(), state)
+
+            // Write-then-atomic-rename so a process kill mid-save (e.g. systemd stopping the
+            // service during a deploy) can never leave state.json truncated/corrupt.
+            val tmpFile = File(dataDir, "state.json.tmp")
+            tmpFile.writeText(json)
+            java.nio.file.Files.move(
+                tmpFile.toPath(), leaderboardFile.toPath(),
+                java.nio.file.StandardCopyOption.REPLACE_EXISTING,
+                java.nio.file.StandardCopyOption.ATOMIC_MOVE
             )
-            leaderboardFile.writeText(Json.encodeToString(PersistedState.serializer(), state))
-        } catch (_: Exception) {}
+        } catch (e: Exception) {
+            println("saveState failed: ${e.message}")
+        }
     }
 }
 
@@ -249,8 +269,15 @@ fun loadState(roundEntries: ConcurrentHashMap<String, RoundEntry>, categoriesOfT
             state.leaderboard.forEach { roundEntries[it.id] = it }
             state.categories.forEach { (k, v) -> categoriesOfTheDay[k] = v }
         }
-    } catch (_: Exception) {
-        // Corrupted file — start fresh
+    } catch (e: Exception) {
+        // Corrupted file — preserve it for recovery instead of silently discarding, since
+        // saveState() would otherwise overwrite it with empty data on the next periodic save.
+        println("loadState failed to parse ${leaderboardFile.path}: ${e.message}")
+        try {
+            val backup = File(dataDir, "state.json.corrupt-${System.currentTimeMillis()}")
+            leaderboardFile.copyTo(backup, overwrite = true)
+            println("Backed up unparseable state file to ${backup.path}")
+        } catch (_: Exception) {}
     }
 }
 
@@ -276,6 +303,10 @@ fun Application.module() {
             val path = call.request.path()
             when {
                 path == "/" || path.endsWith(".html") ->
+                    call.response.header(HttpHeaders.CacheControl, "max-age=300, must-revalidate")
+                // The topic manifests drive what shows on the home screen — keep them fresh
+                // like index.html rather than caching a day behind whenever they change.
+                path == "/phrases/topics.json" || path == "/phrases/rko-topics.json" ->
                     call.response.header(HttpHeaders.CacheControl, "max-age=300, must-revalidate")
                 path.startsWith("/phrases/") ->
                     call.response.header(HttpHeaders.CacheControl, "max-age=86400, public")
@@ -1168,29 +1199,51 @@ fun Application.module() {
             }
 
             val safeCount = count.coerceIn(1, 100)
+            // Ask the model for some headroom above what's needed — after de-duplication
+            // below, this keeps us at (or very near) the requested count instead of falling
+            // short whenever the model produces a few near-duplicates.
+            val requestCount = minOf(safeCount + minOf(safeCount / 5 + 3, 15), 100)
 
             val prompt = if (!category.isNullOrBlank()) {
                 // Category mode: generate phrases for a category
                 val safeCategory = category.take(100).replace(Regex("[\"\\\\]"), "")
-                """Generate exactly $safeCount short phrases or expressions related to the category: "$safeCategory"
+                """Generate exactly $requestCount short phrases for the category: "$safeCategory", for a word-guessing party game played by families with kids.
 
-Rules:
-- Each phrase should be 1-5 words
-- Phrases should be fun, recognizable things within this category that would work well in a word-guessing party game
-- Vary the difficulty — mix easy and tricky ones
+What makes a phrase GOOD (do this):
+- Specific, nameable things: a character, creature, item, move, location, or catchphrase — not a description of an activity
+- Instantly recognizable to someone who knows this topic — the kind of thing a fan would grin at
+- Good examples: "ender dragon", "diamond pickaxe", "creeper explosion", "victory royale"
+- Bad examples (too generic/descriptive — avoid this style): "defeating the boss", "collecting items", "eliminating opponents", "building structures"
+
+Cover a mix across the topic, roughly balanced across:
+- Characters or creatures
+- Items, tools, or gear
+- Specific named actions, moves, or events
+- Notable locations or settings
+- Catchphrases, memes, or running jokes associated with it
+
+Keep it family-friendly — this is played by kids. No violence, gore, weapons-as-the-point, or scary framing, even if the source material has combat in it. Skip anything better suited to an older audience.
+
+Stay grounded in this topic itself. Don't reference other unrelated games, movies, or franchises — the only exception is a genuine, well-known part of THIS topic's own culture (e.g. an official in-game easter egg or catchphrase).
+
+Formatting rules:
+- Each phrase is 1-5 words
 - NO acronyms or abbreviations — write them out as full words
 - NO hyphens, apostrophes, or special punctuation — only plain letters and spaces (e.g. "product market fit" not "product-market fit")
 - All words must be correctly spelled — no slang spellings or dropped letters (e.g. "believing" not "believin")
+- No duplicate or near-duplicate phrases — e.g. don't include both "steve" and "steve skin", pick one
 - Return ONLY a JSON array of strings, no other text
 - Example format: ["phrase one", "phrase two", "phrase three"]"""
             } else {
                 // Example mode: generate similar phrases
                 val exampleList = phrases.take(20).joinToString(", ") { "\"$it\"" }
-                """Generate exactly $safeCount short phrases or expressions that are thematically similar to these examples: $exampleList
+                """Generate exactly $requestCount short phrases or expressions that are thematically similar to these examples: $exampleList
 
 Rules:
 - Each phrase should be 1-5 words
 - Match the style, theme, and difficulty of the examples
+- Prefer specific, nameable things over generic descriptive phrases
+- Keep it family-friendly — this is played by kids. No violence, gore, or scary framing.
 - Don't repeat any of the example phrases
 - NO acronyms or abbreviations — write them out as full words
 - NO hyphens, apostrophes, or special punctuation — only plain letters and spaces (e.g. "product market fit" not "product-market fit")
@@ -1233,6 +1286,7 @@ Rules:
                 val generatedPhrases = jsonLenient.decodeFromString(JsonArray.serializer(), cleanJson)
                     .map { it.jsonPrimitive.content.replace("'", "").replace(Regex("[^a-zA-Z0-9 ]"), " ").replace(Regex("\\s+"), " ").trim().lowercase() }
                     .filter { it.isNotBlank() }
+                    .distinct()
                     .take(safeCount)
 
                 call.respond(mapOf("phrases" to generatedPhrases))
