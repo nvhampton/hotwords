@@ -22,16 +22,29 @@
 
   #start {
     position: absolute; inset: 0;
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    background: #1e1b4b; color: white; gap: 24px; text-align: center; padding: 24px;
+    display: flex; flex-direction: column; align-items: center;
+    background: #1e1b4b; color: white; gap: 16px; text-align: center;
+    padding: max(24px, env(safe-area-inset-top)) 24px max(24px, env(safe-area-inset-bottom));
+    overflow-y: auto;
   }
-  #start h1 { font-size: clamp(2rem, 8vw, 4rem); margin: 0; }
-  #start p { font-size: clamp(1rem, 3vw, 1.4rem); opacity: 0.8; margin: 0; max-width: 32ch; }
-  #start button {
-    font-size: clamp(1.3rem, 5vw, 2rem); font-weight: 700;
-    padding: 1em 2em; border-radius: 999px; border: none;
-    background: #facc15; color: #1e1b4b; cursor: pointer;
+  #start h1 { font-size: clamp(1.8rem, 7vw, 3rem); margin: 12px 0 0; }
+  #start p { font-size: clamp(0.9rem, 2.6vw, 1.1rem); opacity: 0.75; margin: 0; max-width: 32ch; }
+
+  #pack-list {
+    display: flex; flex-direction: column; gap: 12px;
+    width: 100%; max-width: 440px; margin: 8px 0 16px;
   }
+  .pack-btn {
+    display: flex; align-items: center; gap: 14px;
+    padding: 14px 18px; border-radius: 20px; border: none;
+    cursor: pointer; text-align: left; color: #1f2937;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+  }
+  .pack-btn .pack-emoji { font-size: 2rem; line-height: 1; }
+  .pack-btn .pack-text { flex: 1; }
+  .pack-btn .pack-name { font-weight: 800; font-size: 1.05rem; display: block; }
+  .pack-btn .pack-meta { font-weight: 600; font-size: 0.78rem; opacity: 0.6; display: block; margin-top: 2px; }
+  .pack-btn .pack-count { font-weight: 700; font-size: 0.85rem; opacity: 0.55; }
 
   #deck {
     position: absolute; inset: 0; display: none;
@@ -70,7 +83,7 @@
     font-size: 1rem; font-weight: 700; color: rgba(0,0,0,0.4);
     background: rgba(255,255,255,0.6); padding: 4px 12px; border-radius: 999px;
   }
-  #shuffle-btn {
+  .icon-btn {
     font-size: 1.3rem; background: rgba(255,255,255,0.6); border: none;
     border-radius: 999px; width: 44px; height: 44px; cursor: pointer;
   }
@@ -86,14 +99,15 @@
 <div id="app">
   <div id="start">
     <h1>Totwords</h1>
-    <p>Tap words to hear them out loud. Tap the edges to move between cards.</p>
-    <button id="start-btn">Start ▶</button>
+    <p>Pick a pack, then tap words to hear them out loud. Tap the edges to move between cards.</p>
+    <div id="pack-list"></div>
   </div>
 
   <div id="deck">
     <div id="topbar">
+      <button id="packs-btn" class="icon-btn" title="Choose pack">🗂️</button>
       <span id="counter"></span>
-      <button id="shuffle-btn" title="Shuffle">🔀</button>
+      <button id="shuffle-btn" class="icon-btn" title="Shuffle">🔀</button>
     </div>
     <div id="zone-prev" class="zone"><span class="arrow">‹</span></div>
     <div id="zone-next" class="zone"><span class="arrow">›</span></div>
@@ -107,26 +121,106 @@
 
 <script>
 (function () {
-  const WORDS = [
-    ["Apple", "🍎"], ["Ball", "⚽"], ["Banana", "🍌"], ["Bear", "🐻"], ["Bird", "🐦"],
-    ["Book", "📖"], ["Bus", "🚌"], ["Car", "🚗"], ["Cat", "🐱"], ["Chicken", "🐔"],
-    ["Cookie", "🍪"], ["Cow", "🐮"], ["Dog", "🐶"], ["Duck", "🦆"], ["Elephant", "🐘"],
-    ["Fish", "🐟"], ["Flower", "🌸"], ["Hat", "🎩"], ["Horse", "🐴"], ["Lion", "🦁"],
-    ["Milk", "🥛"], ["Moon", "🌙"], ["Pig", "🐷"], ["Shoe", "👟"], ["Sheep", "🐑"],
-    ["Star", "⭐"], ["Sun", "☀️"], ["Tree", "🌳"], ["Water", "💧"], ["Cake", "🎂"],
-    ["Egg", "🥚"], ["Frog", "🐸"], ["Bee", "🐝"], ["Butterfly", "🦋"], ["Rabbit", "🐰"],
-    ["Monkey", "🐵"], ["Owl", "🦉"], ["Turtle", "🐢"], ["Bread", "🍞"], ["Cheese", "🧀"],
-    ["Balloon", "🎈"], ["Train", "🚂"], ["Boat", "⛵"], ["Airplane", "✈️"], ["Bicycle", "🚲"],
-    ["Chair", "🪑"], ["Spoon", "🥄"], ["Cup", "🥤"], ["Bed", "🛏️"], ["Door", "🚪"]
+  const PACKS = [
+    {
+      name: "Pack 1: First Words", icon: "🐶", color: "#fde68a", difficulty: "Easy",
+      words: [
+        ["Apple", "🍎"], ["Ball", "⚽"], ["Banana", "🍌"], ["Bear", "🐻"], ["Bird", "🐦"],
+        ["Book", "📖"], ["Bus", "🚌"], ["Car", "🚗"], ["Cat", "🐱"], ["Chicken", "🐔"],
+        ["Cookie", "🍪"], ["Cow", "🐮"], ["Dog", "🐶"], ["Duck", "🦆"], ["Elephant", "🐘"],
+        ["Fish", "🐟"], ["Flower", "🌸"], ["Hat", "🎩"], ["Horse", "🐴"], ["Lion", "🦁"],
+        ["Milk", "🥛"], ["Moon", "🌙"], ["Pig", "🐷"], ["Shoe", "👟"], ["Sheep", "🐑"],
+        ["Star", "⭐"], ["Sun", "☀️"], ["Tree", "🌳"], ["Water", "💧"], ["Cake", "🎂"],
+        ["Egg", "🥚"], ["Frog", "🐸"], ["Bee", "🐝"], ["Butterfly", "🦋"], ["Rabbit", "🐰"],
+        ["Monkey", "🐵"], ["Owl", "🦉"], ["Turtle", "🐢"], ["Bread", "🍞"], ["Cheese", "🧀"],
+        ["Balloon", "🎈"], ["Train", "🚂"], ["Boat", "⛵"], ["Airplane", "✈️"], ["Bicycle", "🚲"],
+        ["Chair", "🪑"], ["Spoon", "🥄"], ["Cup", "🥤"], ["Bed", "🛏️"], ["Door", "🚪"]
+      ]
+    },
+    {
+      name: "Pack 2: Around the House", icon: "🏠", color: "#bfdbfe", difficulty: "Easy",
+      words: [
+        ["Lamp", "💡"], ["TV", "📺"], ["Phone", "📱"], ["Clock", "⏰"], ["Window", "🪟"],
+        ["Soap", "🧼"], ["Toothbrush", "🪥"], ["Bathtub", "🛁"], ["Mirror", "🪞"], ["Key", "🔑"],
+        ["Broom", "🧹"], ["Backpack", "🎒"], ["Box", "📦"], ["Umbrella", "☂️"], ["Candle", "🕯️"],
+        ["Gift", "🎁"], ["Bell", "🔔"], ["Scissors", "✂️"], ["Pencil", "✏️"], ["Crayon", "🖍️"],
+        ["Guitar", "🎸"], ["Drum", "🥁"], ["Ring", "💍"], ["Glasses", "👓"], ["Sock", "🧦"],
+        ["Shirt", "👕"], ["Pants", "👖"], ["Dress", "👗"], ["Jacket", "🧥"], ["Crown", "👑"],
+        ["Bow", "🎀"], ["Basket", "🧺"], ["Bucket", "🪣"], ["Trash Can", "🗑️"], ["Plate", "🍽️"],
+        ["Bowl", "🥣"], ["Fork", "🍴"], ["Pot", "🍳"], ["Kettle", "🫖"], ["Bottle", "🍼"],
+        ["Teddy Bear", "🧸"], ["Blocks", "🧱"], ["Puzzle", "🧩"], ["Kite", "🪁"], ["Robot", "🤖"]
+      ]
+    },
+    {
+      name: "Pack 3: Wild Animals & Nature", icon: "🦁", color: "#a7f3d0", difficulty: "Easy",
+      words: [
+        ["Tiger", "🐯"], ["Zebra", "🦓"], ["Giraffe", "🦒"], ["Panda", "🐼"], ["Koala", "🐨"],
+        ["Kangaroo", "🦘"], ["Fox", "🦊"], ["Wolf", "🐺"], ["Deer", "🦌"], ["Squirrel", "🐿️"],
+        ["Hedgehog", "🦔"], ["Bat", "🦇"], ["Snail", "🐌"], ["Snake", "🐍"], ["Spider", "🕷️"],
+        ["Ladybug", "🐞"], ["Ant", "🐜"], ["Caterpillar", "🐛"], ["Worm", "🪱"], ["Octopus", "🐙"], ["Whale", "🐳"], ["Dolphin", "🐬"],
+        ["Shark", "🦈"], ["Crab", "🦀"], ["Shrimp", "🦐"], ["Penguin", "🐧"], ["Peacock", "🦚"],
+        ["Parrot", "🦜"], ["Flamingo", "🦩"], ["Swan", "🦢"], ["Rooster", "🐓"], ["Goat", "🐐"],
+        ["Camel", "🐫"], ["Lizard", "🦎"], ["Leaf", "🍃"], ["Mushroom", "🍄"], ["Rock", "🪨"],
+        ["Volcano", "🌋"], ["Mountain", "⛰️"], ["Ocean", "🌊"], ["Island", "🏝️"]
+      ]
+    },
+    {
+      name: "Pack 4: Yummy Food", icon: "🍕", color: "#fed7aa", difficulty: "Easy",
+      words: [
+        ["Orange", "🍊"], ["Strawberry", "🍓"], ["Grapes", "🍇"], ["Watermelon", "🍉"], ["Pineapple", "🍍"],
+        ["Peach", "🍑"], ["Cherry", "🍒"], ["Lemon", "🍋"], ["Carrot", "🥕"], ["Corn", "🌽"],
+        ["Broccoli", "🥦"], ["Potato", "🥔"], ["Tomato", "🍅"], ["Cucumber", "🥒"], ["Pepper", "🫑"], ["Pizza", "🍕"],
+        ["Burger", "🍔"], ["Fries", "🍟"], ["Hot Dog", "🌭"], ["Taco", "🌮"], ["Sandwich", "🥪"],
+        ["Popcorn", "🍿"], ["Donut", "🍩"], ["Ice Cream", "🍦"], ["Cupcake", "🧁"], ["Pie", "🥧"],
+        ["Candy", "🍬"], ["Lollipop", "🍭"], ["Chocolate", "🍫"], ["Honey", "🍯"], ["Pancake", "🥞"],
+        ["Bacon", "🥓"], ["Rice", "🍚"], ["Noodles", "🍜"], ["Soup", "🍲"], ["Juice", "🧃"]
+      ]
+    },
+    {
+      name: "Pack 5: Actions & Feelings", icon: "🤸", color: "#fbcfe8", difficulty: "Trickier",
+      words: [
+        ["Jump", "🤸"], ["Run", "🏃"], ["Walk", "🚶"], ["Sleep", "😴"], ["Eat", "🍴"],
+        ["Drink", "🥤"], ["Laugh", "😂"], ["Hug", "🤗"], ["Wave", "👋"], ["Clap", "👏"],
+        ["Dance", "💃"], ["Sing", "🎤"], ["Swim", "🏊"], ["Climb", "🧗"], ["Kiss", "😘"],
+        ["Smile", "😊"], ["Happy", "😃"], ["Sad", "😢"], ["Angry", "😠"], ["Scared", "😱"],
+        ["Surprised", "😲"], ["Sick", "🤒"], ["Tired", "🥱"], ["Cold", "🥶"], ["Hot", "🥵"],
+        ["Love", "❤️"], ["Think", "🤔"], ["Wink", "😉"], ["Sneeze", "🤧"]
+      ]
+    },
+    {
+      name: "Pack 6: Colors & Shapes", icon: "🎨", color: "#ddd6fe", difficulty: "Trickier",
+      words: [
+        ["Red", "🔴"], ["Orange", "🟠"], ["Yellow", "🟡"], ["Green", "🟢"], ["Blue", "🔵"],
+        ["Purple", "🟣"], ["Pink", "🩷"], ["Black", "⚫"], ["White", "⚪"], ["Brown", "🟤"],
+        ["Circle", "⭕"], ["Square", "⬛"], ["Triangle", "🔺"], ["Heart", "❤️"], ["Diamond", "🔷"]
+      ]
+    },
+    {
+      name: "Pack 7: Weather & Places", icon: "🌈", color: "#fecaca", difficulty: "Trickier",
+      words: [
+        ["Rain", "🌧️"], ["Snow", "❄️"], ["Cloud", "☁️"], ["Rainbow", "🌈"], ["Wind", "💨"],
+        ["Thunder", "⛈️"], ["Beach", "🏖️"], ["Park", "🏞️"], ["Farm", "🚜"], ["School", "🏫"],
+        ["Store", "🏪"], ["House", "🏠"], ["City", "🏙️"], ["Bridge", "🌉"], ["Sunrise", "🌅"],
+        ["Sunset", "🌇"], ["Night", "🌃"]
+      ]
+    },
+    {
+      name: "Pack 8: My Body", icon: "✋", color: "#fde68a", difficulty: "Easy",
+      words: [
+        ["Eyes", "👀"], ["Nose", "👃"], ["Mouth", "👄"], ["Ear", "👂"], ["Hand", "✋"],
+        ["Foot", "🦶"], ["Teeth", "🦷"], ["Arm", "💪"], ["Leg", "🦵"], ["Tongue", "👅"]
+      ]
+    }
   ];
 
   const BG_COLORS = ["#fde68a", "#bbf7d0", "#bfdbfe", "#fbcfe8", "#fed7aa", "#ddd6fe", "#a7f3d0", "#fecaca"];
 
-  let deck = WORDS.slice();
+  let deck = [];
   let index = 0;
 
   const startScreen = document.getElementById("start");
   const deckScreen = document.getElementById("deck");
+  const packListEl = document.getElementById("pack-list");
   const emojiEl = document.getElementById("emoji");
   const wordEl = document.getElementById("word");
   const counterEl = document.getElementById("counter");
@@ -138,6 +232,23 @@
     u.rate = 0.85;
     u.pitch = 1.1;
     window.speechSynthesis.speak(u);
+  }
+
+  function renderPackList() {
+    packListEl.innerHTML = PACKS.map((pack, i) => (
+      '<button class="pack-btn" style="background:' + pack.color + '" data-pack="' + i + '">' +
+        '<span class="pack-emoji">' + pack.icon + '</span>' +
+        '<span class="pack-text">' +
+          '<span class="pack-name">' + pack.name + '</span>' +
+          '<span class="pack-meta">' + pack.difficulty + '</span>' +
+        '</span>' +
+        '<span class="pack-count">' + pack.words.length + '</span>' +
+      '</button>'
+    )).join("");
+
+    packListEl.querySelectorAll(".pack-btn").forEach((btn) => {
+      btn.addEventListener("click", () => startPack(PACKS[Number(btn.dataset.pack)]));
+    });
   }
 
   function render(shouldSpeak) {
@@ -159,7 +270,7 @@
     render(true);
   }
 
-  function shuffle() {
+  function shuffleDeck() {
     for (let i = deck.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [deck[i], deck[j]] = [deck[j], deck[i]];
@@ -168,10 +279,29 @@
     render(true);
   }
 
+  function startPack(pack) {
+    // First user gesture: unlock speech synthesis on iOS Safari and request fullscreen.
+    speak(" ");
+    const el = document.documentElement;
+    if (el.requestFullscreen) el.requestFullscreen().catch(() => {});
+    else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+
+    deck = pack.words.slice();
+    startScreen.style.display = "none";
+    deckScreen.classList.add("active");
+    shuffleDeck();
+  }
+
+  function goToPacks() {
+    deckScreen.classList.remove("active");
+    startScreen.style.display = "flex";
+  }
+
   document.getElementById("zone-next").addEventListener("click", next);
   document.getElementById("zone-prev").addEventListener("click", prev);
   document.getElementById("card").addEventListener("click", () => render(true));
-  document.getElementById("shuffle-btn").addEventListener("click", (e) => { e.stopPropagation(); shuffle(); });
+  document.getElementById("shuffle-btn").addEventListener("click", (e) => { e.stopPropagation(); shuffleDeck(); });
+  document.getElementById("packs-btn").addEventListener("click", (e) => { e.stopPropagation(); goToPacks(); });
 
   document.addEventListener("keydown", (e) => {
     if (!deckScreen.classList.contains("active")) return;
@@ -189,17 +319,7 @@
     touchStartX = null;
   }, { passive: true });
 
-  document.getElementById("start-btn").addEventListener("click", () => {
-    // First user gesture: unlock speech synthesis on iOS Safari and request fullscreen.
-    speak(" ");
-    const el = document.documentElement;
-    if (el.requestFullscreen) el.requestFullscreen().catch(() => {});
-    else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
-
-    startScreen.style.display = "none";
-    deckScreen.classList.add("active");
-    shuffle();
-  });
+  renderPackList();
 })();
 </script>
 </body>

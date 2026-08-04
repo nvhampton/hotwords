@@ -1269,7 +1269,7 @@ Rules:
                     header("anthropic-version", "2023-06-01")
                     contentType(ContentType.Application.Json)
                     setBody(buildJsonObject {
-                        put("model", "claude-haiku-4-5-20251001")
+                        put("model", "claude-sonnet-5")
                         put("max_tokens", 1024)
                         putJsonArray("messages") {
                             addJsonObject {
@@ -1294,13 +1294,77 @@ Rules:
 
                 // Parse the JSON array from Claude's response (may have markdown wrapping)
                 val cleanJson = content.replace(Regex("```json\\s*"), "").replace(Regex("```\\s*"), "").trim()
-                val generatedPhrases = jsonLenient.decodeFromString(JsonArray.serializer(), cleanJson)
+                val candidatePhrases = jsonLenient.decodeFromString(JsonArray.serializer(), cleanJson)
                     .map { it.jsonPrimitive.content.replace("'", "").replace(Regex("[^a-zA-Z0-9 ]"), " ").replace(Regex("\\s+"), " ").trim().lowercase() }
                     .filter { it.isNotBlank() }
                     .distinct()
-                    .take(safeCount)
 
-                call.respond(mapOf("phrases" to generatedPhrases))
+                // Second pass: have the model review and self-filter its own list before
+                // it ever reaches a player, cutting generic/confusing/weak entries that
+                // slip through the first pass. Falls back to the unfiltered candidates on
+                // any failure (rate cap, bad response, hallucinated entries) so a filter
+                // hiccup never blocks generation entirely.
+                val finalPhrases = if (candidatePhrases.isEmpty() || checkDailyClaudeCap()) {
+                    candidatePhrases
+                } else {
+                    try {
+                        val candidateList = candidatePhrases.joinToString(", ") { "\"$it\"" }
+                        val topicClause = if (!category.isNullOrBlank()) {
+                            " about \"${category.take(100).replace(Regex("[\"\\\\]"), "")}\""
+                        } else ""
+                        val filterPrompt = """Here is a candidate list of phrases for a word-guessing party game$topicClause: [$candidateList]
+
+Remove any phrase that is:
+- Too generic or descriptive rather than a specific, nameable thing
+- Obscure or unlikely to be recognized by someone who knows this topic
+- A near-duplicate of another phrase in the list (keep only one)
+- Awkward, confusing, or a poor fit for a party guessing game
+- Not family-friendly
+
+Return ONLY a JSON array containing the phrases to KEEP, copied exactly as written, no other text. Do not add new phrases or edit the wording of ones you keep."""
+
+                        val filterResponse = claudeClient.post("https://api.anthropic.com/v1/messages") {
+                            header("x-api-key", claudeApiKey)
+                            header("anthropic-version", "2023-06-01")
+                            contentType(ContentType.Application.Json)
+                            setBody(buildJsonObject {
+                                put("model", "claude-sonnet-5")
+                                put("max_tokens", 1024)
+                                putJsonArray("messages") {
+                                    addJsonObject {
+                                        put("role", "user")
+                                        put("content", filterPrompt)
+                                    }
+                                }
+                            }.toString())
+                        }
+
+                        if (filterResponse.status.value != 200) {
+                            application.log.error("Claude filter pass error response: ${filterResponse.bodyAsText()}")
+                            candidatePhrases
+                        } else {
+                            val filterResponseJson = jsonLenient.decodeFromString(JsonObject.serializer(), filterResponse.bodyAsText())
+                            val filterContent = filterResponseJson["content"]?.jsonArray?.firstOrNull()?.jsonObject?.get("text")?.jsonPrimitive?.content ?: "[]"
+                            val cleanFilterJson = filterContent.replace(Regex("```json\\s*"), "").replace(Regex("```\\s*"), "").trim()
+                            val kept = jsonLenient.decodeFromString(JsonArray.serializer(), cleanFilterJson)
+                                .map { it.jsonPrimitive.content.replace("'", "").replace(Regex("[^a-zA-Z0-9 ]"), " ").replace(Regex("\\s+"), " ").trim().lowercase() }
+                                .filter { it.isNotBlank() }
+                                .distinct()
+                                // Only trust entries that were actually in the candidate list —
+                                // guards against the filter pass hallucinating new phrases.
+                                .filter { candidatePhrases.contains(it) }
+
+                            // If the filter pass gutted the list too aggressively, prefer the
+                            // unfiltered candidates over returning too few phrases.
+                            if (kept.size >= minOf(safeCount, candidatePhrases.size)) kept else candidatePhrases
+                        }
+                    } catch (e: Exception) {
+                        application.log.error("Claude filter pass error: ${e.message}", e)
+                        candidatePhrases
+                    }
+                }
+
+                call.respond(mapOf("phrases" to finalPhrases.take(safeCount)))
             } catch (e: Exception) {
                 application.log.error("Claude API error: ${e.message}", e)
                 call.respond(HttpStatusCode.InternalServerError, mapOf("error" to (e.message ?: "Generation failed")))

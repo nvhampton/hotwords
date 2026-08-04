@@ -2,7 +2,11 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#fff6f2">
     <title>Hotwords</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='42' font-size='48'>🔥</text><text x='36' y='90' font-size='48'>💬</text></svg>">
     <link rel="preconnect" href="/">
@@ -123,8 +127,42 @@
         }
         /* Show Clue fallback hints — capped so a growing list of clues scrolls
            within its own box instead of pushing the buttons off screen. */
-        .clue-display { text-align: center; padding: 0 10px; max-height: 24vh; overflow-y: auto; }
-        .clue-line { font-size: 1rem; margin: 6px 0; padding: 8px 16px; border-radius: 8px; animation: clueIn 0.3s ease-out; }
+        .clue-display { text-align: center; padding: 0 10px; max-height: 34vh; overflow-y: auto; }
+        .clue-line {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            text-align: left;
+            background: var(--hw-accent-soft);
+            border-left: 4px solid var(--hw-gold);
+            border-radius: 10px;
+            margin: 8px 0;
+            padding: 9px 14px;
+            animation: clueIn 0.35s ease-out;
+        }
+        .clue-index {
+            font-size: 0.68rem;
+            font-weight: 800;
+            letter-spacing: 0.07em;
+            text-transform: uppercase;
+            color: var(--hw-gold);
+        }
+        .clue-text {
+            font-size: 1.05rem;
+            font-weight: 600;
+            font-style: italic;
+            line-height: 1.35;
+            color: var(--hw-ink);
+        }
+        /* The most recently revealed clue is the "warmest" — literally, since clues
+           run vague-to-specific — so it gets the hottest treatment to draw the eye. */
+        .clue-line.latest {
+            background: linear-gradient(135deg, var(--hw-gold), #ffdb70);
+            border-left-color: #4a3200;
+            box-shadow: 0 4px 14px rgba(255, 201, 60, 0.4);
+        }
+        .clue-line.latest .clue-index { color: #4a3200; opacity: 0.75; }
+        .clue-line.latest .clue-text { color: #4a3200; }
         @keyframes clueIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
         .container {
             text-align: center;
@@ -279,7 +317,7 @@
             .status { margin: 4px 0 8px; min-height: 0; }
             .listen-row { margin: 8px 0 10px; }
             .transcript { margin-top: 6px; }
-            .clue-display { max-height: 18vh; }
+            .clue-display { max-height: 26vh; }
         }
         .key-hint {
             font-size: 0.7em;
@@ -438,8 +476,8 @@
             background: var(--hw-card);
             border: 1.5px solid var(--hw-line);
             color: var(--hw-sub);
-            font-size: 0.95rem;
-            padding: 9px 12px;
+            font-size: 1.15rem;
+            padding: 9px 16px;
             margin: 0;
             border-radius: 999px;
             line-height: 1;
@@ -515,9 +553,9 @@
         .gotit-btn {
             background: var(--hw-mint);
             color: #fff;
-            font-size: 1.15rem;
+            font-size: 1.3rem;
             font-weight: 800;
-            padding: 22px 20px;
+            padding: 26px 20px;
             border-radius: 16px;
             touch-action: manipulation;
             box-shadow: 0 8px 18px rgba(31, 184, 138, 0.3);
@@ -572,7 +610,7 @@
             margin: 0;
         }
         .button-row .gotit-btn,
-        .button-row .skip-btn,
+        .button-row .clue-btn,
         .button-row .play-again-btn {
             /* Override the global button{margin:10px} — the row's own `gap`
                handles spacing; the extra per-button margin was stacking on
@@ -580,24 +618,38 @@
             margin: 0;
         }
         .button-row .gotit-btn,
-        .button-row .skip-btn {
+        .button-row .clue-btn {
             flex: 1;
             min-width: 130px;
         }
+        /* Clue lives in the primary button row now, so it needs to match
+           Got It's size — its gold color stays as the "hint" accent. */
+        .button-row .clue-btn {
+            font-size: 1.3rem;
+            padding: 26px 20px;
+            border-radius: 16px;
+        }
         .listen-row {
             display: flex;
+            flex-wrap: wrap;
             align-items: center;
             justify-content: center;
-            gap: 12px;
-            margin: 10px 0 12px;
+            gap: 14px;
+            margin: 12px 0 14px;
         }
-        .listen-row .clue-btn,
+        .listen-row .skip-btn,
         .listen-row .listen-btn,
         .listen-row .type-toggle-btn {
-            height: 44px;
+            height: 54px;
             display: inline-flex;
             align-items: center;
             justify-content: center;
+        }
+        /* Skip is demoted to a toolbar pill here, alongside the icon buttons. */
+        .listen-row .skip-btn {
+            font-size: 1.05rem;
+            padding: 0 22px;
+            border-radius: 999px;
         }
         .clue-btn {
             background: var(--hw-gold);
@@ -618,12 +670,12 @@
             background: var(--hw-card);
             border: 1.5px solid var(--hw-line);
             color: var(--hw-sub);
-            width: 44px;
-            height: 44px;
+            width: 54px;
+            height: 54px;
             padding: 0;
             margin: 0;
             border-radius: 50%;
-            font-size: 1.25rem;
+            font-size: 1.5rem;
             line-height: 1;
             display: flex;
             align-items: center;
@@ -692,8 +744,14 @@
             min-height: 24px;
         }
         .transcript span {
+            display: inline-block;
+            max-width: 100%;
+            vertical-align: bottom;
             color: var(--hw-ink);
             font-weight: 700;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
         .audio-disclaimer {
             display: none;
@@ -2193,7 +2251,7 @@
         <div class="status" id="status">Click the button to start listening</div>
 
         <div class="button-row">
-            <button class="skip-btn btn-inactive" id="skipBtn">Skip</button>
+            <button class="clue-btn" id="clueBtn">💡 Show Clue</button>
             <button class="gotit-btn btn-inactive" id="gotItBtn">Got It!</button>
             <button class="play-again-btn" id="playAgainBtn" style="display: none;">Play Again</button>
         </div>
@@ -2203,7 +2261,7 @@
         </div>
 
         <div class="listen-row">
-            <button class="clue-btn" id="clueBtn">💡 Show Clue</button>
+            <button class="skip-btn btn-inactive" id="skipBtn">Skip</button>
             <button class="listen-btn reveal-btn" id="revealBtn" title="Hold to reveal">👁️</button>
             <button class="listen-btn" id="listenBtn" disabled title="Tap to talk">🎤</button>
             <button class="listen-btn orientation-toggle-btn" id="orientationToggleBtn" title="Tilt to reveal">🤳</button>
@@ -2498,6 +2556,10 @@
         // auto-accept fires on every keystroke, a threshold as loose as speech's risks
         // accepting a still-in-progress partial phrase before the player finishes typing.
         const TYPED_FUZZY_THRESHOLD = 0.92;
+        // Live transcript display is a one-line ticker — the tail of the running speech
+        // transcript, so it reads like text streaming through rather than wrapping or
+        // growing indefinitely. Matching logic still uses the full, untruncated transcript.
+        const TRANSCRIPT_DISPLAY_CHARS = 40;
         let hasClaimedVictory = false;
         let currentRoomId = '';
         let isReconnecting = false;
@@ -2518,6 +2580,7 @@
         let phraseHistory = [];
         let usedPhrasesThisRound = new Set();
         let correctPhrasesThisRound = new Set(); // distinct phrases won via Got It this round, local mode only
+        let localRoundStartTime = 0; // set when a local round begins, used to time category completion
         let phraseStartTime = 0;
 
         // Show Clue state (AI-generated fallback hints, revealed progressively, fetched lazily)
@@ -2598,7 +2661,7 @@
         }
 
         // Check if a specific word exists in the transcript
-        function checkWordInTranscript(targetWord, transcript) {
+        function checkWordInTranscript(targetWord, transcript, threshold = WORD_FUZZY_THRESHOLD) {
             const target = targetWord.toLowerCase().trim();
             const words = transcript.toLowerCase().split(/\s+/);
 
@@ -2608,19 +2671,19 @@
             // Fuzzy match for each word
             for (const heardWord of words) {
                 const sim = similarity(heardWord, target);
-                if (sim >= WORD_FUZZY_THRESHOLD) return true;
+                if (sim >= threshold) return true;
             }
             return false;
         }
 
         // Update revealed words based on transcript. Returns whether any word was newly
         // revealed by this call (callers use this to know when to clear a typed answer).
-        function updateRevealedWords(transcript) {
+        function updateRevealedWords(transcript, threshold = WORD_FUZZY_THRESHOLD) {
             if (!isLocalMode || currentWords.length === 0) return false;
 
             let anyNewReveals = false;
             for (let i = 0; i < currentWords.length; i++) {
-                if (!revealedWords[i] && checkWordInTranscript(currentWords[i], transcript)) {
+                if (!revealedWords[i] && checkWordInTranscript(currentWords[i], transcript, threshold)) {
                     revealedWords[i] = true;
                     anyNewReveals = true;
                 }
@@ -2640,12 +2703,12 @@
 
         // Update revealed words for online mode (send WORD_MATCH to server). Returns
         // whether any word was newly revealed by this call.
-        function updateRevealedWordsOnline(transcript) {
+        function updateRevealedWordsOnline(transcript, threshold = WORD_FUZZY_THRESHOLD) {
             if (isLocalMode || isHotPlayer || currentWords.length === 0) return false;
 
             let anyNewReveals = false;
             for (let i = 0; i < currentWords.length; i++) {
-                if (!onlineRevealedWords[i] && checkWordInTranscript(currentWords[i], transcript)) {
+                if (!onlineRevealedWords[i] && checkWordInTranscript(currentWords[i], transcript, threshold)) {
                     // Send WORD_MATCH to server
                     if (ws && ws.readyState === WebSocket.OPEN) {
                         const playerName = playerNameInput.value.trim() || 'Anonymous';
@@ -3393,7 +3456,7 @@
         }
 
         // End game
-        function endGame(categoryComplete = false) {
+        function endGame(categoryComplete = false, completionMs = null) {
             gameActive = false;
             const tar = document.getElementById('typeAnswerRow');
             if (tar) { tar.querySelector('input').value = ''; }
@@ -3416,7 +3479,7 @@
             transcriptBox.classList.remove('listening');
 
             statusEl.textContent = categoryComplete
-                ? `Congratulations! You completed this category! Score: ${localScore}`
+                ? `Congratulations! You completed this category in ${formatDuration(completionMs)}! Score: ${localScore}`
                 : (isPracticeMode ? `Practice complete! Score: ${localScore}` : `Time's up! Final score: ${localScore}`);
             statusEl.classList.remove('listening');
 
@@ -3447,7 +3510,7 @@
                 playAgainBtn.style.display = 'none';
 
                 // Show game summary overlay
-                showGameSummary(localScore, phraseHistory, categoryComplete);
+                showGameSummary(localScore, phraseHistory, categoryComplete, completionMs);
             } else {
                 // Online mode: track timed-out phrase and show summary
                 if (currentWord) {
@@ -3573,6 +3636,13 @@
             }
         }
 
+        function formatDuration(ms) {
+            const totalSeconds = Math.round(ms / 1000);
+            const minutes = Math.floor(totalSeconds / 60);
+            const seconds = totalSeconds % 60;
+            return minutes > 0 ? `${minutes}m${seconds}s` : `${seconds}s`;
+        }
+
         function formatTimeAgo(timestamp) {
             const seconds = Math.floor((Date.now() - timestamp) / 1000);
             if (seconds < 60) return 'just now';
@@ -3661,8 +3731,10 @@
 
         // ========== GAME SUMMARY ==========
 
-        function showGameSummary(score, history, categoryComplete = false) {
-            gameSummaryTitle.textContent = categoryComplete ? 'Congratulations! You completed this category!' : 'Game Over!';
+        function showGameSummary(score, history, categoryComplete = false, completionMs = null) {
+            gameSummaryTitle.textContent = categoryComplete
+                ? `Congratulations! You completed this category in ${formatDuration(completionMs)}!`
+                : 'Game Over!';
             const fires = '\u{1F525}'.repeat(Math.min(score, 15));
             gameSummaryScore.innerHTML = `<span style="font-size: 2.5rem;">${score}</span> ${fires}`;
 
@@ -4805,7 +4877,7 @@
                 }
                 // Top hypothesis drives the visible transcript display
                 const transcript = transcripts[0];
-                transcriptEl.textContent = transcript || '';
+                transcriptEl.textContent = transcript ? transcript.slice(-TRANSCRIPT_DISPLAY_CHARS) : '';
 
                 // In local mode, check for individual word reveals across all alternatives
                 if (partialWordReveal && isLocalMode && gameActive && !hasClaimedVictory) {
@@ -4955,6 +5027,9 @@
             statusEl.textContent = 'Listening... Say your guess!';
             statusEl.classList.add('listening');
             transcriptBox.classList.add('listening');
+            // Remember this as an explicit on/off choice, not whatever state a round
+            // happens to end in — auto-resumed at the start of the next round.
+            localStorage.setItem('hotwords_mic_pref', 'on');
             // In online mode, enable buttons if game is already active
             if (!isLocalMode && gameActive) {
                 updateOnlineModeButtons();
@@ -4970,6 +5045,7 @@
             statusEl.classList.remove('listening');
             transcriptBox.classList.remove('listening');
             closeMatchOverlay.classList.remove('active');
+            localStorage.setItem('hotwords_mic_pref', 'off');
             // End game if manually stopped (online mode only)
             if (gameActive && !isLocalMode) {
                 endGame();
@@ -5079,9 +5155,12 @@
             const text = typeAnswerInput.value.trim();
             if (!text) return;
 
-            // Run through same matching pipeline as speech
+            // Run through same matching pipeline as speech, but with the stricter typed
+            // threshold — this is also checked per-word on every keystroke, so the loose
+            // voice threshold would reveal (and lock in) a word a couple characters before
+            // you'd actually finished typing it.
             if (partialWordReveal && isLocalMode) {
-                const newlyRevealed = updateRevealedWords(text);
+                const newlyRevealed = updateRevealedWords(text, TYPED_FUZZY_THRESHOLD);
                 if (hasClaimedVictory) { typeAnswerInput.value = ''; similarityEl.textContent = ''; return; }
                 // A word from the phrase just got locked in — clear the box so the
                 // player can keep typing the rest without deleting what's already
@@ -5089,7 +5168,7 @@
                 if (newlyRevealed) { typeAnswerInput.value = ''; similarityEl.textContent = ''; return; }
             }
             if (partialWordReveal && !isLocalMode && !isHotPlayer) {
-                const newlyRevealed = updateRevealedWordsOnline(text);
+                const newlyRevealed = updateRevealedWordsOnline(text, TYPED_FUZZY_THRESHOLD);
                 if (onlineRevealedWords.every(r => r)) { typeAnswerInput.value = ''; similarityEl.textContent = ''; return; }
                 if (newlyRevealed) { typeAnswerInput.value = ''; similarityEl.textContent = ''; return; }
             }
@@ -5235,6 +5314,30 @@
             categoryLabel.textContent = cat !== 'classic' ? `"${cat}"` : '';
         }
 
+        // Phone/tablet only — desktop browsers don't need the browser chrome hidden,
+        // and going fullscreen there feels like a hijack rather than an improvement.
+        function isMobileDevice() {
+            const isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || (navigator.msMaxTouchPoints > 0);
+            const isMobileUA = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+            return isTouchDevice || isMobileUA;
+        }
+
+        // Fullscreen on Start, matching /flashcards — must be called synchronously from
+        // the user gesture itself (before any `await`), or browsers silently refuse it.
+        function requestFullscreenIfPossible() {
+            if (!isMobileDevice()) return;
+            if (document.fullscreenElement) return;
+            const el = document.documentElement;
+            if (el.requestFullscreen) el.requestFullscreen().catch(() => {});
+            else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+        }
+        function exitFullscreenIfActive() {
+            if (document.fullscreenElement || document.webkitFullscreenElement) {
+                if (document.exitFullscreen) document.exitFullscreen().catch(() => {});
+                else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+            }
+        }
+
         // Show game screen, hide lobby
         function showGameScreen() {
             lobbyScreen.classList.add('hidden');
@@ -5248,6 +5351,7 @@
 
         // Show lobby, hide game screen
         function showLobby() {
+            exitFullscreenIfActive();
             isSpectating = false;
             hideTypeAnswerRow();
             // Disconnect WebSocket first to prevent message handlers from re-showing overlays
@@ -5287,10 +5391,14 @@
             backBtn.classList.remove('active');
             document.body.classList.remove('countdown-danger', 'in-round');
 
-            // Reset button-row order: Skip, Got It, Play Again
+            // Reset button-row order: Show Clue, Got It, Play Again
             const buttonRow = document.querySelector('.button-row');
-            buttonRow.insertBefore(skipBtn, gotItBtn);
+            buttonRow.insertBefore(clueBtn, gotItBtn);
             buttonRow.insertBefore(gotItBtn, playAgainBtn);
+
+            // Reset listen-row order: Skip, Reveal, Mic, Orientation toggle, Type toggle
+            const listenRow = document.querySelector('.listen-row');
+            listenRow.insertBefore(skipBtn, listenRow.firstChild);
 
             // Reset button visibility
             listenBtn.style.display = '';
@@ -5559,7 +5667,7 @@
             freePlayToggle.classList.remove('active');
             homeToggleDesc.textContent = '45 seconds — how many can you get?';
         });
-        startGameBtn.addEventListener('click', () => startLocalGame());
+        startGameBtn.addEventListener('click', () => { requestFullscreenIfPossible(); startLocalGame(); });
 
         // Lobby leaderboard link
         document.getElementById('lobbyLeaderboardLink').addEventListener('click', (e) => {
@@ -5571,7 +5679,7 @@
 
         // Online Start button (inside expanded area)
         const onlineStartBtn = document.getElementById('onlineStartBtn');
-        onlineStartBtn.addEventListener('click', () => startOnlineGame());
+        onlineStartBtn.addEventListener('click', () => { requestFullscreenIfPossible(); startOnlineGame(); });
 
         function showOnboardRules() {
             const isDesktop = !('ontouchstart' in window) && navigator.maxTouchPoints === 0;
@@ -5620,7 +5728,7 @@
             launchLocalGame(micGranted);
         }
 
-        document.getElementById('onboardRulesBtn').addEventListener('click', () => proceedFromRules());
+        document.getElementById('onboardRulesBtn').addEventListener('click', () => { requestFullscreenIfPossible(); proceedFromRules(); });
 
         // Start Local Game (called from onboarding flow)
         function startLocalGame() {
@@ -5643,7 +5751,7 @@
             updateScoreDisplay(0);
             wordDisplay.textContent = 'Get Ready!';
 
-            // Mic starts idle — tap the mic icon to speak once, long-press for continuous listening
+            // Mic starts idle — tap or hold the mic icon to start listening.
             if (micGranted !== false) {
                 if (!recognition) {
                     initSpeechRecognition();
@@ -5659,7 +5767,15 @@
 
             statusEl.textContent = '';
 
+            // If the player left listening on last round, resume it automatically
+            // instead of making them re-enable it every single round. Done after the
+            // status reset above so its own "Listening..." message isn't clobbered.
+            if (micGranted !== false && localStorage.getItem('hotwords_mic_pref') === 'on') {
+                await micStartContinuous();
+            }
+
             gameActive = true;
+            localRoundStartTime = Date.now();
 
             const word = getRandomPhrase();
             showNewWordLocalMode(word);
@@ -5781,6 +5897,14 @@
             clueBtn.disabled = false;
             clueBtn.textContent = '💡 Show Clue';
 
+            // Tilt-to-reveal players get a free peek at the phrase just by holding the
+            // phone upright. Everyone else has to manually reveal it, so give them a
+            // head start with the first clue already showing instead of making that an
+            // extra tap too.
+            if (!orientationEnabled) {
+                showClue();
+            }
+
             statusEl.textContent = '';
             statusEl.classList.remove('winner', 'skipped', 'listening');
         }
@@ -5814,10 +5938,20 @@
                 catch { clueList = generateFallbackClues(currentWord); }
             }
             if (cluesShown < clueList.length) {
+                const prevLatest = clueDisplayEl.querySelector('.clue-line.latest');
+                if (prevLatest) prevLatest.classList.remove('latest');
+
                 const line = document.createElement('div');
-                line.className = 'clue-line';
-                line.textContent = clueList[cluesShown];
+                line.className = 'clue-line latest';
+                const index = document.createElement('span');
+                index.className = 'clue-index';
+                index.textContent = `Hint ${cluesShown + 1}`;
+                const text = document.createElement('span');
+                text.className = 'clue-text';
+                text.textContent = clueList[cluesShown];
+                line.append(index, text);
                 clueDisplayEl.appendChild(line);
+                line.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
                 cluesShown++;
             }
             if (cluesShown >= clueList.length) {
@@ -5855,7 +5989,7 @@
 
             // Category complete: every phrase in the active pool has been guessed
             if (correctPhrasesThisRound.size >= getActivePhrasePool().length) {
-                endGame(true);
+                endGame(true, Date.now() - localRoundStartTime);
                 return;
             }
 
