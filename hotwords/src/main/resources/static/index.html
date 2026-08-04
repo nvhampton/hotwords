@@ -2203,7 +2203,7 @@
     <div class="customize-overlay" id="customizeOverlay">
         <div class="customize-dialog">
             <h2>Custom Category</h2>
-            <div class="customize-desc">Enter a category and we'll generate phrases for you.</div>
+            <div class="customize-desc">Enter a category and we'll generate phrases for you. Can take up to 20 seconds.</div>
             <input type="text" id="customizeCategoryInput" class="customize-input" placeholder="e.g. 80s movies, breakfast foods, famous dogs..." maxlength="100">
             <div class="custom-status" id="customizeCategoryStatus"></div>
             <div class="customize-buttons">
@@ -2575,6 +2575,8 @@
         let isLocalMode = false;
         let isPracticeMode = true; // matches Free Play being the default-active home toggle
         let customCategory = null;
+        let customCategoryEmoji = null; // theme emoji for the active custom category — fallback when a phrase has no specific emoji of its own
+        let phraseEmojis = {}; // phrase text -> emoji, for phrases with an obviously fitting emoji (e.g. "ice cream sundae" -> 🍨)
         let localModePlayers = [];
         let currentPlayerIndex = 0;
         let phraseHistory = [];
@@ -3083,9 +3085,11 @@
                     catResult.categories.forEach(catEntry => {
                         const catName = catEntry.name;
                         const cachedPhrases = catEntry.phrases || [];
+                        const catEmoji = catEntry.emoji || '';
+                        const catPhraseEmojis = catEntry.phraseEmojis || {};
                         const pill = document.createElement('span');
                         pill.className = 'topic-pill';
-                        pill.textContent = catName;
+                        pill.textContent = catEmoji ? `${catEmoji} ${catName}` : catName;
                         pill.dataset.topicId = 'custom:' + catName;
                         pill.tabIndex = 0;
                         pill.setAttribute('role', 'button');
@@ -3099,15 +3103,23 @@
                                 longPressTriggered = true;
                                 if (confirm(`Delete category "${catName}"?`)) {
                                     try {
-                                        await fetch('/api/categories/' + encodeURIComponent(catName), { method: 'DELETE' });
+                                        const res = await fetch('/api/categories/' + encodeURIComponent(catName), { method: 'DELETE' });
+                                        if (!res.ok) {
+                                            alert('Could not delete this category. Please try again.');
+                                            return;
+                                        }
                                         pill.remove();
                                         // Reset to default if this was the active selection
                                         if (customCategory === catName) {
                                             customPhrases = [];
                                             customCategory = null;
+                                            customCategoryEmoji = null;
+                                            phraseEmojis = {};
                                             selectTopic('default');
                                         }
-                                    } catch (e) { /* ignore */ }
+                                    } catch (e) {
+                                        alert('Could not delete this category. Please try again.');
+                                    }
                                 }
                             }, 6000);
                         };
@@ -3125,6 +3137,8 @@
                             pill.classList.add('active');
                             customPhrases = cachedPhrases;
                             customCategory = catName;
+                            customCategoryEmoji = catEmoji || null;
+                            phraseEmojis = catPhraseEmojis;
                             activeTopic = null;
                             topicPhrases = null;
                             localStorage.setItem('hotwords_category', 'custom:' + catName);
@@ -3174,6 +3188,8 @@
             // whatever custom category may have been active.
             customPhrases = null;
             customCategory = null;
+            customCategoryEmoji = null;
+            phraseEmojis = {};
             updateCustomActiveUI();
 
             if (topicId === 'default') {
@@ -3311,7 +3327,8 @@
         function showCelebrationLocal(word, score) {
             isCelebrating = true;
             celebrationWordEl.textContent = word;
-            const fires = '🔥'.repeat(Math.min(score, 15));
+            const celebrationEmoji = phraseEmojis[word] || customCategoryEmoji || '🔥';
+            const fires = celebrationEmoji.repeat(Math.min(score, 15));
             celebrationInfoEl.innerHTML = `<div style="font-size: 2.5rem; margin-bottom: 10px;">${score}${fires}</div>`;
             celebrationEl.classList.add('active');
 
@@ -3548,7 +3565,7 @@
                         fetch('/api/categories', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ category: customCategory, phrases: customPhrases || [] })
+                            body: JSON.stringify({ category: customCategory, phrases: customPhrases || [], emoji: customCategoryEmoji || '', phraseEmojis: phraseEmojis || {} })
                         });
                     } catch (e) { /* ignore */ }
                 }
@@ -3735,7 +3752,7 @@
             gameSummaryTitle.textContent = categoryComplete
                 ? `Congratulations! You completed this category in ${formatDuration(completionMs)}!`
                 : 'Game Over!';
-            const fires = '\u{1F525}'.repeat(Math.min(score, 15));
+            const fires = (customCategoryEmoji || '\u{1F525}').repeat(Math.min(score, 15));
             gameSummaryScore.innerHTML = `<span style="font-size: 2.5rem;">${score}</span> ${fires}`;
 
             let phrasesHtml = '';
@@ -5587,6 +5604,8 @@
                 if (data.phrases && data.phrases.length > 0) {
                     customPhrases = data.phrases;
                     customCategory = category;
+                    customCategoryEmoji = data.emoji || null;
+                    phraseEmojis = data.phraseEmojis || {};
                     activeTopic = null;
                     topicPhrases = null;
                     customizeOverlay.classList.remove('active');
@@ -5596,7 +5615,7 @@
                         await fetch('/api/categories', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ category: category, phrases: data.phrases })
+                            body: JSON.stringify({ category: category, phrases: data.phrases, emoji: data.emoji || '', phraseEmojis: data.phraseEmojis || {} })
                         });
                     } catch (e) { /* ignore */ }
                     // Reload topic picker so the new category appears as a pill
@@ -5625,6 +5644,8 @@
             customizeCategoryInput.value = '';
             customPhrases = null;
             customCategory = null;
+            customCategoryEmoji = null;
+            phraseEmojis = {};
             customizeOverlay.classList.remove('active');
             updateCustomActiveUI();
             sendPhrasesToServer();

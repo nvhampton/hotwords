@@ -88,15 +88,30 @@ data class RoomState(
     var roundDuration: Int = 30  // Seconds for this round (30 + 5*(players-2))
 )
 
+// Generous ceiling on stored emoji length. Emoji outside the Basic Multilingual Plane
+// (nearly all of them) are UTF-16 surrogate pairs, and compound/ZWJ-joined emoji (family,
+// profession + skin tone, etc.) can run to 8-11 UTF-16 units for a single glyph — a tight
+// cap risks truncating mid-sequence into a broken/mojibake character.
+const val MAX_EMOJI_CHARS = 16
+
 @Serializable
 data class CategoryEntry(
     val name: String,
-    val phrases: List<String>
+    val phrases: List<String>,
+    val emoji: String = "",
+    val phraseEmojis: Map<String, String> = emptyMap()
 )
 
 @Serializable
 data class CategoriesResponse(
     val categories: List<CategoryEntry>
+)
+
+@Serializable
+data class GeneratePhrasesResponse(
+    val phrases: List<String>,
+    val emoji: String = "",
+    val phraseEmojis: Map<String, String> = emptyMap()
 )
 
 @Serializable
@@ -125,7 +140,12 @@ data class RoundEntry(
 )
 
 @Serializable
-data class CachedCategory(val timestamp: Long, val phrases: List<String>, @kotlinx.serialization.Transient val creatorIp: String = "")
+data class CachedCategory(
+    val timestamp: Long,
+    val phrases: List<String>,
+    val emoji: String = "",
+    val phraseEmojis: Map<String, String> = emptyMap()
+)
 
 @Serializable
 data class PhraseEvent(
@@ -833,6 +853,16 @@ fun Application.module() {
         }
     }
 
+    // Extract the text content block from a Claude Messages API response. Models with
+    // adaptive thinking on by default (e.g. Sonnet 5) emit a "thinking" block before the
+    // "text" block, so content[0] is not reliably the text — find the block by type
+    // instead of assuming position.
+    fun extractClaudeText(responseJson: JsonObject): String {
+        return responseJson["content"]?.jsonArray
+            ?.firstOrNull { it.jsonObject["type"]?.jsonPrimitive?.contentOrNull == "text" }
+            ?.jsonObject?.get("text")?.jsonPrimitive?.content ?: "[]"
+    }
+
     // Check global daily Claude API cap; returns true if cap exceeded
     fun checkDailyClaudeCap(): Boolean {
         val now = System.currentTimeMillis()
@@ -867,7 +897,7 @@ fun Application.module() {
             val categories = categoriesOfTheDay.entries
                 .sortedByDescending { it.value.timestamp }
                 .take(20)
-                .map { CategoryEntry(name = it.key, phrases = it.value.phrases) }
+                .map { CategoryEntry(name = it.key, phrases = it.value.phrases, emoji = it.value.emoji, phraseEmojis = it.value.phraseEmojis) }
             call.respond(CategoriesResponse(categories = categories))
         }
 
@@ -894,38 +924,44 @@ fun Application.module() {
 
         // Add a category of the day (with cached phrases)
         post("/api/categories") {
-            val remoteIp = call.request.header("X-Forwarded-For")?.split(",")?.firstOrNull()?.trim()
-                ?: call.request.local.remoteHost
             val body = call.receiveText()
             val request = jsonLenient.decodeFromString(JsonObject.serializer(), body)
             val rawCategory = request["category"]?.jsonPrimitive?.contentOrNull?.trim()?.take(100)
             // Enforce max 3 words, lowercase
             val category = rawCategory?.split("\\s+".toRegex())?.take(3)?.joinToString(" ")?.lowercase()
             val phrases = request["phrases"]?.jsonArray?.map { it.jsonPrimitive.content } ?: emptyList()
+            val requestEmoji = request["emoji"]?.jsonPrimitive?.contentOrNull?.trim()?.take(MAX_EMOJI_CHARS).orEmpty()
+            val requestPhraseEmojis = request["phraseEmojis"]?.jsonObject
+                ?.mapNotNull { (k, v) -> v.jsonPrimitive.contentOrNull?.trim()?.take(MAX_EMOJI_CHARS)?.takeIf { it.isNotBlank() }?.let { k to it } }
+                ?.toMap() ?: emptyMap()
             if (!category.isNullOrBlank() && phrases.isNotEmpty()) {
-                categoriesOfTheDay[category] = CachedCategory(System.currentTimeMillis(), phrases.take(200), creatorIp = remoteIp)
+                // Preserve the existing emoji/phraseEmojis on refresh calls that don't pass them along.
+                val existing = categoriesOfTheDay[category]
+                val emoji = requestEmoji.ifBlank { existing?.emoji.orEmpty() }
+                val phraseEmojis = requestPhraseEmojis.ifEmpty { existing?.phraseEmojis.orEmpty() }
+                categoriesOfTheDay[category] = CachedCategory(System.currentTimeMillis(), phrases.take(200), emoji, phraseEmojis)
             } else if (!category.isNullOrBlank()) {
                 // Update timestamp but keep existing phrases if any
                 val existing = categoriesOfTheDay[category]
                 if (existing != null) {
-                    categoriesOfTheDay[category] = existing.copy(timestamp = System.currentTimeMillis())
+                    categoriesOfTheDay[category] = existing.copy(
+                        timestamp = System.currentTimeMillis(),
+                        emoji = requestEmoji.ifBlank { existing.emoji },
+                        phraseEmojis = requestPhraseEmojis.ifEmpty { existing.phraseEmojis }
+                    )
                 }
             }
             call.respond(mapOf("ok" to true))
         }
 
-        // Delete a category of the day (only creator IP or blank creator allowed)
+        // Delete a category of the day. No ownership check — players' apparent IPs shift
+        // constantly on mobile networks (carrier NAT, wifi/cellular handoff, IPv4/IPv6
+        // flip-flopping behind Cloudflare), so an IP-based creator check silently 403s
+        // legitimate deletes from the very person who made the category.
         delete("/api/categories/{name}") {
             val name = call.parameters["name"]?.lowercase()?.trim()
             if (name.isNullOrBlank()) {
                 call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Missing category name"))
-                return@delete
-            }
-            val remoteIp = call.request.header("X-Forwarded-For")?.split(",")?.firstOrNull()?.trim()
-                ?: call.request.local.remoteHost
-            val existing = categoriesOfTheDay[name]
-            if (existing != null && existing.creatorIp.isNotBlank() && existing.creatorIp != remoteIp) {
-                call.respond(HttpStatusCode.Forbidden, mapOf("error" to "Only the creator can delete this category"))
                 return@delete
             }
             val removed = categoriesOfTheDay.remove(name) != null
@@ -1243,8 +1279,13 @@ Formatting rules:
 - NO hyphens, apostrophes, or special punctuation — only plain letters and spaces (e.g. "product market fit" not "product-market fit")
 - All words must be correctly spelled — no slang spellings or dropped letters (e.g. "believing" not "believin")
 - No duplicate or near-duplicate phrases — e.g. don't include both "steve" and "steve skin", pick one
-- Return ONLY a JSON array of strings, no other text
-- Example format: ["phrase one", "phrase two", "phrase three"]"""
+
+Also pick ONE single emoji that best represents this topic overall — ideally a fun or funny one a fan would smile at, not necessarily the most literal choice (e.g. a cup or ice cream cone for a dessert topic).
+
+Additionally, for each individual phrase, decide whether there is an emoji that is obviously and specifically fitting for THAT phrase (e.g. "ice cream sundae" -> a matching dessert emoji, "cup of coffee" -> a coffee cup emoji). Most phrases will NOT have one — only include an emoji when it's a genuinely good, specific match, not a stretch. Use an empty string for phrases without one.
+
+Return ONLY a JSON object with this exact shape, no other text:
+{"emoji": "🦕", "phrases": [{"phrase": "phrase one", "emoji": ""}, {"phrase": "ice cream sundae", "emoji": "🍨"}]}"""
             } else {
                 // Example mode: generate similar phrases
                 val exampleList = phrases.take(20).joinToString(", ") { "\"$it\"" }
@@ -1259,8 +1300,13 @@ Rules:
 - NO acronyms or abbreviations — write them out as full words
 - NO hyphens, apostrophes, or special punctuation — only plain letters and spaces (e.g. "product market fit" not "product-market fit")
 - All words must be correctly spelled — no slang spellings or dropped letters (e.g. "believing" not "believin")
-- Return ONLY a JSON array of strings, no other text
-- Example format: ["phrase one", "phrase two", "phrase three"]"""
+
+Also pick ONE single emoji that best represents the overall theme of these examples — ideally a fun or funny one a fan would smile at, not necessarily the most literal choice.
+
+Additionally, for each individual phrase, decide whether there is an emoji that is obviously and specifically fitting for THAT phrase (e.g. "ice cream sundae" -> a matching dessert emoji, "cup of coffee" -> a coffee cup emoji). Most phrases will NOT have one — only include an emoji when it's a genuinely good, specific match, not a stretch. Use an empty string for phrases without one.
+
+Return ONLY a JSON object with this exact shape, no other text:
+{"emoji": "🦕", "phrases": [{"phrase": "phrase one", "emoji": ""}, {"phrase": "ice cream sundae", "emoji": "🍨"}]}"""
             }
 
             try {
@@ -1270,7 +1316,13 @@ Rules:
                     contentType(ContentType.Application.Json)
                     setBody(buildJsonObject {
                         put("model", "claude-sonnet-5")
-                        put("max_tokens", 1024)
+                        put("max_tokens", 2048)
+                        // This is a plain list-generation task with no multi-step reasoning
+                        // needed. Adaptive thinking is on by default when omitted, and for
+                        // topics the model deliberates over more (e.g. real movie/band names)
+                        // the thinking alone can consume the entire token budget, leaving
+                        // stop_reason=max_tokens with zero actual output text.
+                        putJsonObject("thinking") { put("type", "disabled") }
                         putJsonArray("messages") {
                             addJsonObject {
                                 put("role", "user")
@@ -1290,14 +1342,48 @@ Rules:
                 val responseJson = jsonLenient.decodeFromString(JsonObject.serializer(), responseBody)
 
                 // Extract text from Claude's response
-                val content = responseJson["content"]?.jsonArray?.firstOrNull()?.jsonObject?.get("text")?.jsonPrimitive?.content ?: "[]"
+                val content = extractClaudeText(responseJson)
 
-                // Parse the JSON array from Claude's response (may have markdown wrapping)
+                // Parse Claude's response — expected shape is
+                // {"emoji": "...", "phrases": [{"phrase": "...", "emoji": "..."}, ...]}, but fall
+                // back to a bare array of phrase strings for resilience if the model drops the
+                // wrapper object or the per-phrase emoji structure.
                 val cleanJson = content.replace(Regex("```json\\s*"), "").replace(Regex("```\\s*"), "").trim()
-                val candidatePhrases = jsonLenient.decodeFromString(JsonArray.serializer(), cleanJson)
-                    .map { it.jsonPrimitive.content.replace("'", "").replace(Regex("[^a-zA-Z0-9 ]"), " ").replace(Regex("\\s+"), " ").trim().lowercase() }
-                    .filter { it.isNotBlank() }
-                    .distinct()
+                var categoryEmoji = ""
+                var phraseEmojiMap: Map<String, String> = emptyMap()
+                val candidatePhrases = try {
+                    val rawPhraseElements = try {
+                        val obj = jsonLenient.decodeFromString(JsonObject.serializer(), cleanJson)
+                        categoryEmoji = obj["emoji"]?.jsonPrimitive?.contentOrNull?.trim()?.take(MAX_EMOJI_CHARS).orEmpty()
+                        // Missing "phrases" key falls through to the bare-array fallback below,
+                        // rather than silently returning zero phrases from an empty default.
+                        obj["phrases"]?.jsonArray ?: throw IllegalStateException("response object missing 'phrases' key")
+                    } catch (e: Exception) {
+                        jsonLenient.decodeFromString(JsonArray.serializer(), cleanJson)
+                    }
+                    val cleanedPairs = rawPhraseElements
+                        .map { el ->
+                            if (el is JsonObject) {
+                                el["phrase"]?.jsonPrimitive?.contentOrNull.orEmpty() to el["emoji"]?.jsonPrimitive?.contentOrNull.orEmpty()
+                            } else {
+                                el.jsonPrimitive.content to ""
+                            }
+                        }
+                        .map { (text, emoji) ->
+                            val cleanText = text.replace("'", "").replace(Regex("[^a-zA-Z0-9 ]"), " ").replace(Regex("\\s+"), " ").trim().lowercase()
+                            cleanText to emoji.trim().take(MAX_EMOJI_CHARS)
+                        }
+                        .filter { it.first.isNotBlank() }
+                    phraseEmojiMap = cleanedPairs.filter { it.second.isNotBlank() }.associate { it.first to it.second }
+                    cleanedPairs.map { it.first }.distinct()
+                } catch (e: Exception) {
+                    application.log.warn("Failed to parse phrase response for category='$category': ${e.message}. Raw content: ${content.take(1500)}")
+                    emptyList()
+                }
+                if (candidatePhrases.isEmpty()) {
+                    val stopReason = responseJson["stop_reason"]?.jsonPrimitive?.contentOrNull
+                    application.log.warn("Generated 0 phrases for category='$category' phrases=$phrases stop_reason=$stopReason content=${content.take(1500)}")
+                }
 
                 // Second pass: have the model review and self-filter its own list before
                 // it ever reaches a player, cutting generic/confusing/weak entries that
@@ -1329,7 +1415,8 @@ Return ONLY a JSON array containing the phrases to KEEP, copied exactly as writt
                             contentType(ContentType.Application.Json)
                             setBody(buildJsonObject {
                                 put("model", "claude-sonnet-5")
-                                put("max_tokens", 1024)
+                                put("max_tokens", 2048)
+                                putJsonObject("thinking") { put("type", "disabled") }
                                 putJsonArray("messages") {
                                     addJsonObject {
                                         put("role", "user")
@@ -1344,7 +1431,7 @@ Return ONLY a JSON array containing the phrases to KEEP, copied exactly as writt
                             candidatePhrases
                         } else {
                             val filterResponseJson = jsonLenient.decodeFromString(JsonObject.serializer(), filterResponse.bodyAsText())
-                            val filterContent = filterResponseJson["content"]?.jsonArray?.firstOrNull()?.jsonObject?.get("text")?.jsonPrimitive?.content ?: "[]"
+                            val filterContent = extractClaudeText(filterResponseJson)
                             val cleanFilterJson = filterContent.replace(Regex("```json\\s*"), "").replace(Regex("```\\s*"), "").trim()
                             val kept = jsonLenient.decodeFromString(JsonArray.serializer(), cleanFilterJson)
                                 .map { it.jsonPrimitive.content.replace("'", "").replace(Regex("[^a-zA-Z0-9 ]"), " ").replace(Regex("\\s+"), " ").trim().lowercase() }
@@ -1364,7 +1451,9 @@ Return ONLY a JSON array containing the phrases to KEEP, copied exactly as writt
                     }
                 }
 
-                call.respond(mapOf("phrases" to finalPhrases.take(safeCount)))
+                val trimmedPhrases = finalPhrases.take(safeCount)
+                val trimmedPhraseEmojis = phraseEmojiMap.filterKeys { trimmedPhrases.contains(it) }
+                call.respond(GeneratePhrasesResponse(phrases = trimmedPhrases, emoji = categoryEmoji, phraseEmojis = trimmedPhraseEmojis))
             } catch (e: Exception) {
                 application.log.error("Claude API error: ${e.message}", e)
                 call.respond(HttpStatusCode.InternalServerError, mapOf("error" to (e.message ?: "Generation failed")))
@@ -1458,7 +1547,7 @@ Rules:
                     return@post
                 }
                 val responseJson = jsonLenient.decodeFromString(JsonObject.serializer(), responseBody)
-                val content = responseJson["content"]?.jsonArray?.firstOrNull()?.jsonObject?.get("text")?.jsonPrimitive?.content ?: "[]"
+                val content = extractClaudeText(responseJson)
                 val cleanJson = content.replace(Regex("```json\\s*"), "").replace(Regex("```\\s*"), "").trim()
                 val clues = jsonLenient.decodeFromString(JsonArray.serializer(), cleanJson)
                     .map { it.jsonPrimitive.content }
