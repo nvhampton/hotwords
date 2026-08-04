@@ -2087,6 +2087,20 @@
             opacity: 0.5;
         }
 
+        .more-games {
+            position: fixed;
+            bottom: 27px;
+            right: 10px;
+            font-size: 0.7rem;
+            color: var(--hw-sub);
+            opacity: 0.5;
+        }
+        .more-games a {
+            color: inherit;
+            text-decoration: underline;
+            text-underline-offset: 2px;
+        }
+
         /* Topic picker */
         .topic-pill.random-pill {
             border-style: dashed;
@@ -2196,6 +2210,7 @@
         </div>
 
         <a href="#" id="lobbyLeaderboardLink" class="lobby-leaderboard-link">Leaderboard</a>
+        <div class="more-games">More games: <a href="/flashcards">Totwords</a></div>
         <div class="version">v@@VERSION@@</div>
     </div>
 
@@ -2769,7 +2784,7 @@
             }
         }
 
-        const CELEBRATION_DELAY = 1200; // 1.2s
+        const CELEBRATION_DELAY = 800; // trimmed from 1.2s — the game state/mic are already primed for the next phrase by the time this fires, so this is purely how long the overlay visually blocks the screen
         const BASE_GAME_DURATION = 30; // 30 seconds base
         const EXTRA_TIME_PER_PLAYER = 5; // +5s per player over 2
 
@@ -3264,14 +3279,17 @@
                 const centerX = window.innerWidth / 2;
                 const centerY = window.innerHeight / 2;
 
-                for (let i = 0; i < 50; i++) {
+                // Trimmed from 50 — same visual effect with less DOM/paint work per round,
+                // which matters most on the lower-end phones this game gets played on.
+                const particleCount = 28;
+                for (let i = 0; i < particleCount; i++) {
                     const particle = document.createElement('div');
                     particle.className = 'particle';
                     particle.style.left = centerX + 'px';
                     particle.style.top = centerY + 'px';
                     particle.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
 
-                    const angle = (Math.PI * 2 * i) / 50 + Math.random() * 0.5;
+                    const angle = (Math.PI * 2 * i) / particleCount + Math.random() * 0.5;
                     const distance = 100 + Math.random() * 300;
                     const tx = Math.cos(angle) * distance;
                     const ty = Math.sin(angle) * distance;
@@ -3281,8 +3299,8 @@
                     celebrationEl.appendChild(particle);
                 }
 
-                // Create confetti
-                for (let i = 0; i < 60; i++) {
+                // Create confetti (trimmed from 60, same reasoning as above)
+                for (let i = 0; i < 30; i++) {
                     const confetti = document.createElement('div');
                     confetti.className = 'confetti';
                     confetti.style.left = Math.random() * 100 + '%';
@@ -3346,14 +3364,17 @@
                 const centerX = window.innerWidth / 2;
                 const centerY = window.innerHeight / 2;
 
-                for (let i = 0; i < 50; i++) {
+                // Trimmed from 50 — same visual effect with less DOM/paint work per round,
+                // which matters most on the lower-end phones this game gets played on.
+                const particleCount = 28;
+                for (let i = 0; i < particleCount; i++) {
                     const particle = document.createElement('div');
                     particle.className = 'particle';
                     particle.style.left = centerX + 'px';
                     particle.style.top = centerY + 'px';
                     particle.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
 
-                    const angle = (Math.PI * 2 * i) / 50 + Math.random() * 0.5;
+                    const angle = (Math.PI * 2 * i) / particleCount + Math.random() * 0.5;
                     const distance = 100 + Math.random() * 300;
                     const tx = Math.cos(angle) * distance;
                     const ty = Math.sin(angle) * distance;
@@ -3363,8 +3384,8 @@
                     celebrationEl.appendChild(particle);
                 }
 
-                // Create confetti
-                for (let i = 0; i < 60; i++) {
+                // Create confetti (trimmed from 60, same reasoning as above)
+                for (let i = 0; i < 30; i++) {
                     const confetti = document.createElement('div');
                     confetti.className = 'confetti';
                     confetti.style.left = Math.random() * 100 + '%';
@@ -3383,7 +3404,7 @@
                     celebrationEl.querySelectorAll('.particle, .confetti, .celebration-flash').forEach(el => el.remove());
                 }, 300);
                 isCelebrating = false;
-            }, CELEBRATION_DELAY);
+            }, delay);
         }
 
         // Show new word with redaction timer
@@ -4817,6 +4838,7 @@
         // - Debounce restarts to reduce Android "ding" from frequent onend cycles
         let recognitionRunning = false;
         let recognitionRestartTimer = null;
+        let recognitionStartedAt = 0;
 
         function silentStart() {
             if (recognitionRestartTimer) { clearTimeout(recognitionRestartTimer); recognitionRestartTimer = null; }
@@ -4824,9 +4846,11 @@
             try {
                 recognition.start();
                 recognitionRunning = true;
+                recognitionStartedAt = Date.now();
             } catch(e) {
                 // Already started — ignore
                 recognitionRunning = true;
+                recognitionStartedAt = Date.now();
             }
         }
 
@@ -4986,12 +5010,20 @@
                 // you'd finished saying the phrase. Debounced restart suppresses rapid
                 // onend→start cycles on Android (each start() plays a "ding"). If
                 // recognition fires onend again during the wait, the timer resets.
+                //
+                // The debounce only needs to be long when onend fires almost immediately
+                // after start() — that's the signature of the rapid-cycle/ding-spam case.
+                // A normal onend (recognition actually ran for a while first, e.g. Android's
+                // own silence timeout) isn't at risk of looping, so restart it right away
+                // instead of leaving the mic dead for a full 2s on every ordinary pause.
                 if (isListening) {
                     if (recognitionRestartTimer) clearTimeout(recognitionRestartTimer);
+                    const ranFor = Date.now() - recognitionStartedAt;
+                    const restartDelay = ranFor < 1500 ? 2000 : 150;
                     recognitionRestartTimer = setTimeout(() => {
                         recognitionRestartTimer = null;
                         if (isListening) silentStart();
-                    }, 2000);
+                    }, restartDelay);
                 }
             };
         }
@@ -5662,15 +5694,21 @@
         loadTopicPicker().then(() => {
             if (rkoTakeoverActive) {
                 selectTopic('company_jargon');
+                return;
+            }
+            const saved = localStorage.getItem('hotwords_category');
+            // Check if the saved pill exists in the picker
+            const savedPill = saved && saved !== 'default'
+                ? document.querySelector(`.topic-pill[data-topic-id="${CSS.escape(saved)}"]`)
+                : null;
+            if (savedPill) {
+                savedPill.click();
             } else {
-                const saved = localStorage.getItem('hotwords_category');
-                if (saved && saved !== 'default') {
-                    // Check if the saved pill exists in the picker
-                    const pill = document.querySelector(`.topic-pill[data-topic-id="${CSS.escape(saved)}"]`);
-                    if (pill) {
-                        pill.click();
-                    }
-                }
+                // No saved preference (or it no longer exists) — default to the first
+                // real category pill rather than leaving nothing selected, so a brand
+                // new player gets a fun category right away instead of the plain deck.
+                const firstCategoryPill = document.querySelector('.topic-pill:not(.random-pill):not(.add-category)');
+                if (firstCategoryPill) firstCategoryPill.click();
             }
         });
 
@@ -5736,13 +5774,13 @@
             correctPhrasesThisRound.clear();
             currentRoomId = getRandomRoomName();
 
-            // Request permissions on this user gesture (needed for iOS). Respect the
-            // player's saved tilt-to-reveal preference — if they've turned it off, don't
-            // re-prompt for the (iOS) orientation permission every game.
-            if (localStorage.getItem('hotwords_orientation_pref') === 'off') {
-                enableManualReveal();
-            } else {
+            // Request permissions on this user gesture (needed for iOS). Tilt-to-reveal
+            // defaults to off for new players (opt-in, via the 🤳 toggle) — only turn it
+            // on here if they've explicitly enabled it before.
+            if (localStorage.getItem('hotwords_orientation_pref') === 'on') {
                 await enableOrientationDetection();
+            } else {
+                enableManualReveal();
             }
             const micGranted = await ensureMicPermission();
 
@@ -5788,10 +5826,10 @@
 
             statusEl.textContent = '';
 
-            // If the player left listening on last round, resume it automatically
-            // instead of making them re-enable it every single round. Done after the
-            // status reset above so its own "Listening..." message isn't clobbered.
-            if (micGranted !== false && localStorage.getItem('hotwords_mic_pref') === 'on') {
+            // Mic defaults to on for new players (most fun way to start) — only skip
+            // auto-start if they've explicitly turned it off before. Also resumes
+            // automatically round-to-round instead of making them re-enable it every time.
+            if (micGranted !== false && localStorage.getItem('hotwords_mic_pref') !== 'off') {
                 await micStartContinuous();
             }
 
